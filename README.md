@@ -16,16 +16,16 @@ curl -fsSL https://install.determinate.systems/nix | sh -s -- install --no-confi
 git clone https://github.com/azzz9/dotfiles.git ~/dotfiles
 ```
 
-3. Apply the Home Manager config:
+3. Apply the Home Manager config (no prior install needed):
 
 ```
-home-manager switch --flake ~/dotfiles#arch-linux --impure
+nix run nixpkgs#home-manager -- switch --flake ~/dotfiles#arch-linux --impure
 ```
 
-Use `#azzz-home-server` on the server:
+Use `#ubuntu` on the server:
 
 ```
-home-manager switch --flake ~/dotfiles#ubuntu --impure
+nix run nixpkgs#home-manager -- switch --flake ~/dotfiles#ubuntu --impure
 ```
 
 ## System bootstrap (Docker + Zsh + Git)
@@ -36,6 +36,30 @@ global Git user info. It reboots at the end.
 ```
 GIT_NAME="your-name" GIT_EMAIL="your-noreply@users.noreply.github.com" ./scripts/setup-system.sh
 ```
+
+## Update (Nix packages)
+
+1. Update flake inputs:
+
+```
+cd ~/dotfiles
+nix flake update
+```
+
+Update a specific input (example):
+
+```
+cd ~/dotfiles
+nix flake lock --update-input nixpkgs
+```
+
+2. Rebuild Home Manager:
+
+```
+nix run nixpkgs#home-manager -- switch --flake .#arch-linux --impure
+```
+
+Use `.#ubuntu` on the server.
 
 ## Notes
 
