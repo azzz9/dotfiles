@@ -5,6 +5,7 @@ in
 {
   home.packages = with pkgs; [
     lazygit
+    gh
     nodejs_24
     debugpyPython
     codex
