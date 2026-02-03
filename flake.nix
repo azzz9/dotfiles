@@ -19,21 +19,14 @@
       pkgs = nixpkgs.legacyPackages.${system};
     in
       {
-			homeConfigurations = {
-				arch-linux = home-manager.lib.homeManagerConfiguration {
-					inherit pkgs;
-					modules = [
-						./hosts/arch-linux.nix
-						nixvim.homeModules.nixvim
-					];
-				};
-				ubuntu = home-manager.lib.homeManagerConfiguration {
-					inherit pkgs;
-					modules = [
-						./hosts/ubuntu.nix
-						nixvim.homeModules.nixvim
-					];
-				};
-			};
-    };
+        homeConfigurations = {
+          default = home-manager.lib.homeManagerConfiguration {
+            inherit pkgs;
+            modules = [
+              ./hosts/default.nix
+              nixvim.homeModules.nixvim
+            ];
+          };
+        };
+      };
 }

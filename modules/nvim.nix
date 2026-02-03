@@ -85,6 +85,7 @@ in
         nvim-dap-virtual-text
         nvim-dap-python
         nvim-nio
+        nvim-treesitter
         nvim-treesitter-textobjects
         indent-blankline-nvim
         rainbow-delimiters-nvim
@@ -226,7 +227,7 @@ in
       local parser_install_dir = vim.fn.stdpath("data") .. "/treesitter"
       vim.fn.mkdir(parser_install_dir, "p")
       vim.opt.runtimepath:append(parser_install_dir)
-      require("nvim-treesitter.configs").setup({
+      require("nvim-treesitter.config").setup({
         highlight = { enable = true },
         indent = { enable = true },
         rainbow = { enable = true, extended_mode = true },
