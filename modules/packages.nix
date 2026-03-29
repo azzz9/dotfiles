@@ -5,11 +5,11 @@ in
 {
   home.packages = with pkgs; [
     lazygit
-    gh
     nodejs_24
     debugpyPython
     codex
     xclip
+    wl-clipboard
     fd
     ripgrep
     tree-sitter

@@ -39,6 +39,23 @@
           nix run nixpkgs#home-manager -- switch --flake "$repo#$host" --impure
         }
       '')
+      (lib.mkOrder 920 ''
+        autoload -U promptinit
+        promptinit
+        prompt pure
+      '')
+      (lib.mkOrder 930 ''
+        unalias cdx 2>/dev/null || true
+        unalias gcp 2>/dev/null || true
+
+        cdx() {
+          codex --no-alt-screen "$@"
+        }
+
+        gcp() {
+          gh copilot "$@"
+        }
+      '')
       (lib.mkOrder 980 ''
         # Ensure zsh-autocomplete keeps Tab; fzf's integration rebinds it.
         bindkey -M main '^I' complete-word
@@ -56,8 +73,7 @@
     enableZshIntegration = true;
   };
 
-  programs.starship = {
-    enable = true;
-    enableZshIntegration = true;
-  };
+  home.packages = [
+    pkgs.pure-prompt
+  ];
 }
