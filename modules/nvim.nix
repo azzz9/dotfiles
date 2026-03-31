@@ -18,16 +18,6 @@ in
     defaultEditor = true;
     viAlias = true;
     vimAlias = true;
-    colorschemes.gruvbox-material = {
-      enable = true;
-      settings = {
-        background = "medium";
-        enable_italic = true;
-        diagnostic_text_highlight = true;
-        diagnostic_line_highlight = true;
-        diagnostic_virtual_text = "colored";
-      };
-    };
     globals = {
       mapleader = " ";
       maplocalleader = "\\";
@@ -50,6 +40,7 @@ in
     extraPlugins =
       with pkgs.vimPlugins;
       [
+        gruvbox-material
         noice-nvim
         nui-nvim
         nvim-notify
@@ -95,6 +86,81 @@ in
       ++ [ treesitterWithGrammars ];
     extraConfigLua = ''
       vim.g.start_time = vim.loop.hrtime()
+
+      local function read_file(path)
+        local fd = vim.uv.fs_open(path, "r", 438)
+        if not fd then
+          return nil
+        end
+        local stat = vim.uv.fs_fstat(fd)
+        if not stat then
+          vim.uv.fs_close(fd)
+          return nil
+        end
+        local data = vim.uv.fs_read(fd, stat.size, 0)
+        vim.uv.fs_close(fd)
+        return data
+      end
+
+      local function detect_terminal_theme()
+        local profile_id = vim.env.WT_PROFILE_ID
+        if not profile_id or profile_id == "" then
+          return "dark"
+        end
+
+        local wt_paths = vim.fn.glob(
+          "/mnt/c/Users/*/AppData/Local/Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/settings.json",
+          false,
+          true
+        )
+        if #wt_paths == 0 then
+          return "dark"
+        end
+
+        local raw = read_file(wt_paths[1])
+        if not raw or raw == "" then
+          return "dark"
+        end
+
+        local ok, wt = pcall(vim.json.decode, raw)
+        if not ok or type(wt) ~= "table" then
+          return "dark"
+        end
+
+        local mode = wt.theme == "light" and "light" or "dark"
+        local profiles = wt.profiles or {}
+        local defaults = profiles.defaults or {}
+        local list = profiles.list or {}
+        local current = nil
+
+        for _, profile in ipairs(list) do
+          if profile.guid == profile_id then
+            current = profile
+            break
+          end
+        end
+
+        local scheme = (current and current.colorScheme) or defaults.colorScheme
+        if type(scheme) == "string" then
+          local lower = scheme:lower()
+          if lower:find("light", 1, true) then
+            mode = "light"
+          elseif lower:find("dark", 1, true) then
+            mode = "dark"
+          end
+        end
+
+        return mode
+      end
+
+      local is_light_theme = detect_terminal_theme() == "light"
+      vim.o.background = is_light_theme and "light" or "dark"
+      vim.g.gruvbox_material_background = is_light_theme and "soft" or "medium"
+      vim.g.gruvbox_material_enable_italic = true
+      vim.g.gruvbox_material_diagnostic_text_highlight = true
+      vim.g.gruvbox_material_diagnostic_line_highlight = true
+      vim.g.gruvbox_material_diagnostic_virtual_text = "colored"
+      pcall(vim.cmd.colorscheme, "gruvbox-material")
 
       vim.keymap.set("n", "<C-v>", "<C-v>", { noremap = true })
       vim.keymap.set("i", "<C-v>", "<C-v>", { noremap = true })
@@ -250,7 +316,28 @@ in
           },
         },
       })
-      require("ibl").setup({})
+      require("ibl").setup({
+        indent = {
+          char = "▏",
+          tab_char = "▏",
+          highlight = "IblIndent",
+        },
+        scope = {
+          enabled = false,
+        },
+        exclude = {
+          buftypes = { "terminal", "nofile", "quickfix", "prompt" },
+          filetypes = {
+            "help",
+            "lazy",
+            "mason",
+            "notify",
+            "Trouble",
+            "oil",
+            "copilot-chat",
+          },
+        },
+      })
 
       require("gitsigns").setup({
         signs = {
@@ -500,19 +587,41 @@ in
           vim.api.nvim_set_hl(0, "SignColumn", { bg = "none" })
           vim.api.nvim_set_hl(0, "FoldColumn", { bg = "none" })
           vim.api.nvim_set_hl(0, "EndOfBuffer", { bg = "none" })
-          vim.api.nvim_set_hl(0, "DiagnosticErrorLine", { bg = "#3b1113" })
-          vim.api.nvim_set_hl(0, "DiagnosticWarnLine", { bg = "#3b2a11" })
-          vim.api.nvim_set_hl(0, "DiagnosticInfoLine", { bg = "#112f3b" })
-          vim.api.nvim_set_hl(0, "DiagnosticHintLine", { bg = "#113b1b" })
-          vim.api.nvim_set_hl(0, "DiagnosticErrorNr", { bg = "#3b1113", bold = true })
-          vim.api.nvim_set_hl(0, "DiagnosticWarnNr", { bg = "#3b2a11", bold = true })
-          vim.api.nvim_set_hl(0, "DiagnosticInfoNr", { bg = "#112f3b", bold = true })
-          vim.api.nvim_set_hl(0, "DiagnosticHintNr", { bg = "#113b1b", bold = true })
-          vim.api.nvim_set_hl(0, "LineNr", { fg = "#7c6f64" })
-          vim.api.nvim_set_hl(0, "LineNrAbove", { fg = "#7c6f64" })
-          vim.api.nvim_set_hl(0, "LineNrBelow", { fg = "#7c6f64" })
-          vim.api.nvim_set_hl(0, "CursorLineNr", { fg = "#fabd2f", bold = true })
-          vim.api.nvim_set_hl(0, "CursorLine", { bg = "#3c3836", ctermbg = 237 })
+          if vim.o.background == "light" then
+            vim.api.nvim_set_hl(0, "IblIndent", { fg = "#d5c4a1", nocombine = true })
+            vim.api.nvim_set_hl(0, "DiagnosticErrorLine", { bg = "#fbe3e4" })
+            vim.api.nvim_set_hl(0, "DiagnosticWarnLine", { bg = "#faedcd" })
+            vim.api.nvim_set_hl(0, "DiagnosticInfoLine", { bg = "#ddebf4" })
+            vim.api.nvim_set_hl(0, "DiagnosticHintLine", { bg = "#e4f3e1" })
+            vim.api.nvim_set_hl(0, "DiagnosticErrorNr", { bg = "#fbe3e4", bold = true })
+            vim.api.nvim_set_hl(0, "DiagnosticWarnNr", { bg = "#faedcd", bold = true })
+            vim.api.nvim_set_hl(0, "DiagnosticInfoNr", { bg = "#ddebf4", bold = true })
+            vim.api.nvim_set_hl(0, "DiagnosticHintNr", { bg = "#e4f3e1", bold = true })
+            vim.api.nvim_set_hl(0, "LineNr", { fg = "#928374" })
+            vim.api.nvim_set_hl(0, "LineNrAbove", { fg = "#928374" })
+            vim.api.nvim_set_hl(0, "LineNrBelow", { fg = "#928374" })
+            vim.api.nvim_set_hl(0, "CursorLineNr", { fg = "#af3a03", bold = true })
+            vim.api.nvim_set_hl(0, "CursorLine", { bg = "#d8c07a", ctermbg = 221 })
+            vim.api.nvim_set_hl(0, "Visual", { bg = "#bdae93", fg = "#3c3836", bold = true, nocombine = true })
+            vim.api.nvim_set_hl(0, "VisualNOS", { bg = "#bdae93", fg = "#3c3836", bold = true, nocombine = true })
+          else
+            vim.api.nvim_set_hl(0, "IblIndent", { fg = "#4a443e", nocombine = true })
+            vim.api.nvim_set_hl(0, "DiagnosticErrorLine", { bg = "#3b1113" })
+            vim.api.nvim_set_hl(0, "DiagnosticWarnLine", { bg = "#3b2a11" })
+            vim.api.nvim_set_hl(0, "DiagnosticInfoLine", { bg = "#112f3b" })
+            vim.api.nvim_set_hl(0, "DiagnosticHintLine", { bg = "#113b1b" })
+            vim.api.nvim_set_hl(0, "DiagnosticErrorNr", { bg = "#3b1113", bold = true })
+            vim.api.nvim_set_hl(0, "DiagnosticWarnNr", { bg = "#3b2a11", bold = true })
+            vim.api.nvim_set_hl(0, "DiagnosticInfoNr", { bg = "#112f3b", bold = true })
+            vim.api.nvim_set_hl(0, "DiagnosticHintNr", { bg = "#113b1b", bold = true })
+            vim.api.nvim_set_hl(0, "LineNr", { fg = "#7c6f64" })
+            vim.api.nvim_set_hl(0, "LineNrAbove", { fg = "#7c6f64" })
+            vim.api.nvim_set_hl(0, "LineNrBelow", { fg = "#7c6f64" })
+            vim.api.nvim_set_hl(0, "CursorLineNr", { fg = "#fabd2f", bold = true })
+            vim.api.nvim_set_hl(0, "CursorLine", { bg = "#5e4f3f", ctermbg = 239 })
+            vim.api.nvim_set_hl(0, "Visual", { bg = "#7a6247", fg = "#fbf1c7", bold = true, nocombine = true })
+            vim.api.nvim_set_hl(0, "VisualNOS", { bg = "#7a6247", fg = "#fbf1c7", bold = true, nocombine = true })
+          end
         end,
       })
       vim.cmd("doautocmd ColorScheme")
