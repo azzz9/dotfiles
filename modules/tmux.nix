@@ -1,7 +1,47 @@
-{ ... }:
+{ pkgs, ... }:
+let
+  tmuxClipboardCopy = pkgs.writeShellScriptBin "tmux-clipboard-copy" ''
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if command -v wl-copy >/dev/null 2>&1 && [ -n "''${WAYLAND_DISPLAY:-}" ]; then
+      exec wl-copy
+    fi
+
+    if command -v xclip >/dev/null 2>&1 && [ -n "''${DISPLAY:-}" ]; then
+      exec xclip -selection clipboard -in
+    fi
+
+    if command -v clip.exe >/dev/null 2>&1; then
+      exec clip.exe
+    fi
+
+    if command -v pbcopy >/dev/null 2>&1; then
+      exec pbcopy
+    fi
+
+    cat >/dev/null
+  '';
+in
 {
   programs.tmux = {
     enable = true;
+    plugins = with pkgs.tmuxPlugins; [
+      gruvbox
+      {
+        plugin = resurrect;
+        extraConfig = ''
+          set -g @resurrect-capture-pane-contents 'on'
+        '';
+      }
+      {
+        plugin = continuum;
+        extraConfig = ''
+          set -g @continuum-restore 'on'
+          set -g @continuum-save-interval '5'
+        '';
+      }
+    ];
     extraConfig = ''
       unbind C-b
       set -g prefix C-a
@@ -9,10 +49,17 @@
 
       set -g mouse on
 
+      set -g history-limit 100000
+      set -g renumber-windows on
+      set -g base-index 1
+      setw -g pane-base-index 1
+
       setw -g mode-keys vi
       set -g status-keys vi
+      set -g set-clipboard on
 
-      bind -T copy-mode-vi y send-keys -X copy-pipe-and-cancel "xclip -selection clipboard"
+      bind -T copy-mode-vi y send-keys -X copy-pipe-and-cancel "${tmuxClipboardCopy}/bin/tmux-clipboard-copy"
+      bind r source-file ~/.config/tmux/tmux.conf \; display-message "tmux.conf reloaded"
 
       unbind '"'
       unbind %
@@ -45,14 +92,7 @@
       set -ga terminal-features 'xterm-256color:RGB'
       set -ga terminal-features 'tmux-256color:RGB'
 
-      set -g @plugin 'tmux-plugins/tpm'
-      set -g @plugin 'egel/tmux-gruvbox'
-      set -g @plugin 'tmux-plugins/tmux-resurrect'
-      set -g @plugin 'tmux-plugins/tmux-continuum'
-      set -g @continuum-restore 'on'
-      set -g @continuum-save-interval '5'
       set -g @tmux-gruvbox 'dark'
-      run '~/.tmux/plugins/tpm/tpm'
     '';
   };
 }

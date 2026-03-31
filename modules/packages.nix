@@ -10,6 +10,7 @@ in
     debugpyPython
     codex
     xclip
+    wl-clipboard
     fd
     ripgrep
     tree-sitter
