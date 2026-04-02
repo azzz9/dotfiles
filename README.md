@@ -43,8 +43,9 @@ dotfiles-update
 
 - If you add new files to the flake, they must be `git add`'d before running
   `home-manager switch`, otherwise Nix will not see them.
-- tmux plugins are managed by TPM. After tmux starts, press `prefix + I` to
-  install plugins.
+- tmux plugins are managed by Home Manager, not TPM.
 - WSL only: this config uses `im-select.exe` to switch IME back to English on
   InsertLeave. Place it at `/mnt/c/im-select.exe` or update the path in
   `modules/nvim.nix`.
+- AI tool workflow notes for `codex` and `gh copilot` live in
+  [docs/ai-tools.md](./docs/ai-tools.md).

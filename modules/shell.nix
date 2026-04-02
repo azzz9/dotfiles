@@ -44,6 +44,15 @@
         promptinit
         prompt pure
       '')
+      (lib.mkOrder 930 ''
+        cdx() {
+          codex --no-alt-screen "$@"
+        }
+
+        gcp() {
+          gh copilot "$@"
+        }
+      '')
       (lib.mkOrder 980 ''
         # Ensure zsh-autocomplete keeps Tab; fzf's integration rebinds it.
         bindkey -M main '^I' complete-word
