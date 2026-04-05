@@ -45,6 +45,9 @@
         prompt pure
       '')
       (lib.mkOrder 930 ''
+        unalias cdx 2>/dev/null || true
+        unalias gcp 2>/dev/null || true
+
         cdx() {
           codex --no-alt-screen "$@"
         }

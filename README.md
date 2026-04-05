@@ -49,3 +49,5 @@ dotfiles-update
   `modules/nvim.nix`.
 - AI tool workflow notes for `codex` and `gh copilot` live in
   [docs/ai-tools.md](./docs/ai-tools.md).
+- Shared repo AI context can start from
+  [docs/ai-context-template.md](./docs/ai-context-template.md).

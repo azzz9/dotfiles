@@ -37,3 +37,6 @@ When a repository needs AI-facing documentation, keep it shared:
 
 That keeps `codex`, `gh copilot`, and normal human contributors aligned on the
 same source of truth.
+
+If you need a starting point, use
+`docs/ai-context-template.md` from this dotfiles repo as the base template.

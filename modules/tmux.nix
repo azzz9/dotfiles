@@ -57,9 +57,13 @@ in
       setw -g mode-keys vi
       set -g status-keys vi
       set -g set-clipboard on
+      set -g xterm-keys on
+      set -g extended-keys on
 
       bind -T copy-mode-vi y send-keys -X copy-pipe-and-cancel "${tmuxClipboardCopy}/bin/tmux-clipboard-copy"
       bind r source-file ~/.config/tmux/tmux.conf \; display-message "tmux.conf reloaded"
+      bind C display-popup -E -w 95% -h 95% -d "#{pane_current_path}" "zsh -lc 'codex --no-alt-screen'"
+      bind G display-popup -E -w 95% -h 95% -d "#{pane_current_path}" "zsh -lc 'gh copilot'"
 
       unbind '"'
       unbind %
@@ -76,6 +80,18 @@ in
       bind -r K resize-pane -U 5
       bind -r L resize-pane -R 5
 
+      bind -n M-h select-pane -L
+      bind -n M-j select-pane -D
+      bind -n M-k select-pane -U
+      bind -n M-l select-pane -R
+      bind -n M-p choose-tree -Zw
+      bind -n M-w choose-tree -Zw
+      bind -n M-s choose-tree -Zs
+      bind -n M-Left previous-window
+      bind -n M-Right next-window
+      bind -n M-Up switch-client -p
+      bind -n M-Down switch-client -n
+
       set -g pane-border-status top
       if-shell -b "tmux list-options -g | grep -q '^pane-border-format'" \
         "set -g pane-border-format ' #{pane_index} #{pane_current_command} '"
@@ -90,7 +106,9 @@ in
       set -g default-terminal "tmux-256color"
       set -g focus-events on
       set -ga terminal-features 'xterm-256color:RGB'
+      set -ga terminal-features 'xterm-256color:extkeys'
       set -ga terminal-features 'tmux-256color:RGB'
+      set -ga terminal-features 'tmux-256color:extkeys'
 
       set -g @tmux-gruvbox 'dark'
     '';
