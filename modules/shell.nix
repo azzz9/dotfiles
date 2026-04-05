@@ -45,6 +45,10 @@
         }
       '')
       (lib.mkOrder 920 ''
+        # Keep SSH user@host readable across terminal themes.
+        zstyle ':prompt:pure:user' color 'default'
+        zstyle ':prompt:pure:host' color 'default'
+
         autoload -U promptinit
         promptinit
         prompt pure
