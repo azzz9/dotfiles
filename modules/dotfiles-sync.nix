@@ -7,12 +7,13 @@ let
     host="''${1:-default}"
     lock_file="''${XDG_RUNTIME_DIR:-/tmp}/dotfiles-sync.lock"
     nix_conf_dir="$(mktemp -d "''${XDG_RUNTIME_DIR:-/tmp}/dotfiles-sync-nix-conf.XXXXXX")"
-    trap 'rm -rf "$nix_conf_dir"' EXIT
+    patched_activate=""
+    trap 'rm -rf "$nix_conf_dir"; if [ -n "$patched_activate" ]; then rm -f "$patched_activate"; fi' EXIT
     # systemd user services often start with a minimal PATH.
     # Ensure Home Manager can find `nix` when it re-invokes it internally.
     # Use nix from nixpkgs and an isolated config to avoid host-specific
     # unknown/deprecation warnings from Determinate Nix defaults.
-    export PATH="${pkgs.nix}/bin:${pkgs.git}/bin:${pkgs.util-linux}/bin:/run/current-system/sw/bin:/usr/bin:/bin:$PATH"
+    export PATH="${pkgs.nix}/bin:${pkgs.git}/bin:${pkgs.util-linux}/bin:${pkgs.coreutils}/bin:${pkgs.gnused}/bin:/run/current-system/sw/bin:/usr/bin:/bin:$PATH"
     cat > "$nix_conf_dir/nix.conf" <<'EOF'
 experimental-features = nix-command flakes
 accept-flake-config = true
@@ -38,7 +39,12 @@ EOF
     fi
 
     ${pkgs.git}/bin/git pull --ff-only
-    ${pkgs.nix}/bin/nix run nixpkgs#home-manager -- switch --flake "${repo}#$host" --impure
+
+    activation_path="$(${pkgs.nix}/bin/nix build --no-link --print-out-paths "${repo}#homeConfigurations.$host.activationPackage" --impure)"
+    patched_activate="$(mktemp "''${XDG_RUNTIME_DIR:-/tmp}/dotfiles-sync-activate.XXXXXX")"
+    ${pkgs.coreutils}/bin/cp "$activation_path/activate" "$patched_activate"
+    ${pkgs.gnused}/bin/sed -i 's/profile install/profile add/g' "$patched_activate"
+    ${pkgs.bash}/bin/bash "$patched_activate"
   '';
 in
 {
