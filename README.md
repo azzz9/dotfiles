@@ -31,12 +31,20 @@ global Git user info. It reboots at the end.
 GIT_NAME="your-name" GIT_EMAIL="your-noreply@users.noreply.github.com" ./scripts/setup-system.sh
 ```
 
-## Update (Nix packages)
+## Update (pull + apply)
 
-Quick update via zsh function:
+Quick update via zsh function (pull latest from GitHub, then apply):
 
 ```
-dotfiles-update
+dotfiles-sync
+```
+
+## Update lock inputs (optional)
+
+If you want to refresh `flake.lock` inputs locally:
+
+```
+dotfiles-upgrade
 ```
 
 ## Notes

@@ -26,16 +26,39 @@
         zstyle ':autocomplete:*' enabled yes
       '')
       (lib.mkOrder 900 ''
-        dotfiles-update() {
+        dotfiles-sync() {
+          local host="''${1:-default}"
+          local repo="$HOME/dotfiles"
+
+          if [ ! -d "$repo/.git" ]; then
+            echo "dotfiles-sync: $repo not found" >&2
+            return 1
+          fi
+
+          (
+            cd "$repo" || return 1
+
+            if ! git diff --quiet || ! git diff --cached --quiet; then
+              echo "dotfiles-sync: local changes found in $repo; commit or stash first" >&2
+              return 1
+            fi
+
+            git pull --ff-only
+          ) || return 1
+
+          nix run nixpkgs#home-manager -- switch --flake "$repo#$host" --impure
+        }
+
+        dotfiles-upgrade() {
           local host="''${1:-default}"
           local repo="$HOME/dotfiles"
 
           if [ ! -d "$repo" ]; then
-            echo "dotfiles-update: $repo not found" >&2
+            echo "dotfiles-upgrade: $repo not found" >&2
             return 1
           fi
 
-          (cd "$repo" && nix flake update)
+          (cd "$repo" && nix flake update) || return 1
           nix run nixpkgs#home-manager -- switch --flake "$repo#$host" --impure
         }
       '')
