@@ -602,8 +602,8 @@ in
             vim.api.nvim_set_hl(0, "LineNrBelow", { fg = "#928374" })
             vim.api.nvim_set_hl(0, "CursorLineNr", { fg = "#af3a03", bold = true })
             vim.api.nvim_set_hl(0, "CursorLine", { bg = "none", ctermbg = "none" })
-            vim.api.nvim_set_hl(0, "Visual", { bg = "#bdae93", fg = "#3c3836", bold = true, nocombine = true })
-            vim.api.nvim_set_hl(0, "VisualNOS", { bg = "#bdae93", fg = "#3c3836", bold = true, nocombine = true })
+            vim.api.nvim_set_hl(0, "Visual", { bg = "#e5d5b5", fg = "#3c3836", nocombine = true })
+            vim.api.nvim_set_hl(0, "VisualNOS", { bg = "#e5d5b5", fg = "#3c3836", nocombine = true })
           else
             vim.api.nvim_set_hl(0, "IblIndent", { fg = "#4a443e", nocombine = true })
             vim.api.nvim_set_hl(0, "DiagnosticErrorLine", { bg = "#3b1113" })
@@ -619,8 +619,8 @@ in
             vim.api.nvim_set_hl(0, "LineNrBelow", { fg = "#7c6f64" })
             vim.api.nvim_set_hl(0, "CursorLineNr", { fg = "#fabd2f", bold = true })
             vim.api.nvim_set_hl(0, "CursorLine", { bg = "none", ctermbg = "none" })
-            vim.api.nvim_set_hl(0, "Visual", { bg = "#7a6247", fg = "#fbf1c7", bold = true, nocombine = true })
-            vim.api.nvim_set_hl(0, "VisualNOS", { bg = "#7a6247", fg = "#fbf1c7", bold = true, nocombine = true })
+            vim.api.nvim_set_hl(0, "Visual", { bg = "#4f453c", fg = "#ebdbb2", nocombine = true })
+            vim.api.nvim_set_hl(0, "VisualNOS", { bg = "#4f453c", fg = "#ebdbb2", nocombine = true })
           end
         end,
       })
