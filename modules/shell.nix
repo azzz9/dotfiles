@@ -28,25 +28,7 @@
       (lib.mkOrder 900 ''
         dotfiles-sync() {
           local host="''${1:-default}"
-          local repo="$HOME/dotfiles"
-
-          if [ ! -d "$repo/.git" ]; then
-            echo "dotfiles-sync: $repo not found" >&2
-            return 1
-          fi
-
-          (
-            cd "$repo" || return 1
-
-            if ! git diff --quiet || ! git diff --cached --quiet; then
-              echo "dotfiles-sync: local changes found in $repo; commit or stash first" >&2
-              return 1
-            fi
-
-            git pull --ff-only
-          ) || return 1
-
-          nix run nixpkgs#home-manager -- switch --flake "$repo#$host" --impure
+          command dotfiles-sync-run "$host"
         }
 
         dotfiles-upgrade() {

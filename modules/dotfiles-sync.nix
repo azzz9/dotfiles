@@ -6,9 +6,18 @@ let
 
     host="''${1:-default}"
     lock_file="''${XDG_RUNTIME_DIR:-/tmp}/dotfiles-sync.lock"
+    nix_conf_dir="$(mktemp -d "''${XDG_RUNTIME_DIR:-/tmp}/dotfiles-sync-nix-conf.XXXXXX")"
+    trap 'rm -rf "$nix_conf_dir"' EXIT
     # systemd user services often start with a minimal PATH.
     # Ensure Home Manager can find `nix` when it re-invokes it internally.
+    # Use nix from nixpkgs and an isolated config to avoid host-specific
+    # unknown/deprecation warnings from Determinate Nix defaults.
     export PATH="${pkgs.nix}/bin:${pkgs.git}/bin:${pkgs.util-linux}/bin:/run/current-system/sw/bin:/usr/bin:/bin:$PATH"
+    cat > "$nix_conf_dir/nix.conf" <<'EOF'
+experimental-features = nix-command flakes
+accept-flake-config = true
+EOF
+    export NIX_CONF_DIR="$nix_conf_dir"
 
     exec 9>"$lock_file"
     if ! ${pkgs.util-linux}/bin/flock -n 9; then

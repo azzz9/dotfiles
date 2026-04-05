@@ -5,6 +5,11 @@
   home.stateVersion = "24.05";
 
   programs.home-manager.enable = true;
+  manual = {
+    html.enable = false;
+    json.enable = false;
+    manpages.enable = false;
+  };
 
   imports = [
     ../modules/dotfiles-sync.nix
