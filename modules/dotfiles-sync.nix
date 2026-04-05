@@ -6,6 +6,9 @@ let
 
     host="''${1:-default}"
     lock_file="''${XDG_RUNTIME_DIR:-/tmp}/dotfiles-sync.lock"
+    # systemd user services often start with a minimal PATH.
+    # Ensure Home Manager can find `nix` when it re-invokes it internally.
+    export PATH="${pkgs.nix}/bin:${pkgs.git}/bin:${pkgs.util-linux}/bin:/run/current-system/sw/bin:/usr/bin:/bin:$PATH"
 
     exec 9>"$lock_file"
     if ! ${pkgs.util-linux}/bin/flock -n 9; then
