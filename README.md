@@ -31,12 +31,43 @@ global Git user info. It reboots at the end.
 GIT_NAME="your-name" GIT_EMAIL="your-noreply@users.noreply.github.com" ./scripts/setup-system.sh
 ```
 
-## Update (Nix packages)
+## Update (pull + apply)
 
-Quick update via zsh function:
+Quick update via zsh function (pull latest from GitHub, then apply):
 
 ```
-dotfiles-update
+dotfiles-sync
+```
+
+## Update lock inputs (optional)
+
+If you want to refresh `flake.lock` inputs locally:
+
+```
+dotfiles-upgrade
+```
+
+## Auto sync
+
+`dotfiles-sync` is also scheduled automatically by a user timer:
+
+- first run: about 2 minutes after login/startup
+- interval: every 30 minutes (with up to 5 minutes jitter)
+- safety: if local uncommitted changes exist in `~/dotfiles`, it skips
+
+Useful commands:
+
+```
+systemctl --user status dotfiles-sync.timer
+journalctl --user -u dotfiles-sync.service -n 100 --no-pager
+```
+
+## Local push guard
+
+Enable local pre-push checks (blocks push if eval/build fails):
+
+```
+git config core.hooksPath .githooks
 ```
 
 ## Notes

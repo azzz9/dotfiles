@@ -26,16 +26,21 @@
         zstyle ':autocomplete:*' enabled yes
       '')
       (lib.mkOrder 900 ''
-        dotfiles-update() {
+        dotfiles-sync() {
+          local host="''${1:-default}"
+          command dotfiles-sync-run "$host"
+        }
+
+        dotfiles-upgrade() {
           local host="''${1:-default}"
           local repo="$HOME/dotfiles"
 
           if [ ! -d "$repo" ]; then
-            echo "dotfiles-update: $repo not found" >&2
+            echo "dotfiles-upgrade: $repo not found" >&2
             return 1
           fi
 
-          (cd "$repo" && nix flake update)
+          (cd "$repo" && nix flake update) || return 1
           nix run nixpkgs#home-manager -- switch --flake "$repo#$host" --impure
         }
       '')
