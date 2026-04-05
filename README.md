@@ -51,8 +51,7 @@ dotfiles-upgrade
 
 `dotfiles-sync` is also scheduled automatically by a user timer:
 
-- first run: about 2 minutes after login/startup
-- interval: every 30 minutes (with up to 5 minutes jitter)
+- run: once about 2 minutes after login/startup
 - safety: if local uncommitted changes exist in `~/dotfiles`, it skips
 
 Useful commands:

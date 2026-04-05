@@ -31,7 +31,7 @@ in
       autoread = true;
       updatetime = 1000;
       cursorline = true;
-      cursorlineopt = "both";
+      cursorlineopt = "number";
       tabstop = 2;
       shiftwidth = 2;
       softtabstop = 2;
@@ -49,10 +49,12 @@ in
         nvim-web-devicons
         nvim-cmp
         cmp-nvim-lsp
+        cmp_luasnip
         cmp-buffer
         cmp-path
         cmp-cmdline
         luasnip
+        friendly-snippets
         telescope-nvim
         plenary-nvim
         telescope-ui-select-nvim
@@ -65,7 +67,6 @@ in
         todo-comments-nvim
         lazygit-nvim
         copilot-lua
-        copilot-cmp
         CopilotChat-nvim
         gitsigns-nvim
         oil-nvim
@@ -415,7 +416,6 @@ in
         panel = { enabled = false },
         filetypes = { ["*"] = true },
       })
-      require("copilot_cmp").setup({})
       require("CopilotChat").setup({
         chat_autocomplete = true,
         prompts = {
@@ -572,6 +572,12 @@ in
         lua = { "selene" },
         python = { "ruff" },
       }
+      if vim.fn.executable("clang-tidy") == 1 then
+        lint.linters_by_ft.c = { "clangtidy" }
+        lint.linters_by_ft.cpp = { "clangtidy" }
+        lint.linters_by_ft.objc = { "clangtidy" }
+        lint.linters_by_ft.objcpp = { "clangtidy" }
+      end
       vim.api.nvim_create_autocmd({ "BufWritePost", "InsertLeave" }, {
         callback = function()
           lint.try_lint()
@@ -601,9 +607,9 @@ in
             vim.api.nvim_set_hl(0, "LineNrAbove", { fg = "#928374" })
             vim.api.nvim_set_hl(0, "LineNrBelow", { fg = "#928374" })
             vim.api.nvim_set_hl(0, "CursorLineNr", { fg = "#af3a03", bold = true })
-            vim.api.nvim_set_hl(0, "CursorLine", { bg = "#d8c07a", ctermbg = 221 })
-            vim.api.nvim_set_hl(0, "Visual", { bg = "#bdae93", fg = "#3c3836", bold = true, nocombine = true })
-            vim.api.nvim_set_hl(0, "VisualNOS", { bg = "#bdae93", fg = "#3c3836", bold = true, nocombine = true })
+            vim.api.nvim_set_hl(0, "CursorLine", { bg = "none", ctermbg = "none" })
+            vim.api.nvim_set_hl(0, "Visual", { bg = "#e5d5b5", fg = "#3c3836", nocombine = true })
+            vim.api.nvim_set_hl(0, "VisualNOS", { bg = "#e5d5b5", fg = "#3c3836", nocombine = true })
           else
             vim.api.nvim_set_hl(0, "IblIndent", { fg = "#4a443e", nocombine = true })
             vim.api.nvim_set_hl(0, "DiagnosticErrorLine", { bg = "#3b1113" })
@@ -618,9 +624,9 @@ in
             vim.api.nvim_set_hl(0, "LineNrAbove", { fg = "#7c6f64" })
             vim.api.nvim_set_hl(0, "LineNrBelow", { fg = "#7c6f64" })
             vim.api.nvim_set_hl(0, "CursorLineNr", { fg = "#fabd2f", bold = true })
-            vim.api.nvim_set_hl(0, "CursorLine", { bg = "#5e4f3f", ctermbg = 239 })
-            vim.api.nvim_set_hl(0, "Visual", { bg = "#7a6247", fg = "#fbf1c7", bold = true, nocombine = true })
-            vim.api.nvim_set_hl(0, "VisualNOS", { bg = "#7a6247", fg = "#fbf1c7", bold = true, nocombine = true })
+            vim.api.nvim_set_hl(0, "CursorLine", { bg = "none", ctermbg = "none" })
+            vim.api.nvim_set_hl(0, "Visual", { bg = "#4f453c", fg = "#ebdbb2", nocombine = true })
+            vim.api.nvim_set_hl(0, "VisualNOS", { bg = "#4f453c", fg = "#ebdbb2", nocombine = true })
           end
         end,
       })
@@ -659,7 +665,28 @@ in
         },
       })
 
+      -- Keep a stable LSP status command regardless of plugin command registration timing.
+      local function _open_lsp_health()
+        vim.cmd("checkhealth vim.lsp")
+      end
+      if vim.fn.exists(":LspInfo") == 0 then
+        vim.api.nvim_create_user_command("LspInfo", _open_lsp_health, { desc = "Alias to :checkhealth vim.lsp" })
+      end
+
+      local lsp_capabilities = nil
+      do
+        local ok_cmp_lsp, cmp_lsp = pcall(require, "cmp_nvim_lsp")
+        if ok_cmp_lsp and type(cmp_lsp.default_capabilities) == "function" then
+          local ok_caps, caps = pcall(cmp_lsp.default_capabilities)
+          if ok_caps and type(caps) == "table" then
+            lsp_capabilities = caps
+            pcall(vim.lsp.config, "*", { capabilities = caps })
+          end
+        end
+      end
+
       vim.lsp.config["lua_ls"] = {
+        capabilities = lsp_capabilities,
         settings = {
           Lua = {
             format = { enable = false },
@@ -710,26 +737,16 @@ in
 
           if client:supports_method("textDocument/inlineCompletion") then
             local inline = vim.lsp.inline_completion
-            if inline and inline.enable and inline.get then
+            if inline and inline.enable then
               inline.enable(true, { bufnr = buf })
-              vim.keymap.set("i", "<Tab>", function()
-                if not inline.get() then
-                  return "<Tab>"
-                end
-                if vim.fn.pumvisible() == 1 then
-                  return "<C-e>"
-                end
-              end, {
-                expr = true,
-                buffer = buf,
-                desc = "Accept the current inline completion",
-              })
             end
           end
         end,
       })
 
       local cmp = require("cmp")
+      local luasnip = require("luasnip")
+      require("luasnip.loaders.from_vscode").lazy_load()
       vim.o.completeopt = "menu,menuone,noselect,popup"
       cmp.setup({
         preselect = cmp.PreselectMode.None,
@@ -745,6 +762,10 @@ in
           ["<Tab>"] = cmp.mapping(function(fallback)
             if cmp.visible() then
               cmp.select_next_item()
+            elseif luasnip.expand_or_locally_jumpable() then
+              luasnip.expand_or_jump()
+            elseif vim.lsp.inline_completion and vim.lsp.inline_completion.get and vim.lsp.inline_completion.get() then
+              return
             else
               fallback()
             end
@@ -752,14 +773,18 @@ in
           ["<S-Tab>"] = cmp.mapping(function(fallback)
             if cmp.visible() then
               cmp.select_prev_item()
+            elseif luasnip.locally_jumpable(-1) then
+              luasnip.jump(-1)
             else
               fallback()
             end
           end, { "i", "s" }),
         }),
         sources = {
-          { name = "copilot" },
           { name = "nvim_lsp" },
+          { name = "luasnip" },
+          { name = "buffer", keyword_length = 1 },
+          { name = "path" },
         },
         experimental = { ghost_text = false },
       })

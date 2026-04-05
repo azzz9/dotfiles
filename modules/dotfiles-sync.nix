@@ -65,13 +65,10 @@ in
   };
 
   systemd.user.timers.dotfiles-sync = {
-    Unit.Description = "Periodic dotfiles sync";
+    Unit.Description = "Run dotfiles sync on startup";
     Timer = {
       Unit = "dotfiles-sync.service";
       OnStartupSec = "2min";
-      OnUnitActiveSec = "30min";
-      RandomizedDelaySec = "5min";
-      Persistent = true;
     };
     Install.WantedBy = [ "timers.target" ];
   };
