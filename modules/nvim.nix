@@ -415,7 +415,6 @@ in
         panel = { enabled = false },
         filetypes = { ["*"] = true },
       })
-      require("copilot_cmp").setup({})
       require("CopilotChat").setup({
         chat_autocomplete = true,
         prompts = {
@@ -758,7 +757,6 @@ in
           end, { "i", "s" }),
         }),
         sources = {
-          { name = "copilot" },
           { name = "nvim_lsp" },
         },
         experimental = { ghost_text = false },
