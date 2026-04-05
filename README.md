@@ -47,6 +47,21 @@ If you want to refresh `flake.lock` inputs locally:
 dotfiles-upgrade
 ```
 
+## Auto sync
+
+`dotfiles-sync` is also scheduled automatically by a user timer:
+
+- first run: about 2 minutes after login/startup
+- interval: every 30 minutes (with up to 5 minutes jitter)
+- safety: if local uncommitted changes exist in `~/dotfiles`, it skips
+
+Useful commands:
+
+```
+systemctl --user status dotfiles-sync.timer
+journalctl --user -u dotfiles-sync.service -n 100 --no-pager
+```
+
 ## Notes
 
 - If you add new files to the flake, they must be `git add`'d before running

@@ -7,6 +7,7 @@
   programs.home-manager.enable = true;
 
   imports = [
+    ../modules/dotfiles-sync.nix
     ../modules/gh.nix
     ../modules/shell.nix
     ../modules/tmux.nix
