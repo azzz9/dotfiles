@@ -62,6 +62,14 @@ systemctl --user status dotfiles-sync.timer
 journalctl --user -u dotfiles-sync.service -n 100 --no-pager
 ```
 
+## Local push guard
+
+Enable local pre-push checks (blocks push if eval/build fails):
+
+```
+git config core.hooksPath .githooks
+```
+
 ## Notes
 
 - If you add new files to the flake, they must be `git add`'d before running
