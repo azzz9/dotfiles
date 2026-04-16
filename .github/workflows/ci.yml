@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Static checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            accept-flake-config = true
+            experimental-features = nix-command flakes
+
+      - name: Check shell scripts
+        run: |
+          bash -n scripts/setup-system.sh
+          nix run nixpkgs#shellcheck -- scripts/setup-system.sh
+
+      - name: Check GitHub Actions workflows
+        run: nix run nixpkgs#actionlint -- .github/workflows/ci.yml
+
+      - name: Check flake outputs
+        run: nix flake check --no-build
+
+      - name: Evaluate Home Manager configurations
+        run: |
+          nix eval --impure .#homeConfigurations.x86_64-linux.activationPackage.drvPath
+          nix eval --impure .#homeConfigurations.aarch64-darwin.activationPackage.drvPath
+
+  linux:
+    name: Build x86_64-linux
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            accept-flake-config = true
+            experimental-features = nix-command flakes
+
+      - name: Build Home Manager activation package
+        run: nix build --no-link --impure .#homeConfigurations.x86_64-linux.activationPackage
+
+  macos:
+    name: Build aarch64-darwin
+    runs-on: macos-26
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            accept-flake-config = true
+            experimental-features = nix-command flakes
+
+      - name: Build Home Manager activation package
+        run: nix build --no-link --impure .#homeConfigurations.aarch64-darwin.activationPackage
