@@ -44,8 +44,8 @@ in
     ];
     extraConfig = ''
       unbind C-b
-      set -g prefix C-a
-      bind C-a send-prefix
+      set -g prefix C-g
+      bind C-g send-prefix
 
       set -g mouse on
 
