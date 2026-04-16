@@ -46,28 +46,8 @@ if command -v zsh >/dev/null 2>&1; then
   sudo chsh -s "$(command -v zsh)" "$USER"
 fi
 
-sudo git config --global user.name "${GIT_NAME}"
-sudo git config --global user.email "${GIT_EMAIL}"
-
-tmux_conf="${HOME}/.config/tmux/tmux.conf"
-tpm_dir="${HOME}/.tmux/plugins/tpm"
-
-if [[ -f "${tmux_conf}" ]]; then
-  if [[ ! -d "${tpm_dir}" ]]; then
-    git clone https://github.com/tmux-plugins/tpm "${tpm_dir}"
-  fi
-
-  if command -v tmux >/dev/null 2>&1; then
-    if tmux has-session >/dev/null 2>&1; then
-      tmux source-file "${tmux_conf}"
-    else
-      tmux new-session -d -s dotfiles >/dev/null 2>&1 || true
-      tmux source-file "${tmux_conf}"
-    fi
-  fi
-else
-  echo "tmux config not found: ${tmux_conf}"
-fi
+git config --global user.name "${GIT_NAME}"
+git config --global user.email "${GIT_EMAIL}"
 
 echo "Setup complete. Rebooting now..."
 sudo reboot

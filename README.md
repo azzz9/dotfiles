@@ -4,10 +4,12 @@ Home Manager + Nix flake setup.(I'm not a NixOS user.)
 
 ## Install (new machine)
 
+Prerequisites: `curl` and `git`
+
 1. Install Nix (recommended installer):
 
 ```
-curl -fsSL https://install.determinate.systems/nix | sh -s -- install --no-confirm
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm
 ```
 
 2. Clone this repo:
@@ -24,8 +26,9 @@ nix run nixpkgs#home-manager -- switch --flake ~/dotfiles#default --impure
 
 ## System bootstrap (Docker + Zsh + Git)
 
-This script installs Docker CE, sets Zsh as the login shell, and configures
-global Git user info. It reboots at the end.
+This script supports Ubuntu and Arch Linux only. It installs Docker CE
+(Ubuntu) / Docker (Arch), sets Zsh as the login shell, and configures global
+Git user info for the current user. It reboots at the end.
 
 ```
 GIT_NAME="your-name" GIT_EMAIL="your-noreply@users.noreply.github.com" ./scripts/setup-system.sh
