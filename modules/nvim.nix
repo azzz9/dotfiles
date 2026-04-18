@@ -572,7 +572,8 @@ in
         lua = { "selene" },
         python = { "ruff" },
       }
-      if vim.fn.executable("clang-tidy") == 1 then
+      local has_clangd = vim.fn.executable("clangd") == 1
+      if vim.fn.executable("clang-tidy") == 1 and not has_clangd then
         lint.linters_by_ft.c = { "clangtidy" }
         lint.linters_by_ft.cpp = { "clangtidy" }
         lint.linters_by_ft.objc = { "clangtidy" }
@@ -641,7 +642,7 @@ in
         },
         virtual_lines = false,
         underline = false,
-        update_in_insert = false,
+        update_in_insert = true,
         float = { border = "rounded", source = true },
         signs = {
           text = {
@@ -699,7 +700,11 @@ in
           },
         },
       }
-      vim.lsp.enable({ "lua_ls", "ts_ls", "pyright" })
+      vim.lsp.config["clangd"] = {
+        capabilities = lsp_capabilities,
+        cmd = { "clangd", "--background-index", "--clang-tidy" },
+      }
+      vim.lsp.enable({ "lua_ls", "ts_ls", "pyright", "clangd" })
 
       vim.api.nvim_create_autocmd("LspAttach", {
         group = vim.api.nvim_create_augroup("my.lsp", {}),

@@ -23,5 +23,6 @@ in
     prettier
     prettierd
     eslint_d
+    clang-tools
   ];
 }
