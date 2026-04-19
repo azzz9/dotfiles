@@ -33,8 +33,10 @@
       vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })
       vim.keymap.set("n", "]d", vim.diagnostic.goto_next, { desc = "Next diagnostic" })
       local im_select = "/mnt/c/im-select.exe"
-      vim.api.nvim_create_autocmd("InsertLeave", {
-        callback = function()
-          vim.system({ im_select, "1033" })
-        end,
-      })
+      if vim.fn.has("wsl") == 1 and vim.fn.executable(im_select) == 1 then
+        vim.api.nvim_create_autocmd("InsertLeave", {
+          callback = function()
+            vim.system({ im_select, "1033" })
+          end,
+        })
+      end

@@ -35,12 +35,12 @@
       vim.api.nvim_create_autocmd({ "FileType", "BufEnter" }, {
         pattern = "copilot-chat",
         callback = function(args)
+          local buf = args.buf
           local completion = require("CopilotChat.completion")
-          completion.enable(args.buf, true)
-          vim.bo[args.buf].completeopt = "menu,menuone,noselect,popup"
-          vim.bo[args.buf].omnifunc = [[v:lua.require'CopilotChat.completion'.omnifunc]]
+          completion.enable(buf, true)
+          vim.bo[buf].completeopt = "menu,menuone,noselect,popup"
+          vim.bo[buf].omnifunc = [[v:lua.require'CopilotChat.completion'.omnifunc]]
           local function pick_file()
-            local buf = args.buf
             local row, col = unpack(vim.api.nvim_win_get_cursor(0))
             local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] or ""
             local needs_prefix = not line:sub(1, col):match("#file:%s*$")
@@ -67,25 +67,25 @@
           vim.keymap.set("i", "<C-f>", pick_file, { buffer = buf, desc = "CopilotChat file picker" })
           vim.keymap.set("i", "<C-x><C-f>", pick_file, { buffer = buf, desc = "CopilotChat file picker" })
 
-          if vim.b[args.buf].copilotchat_picker_autocmd then
+          if vim.b[buf].copilotchat_picker_autocmd then
             return
           end
-          vim.b[args.buf].copilotchat_picker_autocmd = true
+          vim.b[buf].copilotchat_picker_autocmd = true
           vim.api.nvim_create_autocmd("TextChangedI", {
-            buffer = args.buf,
+            buffer = buf,
             callback = function()
-              if vim.b[args.buf].copilotchat_picker_open then
+              if vim.b[buf].copilotchat_picker_open then
                 return
               end
               local row, col = unpack(vim.api.nvim_win_get_cursor(0))
-              local line = vim.api.nvim_buf_get_lines(args.buf, row - 1, row, false)[1] or ""
+              local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] or ""
               if line:sub(1, col):match("#file:%s*$") then
-                vim.b[args.buf].copilotchat_picker_open = true
+                vim.b[buf].copilotchat_picker_open = true
                 vim.schedule(function()
-                  if vim.api.nvim_buf_is_valid(args.buf) then
+                  if vim.api.nvim_buf_is_valid(buf) then
                     pick_file()
                   end
-                  vim.b[args.buf].copilotchat_picker_open = false
+                  vim.b[buf].copilotchat_picker_open = false
                 end)
               end
             end,

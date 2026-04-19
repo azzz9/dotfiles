@@ -79,7 +79,7 @@ git config core.hooksPath .githooks
 - tmux plugins are managed by Home Manager, not TPM.
 - WSL only: this config uses `im-select.exe` to switch IME back to English on
   InsertLeave. Place it at `/mnt/c/im-select.exe` or update the path in
-  `modules/nvim.nix`.
+  `modules/nvim/lua/core.lua`.
 - AI tool workflow notes for `codex` and `gh copilot` live in
   [docs/ai-tools.md](./docs/ai-tools.md).
 - Shared repo AI context can start from

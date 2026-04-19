@@ -33,8 +33,8 @@ EOF
 
     cd "${repo}"
 
-    if ! ${pkgs.git}/bin/git diff --quiet || ! ${pkgs.git}/bin/git diff --cached --quiet; then
-      echo "dotfiles-sync-run: local changes found in ${repo}; skipping" >&2
+    if [ -n "$(${pkgs.git}/bin/git status --porcelain --untracked-files=normal)" ]; then
+      echo "dotfiles-sync-run: local or untracked changes found in ${repo}; skipping" >&2
       exit 0
     fi
 
