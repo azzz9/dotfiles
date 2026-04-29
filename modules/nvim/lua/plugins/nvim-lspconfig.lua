@@ -79,6 +79,13 @@
             if inline and inline.enable then
               inline.enable(true, { bufnr = buf })
             end
+            if inline and inline.get then
+              vim.keymap.set("i", "<C-l>", function()
+                if not inline.get() then
+                  return "<C-l>"
+                end
+              end, { buffer = buf, expr = true, desc = "Accept inline completion" })
+            end
           end
         end,
       })

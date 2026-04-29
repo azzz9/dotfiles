@@ -19,9 +19,11 @@
       require("nvim-treesitter-textobjects").setup({
         select = {
           lookahead = true,
-          keymaps = {
-            ["aa"] = "@parameter.outer",
-            ["ia"] = "@parameter.inner",
-          },
         },
       })
+      vim.keymap.set({ "x", "o" }, "aa", function()
+        require("nvim-treesitter-textobjects.select").select_textobject("@parameter.outer", "textobjects")
+      end, { desc = "Argument outer" })
+      vim.keymap.set({ "x", "o" }, "ia", function()
+        require("nvim-treesitter-textobjects.select").select_textobject("@parameter.inner", "textobjects")
+      end, { desc = "Argument inner" })
