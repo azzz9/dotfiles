@@ -8,10 +8,18 @@ in
     nodejs_24
     debugpyPython
     codex
+    yazi
     xclip
     wl-clipboard
     fd
     ripgrep
+    jq
+    poppler-utils
+    ffmpegthumbnailer
+    unar
+    p7zip
+    imagemagick
+    resvg
     tree-sitter
     lua-language-server
     pyright
