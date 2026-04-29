@@ -3,6 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs-codex.url = "github:NixOS/nixpkgs/master";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -13,10 +14,19 @@
     };
   };
 
-  outputs = { nixpkgs, home-manager, nixvim, ... }:
+  outputs = { nixpkgs, nixpkgs-codex, home-manager, nixvim, ... }:
     let
       system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
+      overlays = [
+        (final: prev: {
+          # Track codex faster than nixos-unstable by sourcing only this package
+          # from nixpkgs master.
+          codex = nixpkgs-codex.legacyPackages.${system}.codex;
+        })
+      ];
+      pkgs = import nixpkgs {
+        inherit system overlays;
+      };
     in
       {
         homeConfigurations = {

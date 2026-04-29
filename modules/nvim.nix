@@ -3,7 +3,8 @@ let
   debugpyPython = pkgs.python3.withPackages (ps: [ ps.debugpy ]);
   treesitterWithGrammars = pkgs.vimPlugins.nvim-treesitter.withAllGrammars;
   smoothcursorPlugin = pkgs.vimUtils.buildVimPlugin {
-    name = "smoothcursor-nvim";
+    pname = "smoothcursor-nvim";
+    version = "2024-04-22";
     src = pkgs.fetchFromGitHub {
       owner = "gen740";
       repo = "SmoothCursor.nvim";
@@ -118,7 +119,11 @@ in
       ]
       ++ [ treesitterWithGrammars ];
     extraConfigLua =
-      lib.concatMapStringsSep "\n\n" readLua luaFiles
+      ''
+        vim.g.codelldb_path = "${pkgs.vscode-extensions.vadimcn.vscode-lldb}/share/vscode/extensions/vadimcn.vscode-lldb/adapter/codelldb"
+      ''
+      + "\n\n"
+      + lib.concatMapStringsSep "\n\n" readLua luaFiles
       + "\n\n"
       + ''
         require("dap-python").setup("${debugpyPython}/bin/python")
