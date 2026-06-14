@@ -38,7 +38,24 @@
         capabilities = lsp_capabilities,
         cmd = { "clangd", "--background-index", "--clang-tidy" },
       }
-      vim.lsp.enable({ "lua_ls", "ts_ls", "pyright", "clangd" })
+      vim.lsp.config["solidity_ls"] = {
+        capabilities = lsp_capabilities,
+        cmd = { "vscode-solidity-server", "--stdio" },
+        filetypes = { "solidity" },
+        root_markers = {
+          "hardhat.config.js",
+          "hardhat.config.ts",
+          "foundry.toml",
+          "remappings.txt",
+          "truffle.js",
+          "truffle-config.js",
+          "ape-config.yaml",
+          ".git",
+          "package.json",
+        },
+        workspace_required = false,
+      }
+      vim.lsp.enable({ "lua_ls", "ts_ls", "pyright", "clangd", "solidity_ls" })
 
       vim.api.nvim_create_autocmd("LspAttach", {
         group = vim.api.nvim_create_augroup("my.lsp", {}),

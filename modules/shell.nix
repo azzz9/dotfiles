@@ -41,7 +41,7 @@
           fi
 
           (cd "$repo" && nix flake update) || return 1
-          nix run nixpkgs#home-manager -- switch --flake "$repo#$host" --impure
+          nix run nixpkgs#home-manager -- switch --flake "$repo#$host" --impure -b backup
         }
       '')
       (lib.mkOrder 920 ''
@@ -67,7 +67,21 @@
         }
 
         gcp() {
-          gh copilot "$@"
+          gh copilot -- \
+            --allow-all-tools \
+            --allow-url github.com \
+            --allow-url api.github.com \
+            --deny-tool 'shell(sudo:*)' \
+            --deny-tool 'shell(rm:*)' \
+            --deny-tool 'shell(find:*)' \
+            --deny-tool 'shell(dd:*)' \
+            --deny-tool 'shell(mkfs:*)' \
+            --deny-tool 'shell(chmod:*)' \
+            --deny-tool 'shell(chown:*)' \
+            --deny-tool 'shell(git clean)' \
+            --deny-tool 'shell(git reset)' \
+            --deny-tool 'shell(git push)' \
+            "$@"
         }
       '')
       (lib.mkOrder 980 ''
@@ -77,7 +91,17 @@
         bindkey -M vicmd '^I' complete-word
       '')
       (lib.mkOrder 1000 ''
-        export PATH="$HOME/.npm-global/bin:$PATH"
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+        [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
+      '')
+      (lib.mkOrder 1100 ''
+        if [[ -o interactive \
+          && -z "''${TMUX:-}" \
+          && "''${TMUX_AUTO_START:-1}" != 0 \
+          && "''${TERM:-}" != dumb ]] && command -v tmux >/dev/null 2>&1; then
+          exec tmux new-session -A -s main
+        fi
       '')
     ];
   };

@@ -214,7 +214,7 @@ apply_home_manager() {
   local repo_dir="$1"
   local host="$2"
 
-  nix_cmd run nixpkgs#home-manager -- switch --flake "$repo_dir#$host" --impure
+  nix_cmd run nixpkgs#home-manager -- switch --flake "$repo_dir#$host" --impure -b backup
 }
 
 main() {

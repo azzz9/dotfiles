@@ -43,9 +43,11 @@ in
       }
     ];
     extraConfig = ''
-      unbind C-b
-      set -g prefix C-g
-      bind C-g send-prefix
+      unbind C-a
+      unbind C-g
+      unbind C-Space
+      set -g prefix C-b
+      bind C-b send-prefix
 
       set -g mouse on
 
@@ -94,9 +96,9 @@ in
 
       set -g pane-border-status top
       if-shell -b "tmux list-options -g | grep -q '^pane-border-format'" \
-        "set -g pane-border-format ' #{pane_index} #{pane_current_command} '"
+        "set -g pane-border-format ' #{pane_index}#{?pane_active,*,} #{pane_id} #{pane_current_command} '"
       if-shell -b "tmux list-options -g | grep -q '^pane-active-border-format'" \
-        "set -g pane-active-border-format ' #{pane_index}* #{pane_current_command} '"
+        "set -g pane-active-border-format ' #{pane_index}* #{pane_id} #{pane_current_command} '"
 
       # Let gruvbox theme control window status formats
 

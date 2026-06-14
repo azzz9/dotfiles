@@ -33,10 +33,10 @@ NO_REBOOT=1
 Manual Home Manager apply:
 
 ```
-nix run nixpkgs#home-manager -- switch --flake ~/dotfiles#default --impure
+nix run nixpkgs#home-manager -- switch --flake ~/dotfiles#default --impure -b backup
 
 # Apple Silicon
-nix run nixpkgs#home-manager -- switch --flake ~/dotfiles#aarch64-darwin --impure
+nix run nixpkgs#home-manager -- switch --flake ~/dotfiles#aarch64-darwin --impure -b backup
 ```
 
 ## System Bootstrap Details

@@ -24,6 +24,7 @@ let
     "plugins/nvim-treesitter.lua"
     "plugins/indent-blankline.lua"
     "plugins/gitsigns.lua"
+    "plugins/diffview.lua"
     "plugins/mini.lua"
     "plugins/oil.lua"
     "plugins/nvim-autopairs.lua"
@@ -102,6 +103,7 @@ in
         lazygit-nvim
         copilot-lua
         gitsigns-nvim
+        diffview-nvim
         oil-nvim
         mini-nvim
         bufferline-nvim
@@ -121,12 +123,20 @@ in
     extraConfigLua =
       ''
         vim.g.codelldb_path = "${pkgs.vscode-extensions.vadimcn.vscode-lldb}/share/vscode/extensions/vadimcn.vscode-lldb/adapter/codelldb"
+        local is_vscode = vim.g.vscode ~= nil
       ''
       + "\n\n"
-      + lib.concatMapStringsSep "\n\n" readLua luaFiles
+      + readLua "core.lua"
+      + "\n\n"
+      + ''
+        if not is_vscode then
+      ''
+      + "\n\n"
+      + lib.concatMapStringsSep "\n\n" readLua (builtins.filter (file: file != "core.lua") luaFiles)
       + "\n\n"
       + ''
         require("dap-python").setup("${debugpyPython}/bin/python")
+        end
       '';
   };
 }
