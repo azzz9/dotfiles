@@ -57,6 +57,7 @@
         unalias cdx 2>/dev/null || true
         unalias scdx 2>/dev/null || true
         unalias gcp 2>/dev/null || true
+        unalias gtr 2>/dev/null || true
 
         cdx() {
           codex --no-alt-screen "$@"
@@ -67,7 +68,7 @@
         }
 
         gcp() {
-          gh copilot -- \
+          copilot \
             --allow-all-tools \
             --allow-url github.com \
             --allow-url api.github.com \
@@ -82,6 +83,15 @@
             --deny-tool 'shell(git reset)' \
             --deny-tool 'shell(git push)' \
             "$@"
+        }
+
+        gtr() {
+          local root
+          root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+            echo "gtr: not inside a git repository" >&2
+            return 1
+          }
+          cd "$root"
         }
       '')
       (lib.mkOrder 980 ''

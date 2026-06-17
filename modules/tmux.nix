@@ -95,10 +95,7 @@ in
       bind -n M-Down switch-client -n
 
       set -g pane-border-status top
-      if-shell -b "tmux list-options -g | grep -q '^pane-border-format'" \
-        "set -g pane-border-format ' #{pane_index}#{?pane_active,*,} #{pane_id} #{pane_current_command} '"
-      if-shell -b "tmux list-options -g | grep -q '^pane-active-border-format'" \
-        "set -g pane-active-border-format ' #{pane_index}* #{pane_id} #{pane_current_command} '"
+      set -g pane-border-format ' #{pane_index}#{?pane_active,*,} #{pane_id} #{pane_current_command} '
 
       # Let gruvbox theme control window status formats
 

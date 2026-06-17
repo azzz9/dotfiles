@@ -29,3 +29,4 @@ prefix_rule(pattern=["chmod", "-R"], decision="prompt", justification="Recursive
 prefix_rule(pattern=["chown", "-R"], decision="prompt", justification="Recursive ownership changes have broad side effects.")
 prefix_rule(pattern=["dd"], decision="forbidden", justification="Raw disk writes are too destructive for agent automation.")
 prefix_rule(pattern=["mkfs"], decision="forbidden", justification="Filesystem formatting is too destructive for agent automation.")
+prefix_rule(pattern=["nix", "eval"], decision="allow")
