@@ -1,6 +1,26 @@
 { lib, pkgs, ... }:
 let
   debugpyPython = pkgs.python3.withPackages (ps: [ ps.debugpy ]);
+  prettierPluginSolidityDist = pkgs.fetchurl {
+    url = "https://registry.npmjs.org/prettier-plugin-solidity/-/prettier-plugin-solidity-2.3.1.tgz";
+    hash = "sha256-KQqnnYIFE37d+qa7AB4LECsEcoFeyRfwgCJE6OtLXwA=";
+  };
+  prettierPluginSolidity = pkgs.buildNpmPackage rec {
+    pname = "prettier-plugin-solidity";
+    version = "2.3.1";
+    src = pkgs.fetchFromGitHub {
+      owner = "prettier-solidity";
+      repo = "prettier-plugin-solidity";
+      rev = "v${version}";
+      hash = "sha256-zo5kw8ObjCRubucNe2MKhcjd5uYv9clfolIHtiM6/rQ=";
+    };
+    npmDepsHash = "sha256-BEk3Sh9NDFVifzCfY6Iq1pesUau3qUi954KR7JPWbZc=";
+    postInstall = ''
+      rm -rf "$out/lib/node_modules/${pname}/dist"
+      tar -xzf ${prettierPluginSolidityDist} -C "$out/lib/node_modules/${pname}" --strip-components=1 package/dist
+      ln -s ${pkgs.prettier}/lib/node_modules/prettier "$out/lib/node_modules/${pname}/node_modules/prettier"
+    '';
+  };
   treesitterWithGrammars = pkgs.vimPlugins.nvim-treesitter.withAllGrammars;
   smoothcursorPlugin = pkgs.vimUtils.buildVimPlugin {
     pname = "smoothcursor-nvim";
@@ -15,7 +35,7 @@ let
   luaConfigDir = ./nvim/lua;
   luaFiles = [
     "core.lua"
-    "plugins/gruvbox-material.lua"
+    "plugins/kanagawa.lua"
     "plugins/telescope.lua"
     "plugins/flash.lua"
     "plugins/lazygit.lua"
@@ -35,12 +55,11 @@ let
     "plugins/noice.lua"
     "plugins/trouble.lua"
     "plugins/todo-comments.lua"
-    "plugins/copilot.lua"
     "plugins/conform.lua"
     "plugins/nvim-lint.lua"
     "ui.lua"
     "plugins/nvim-lspconfig.lua"
-    "plugins/nvim-cmp.lua"
+    "plugins/blink-cmp.lua"
     "plugins/nvim-dap.lua"
   ];
   readLua = file: builtins.readFile (luaConfigDir + "/${file}");
@@ -60,7 +79,7 @@ in
     opts = {
       clipboard = "unnamedplus";
       number = true;
-      relativenumber = true;
+      relativenumber = false;
       showmatch = true;
       mouse = "a";
       autoread = true;
@@ -71,25 +90,23 @@ in
       shiftwidth = 2;
       softtabstop = 2;
       expandtab = true;
+      autoindent = true;
+      smartindent = true;
+      copyindent = true;
+      preserveindent = true;
+      breakindent = true;
     };
     extraPlugins =
       with pkgs.vimPlugins;
       [
-        gruvbox-material
+        kanagawa-nvim
         noice-nvim
         nui-nvim
         nvim-notify
         flash-nvim
         lualine-nvim
         nvim-web-devicons
-        nvim-cmp
-        cmp-nvim-lsp
-        cmp_luasnip
-        cmp-buffer
-        cmp-path
-        cmp-cmdline
-        luasnip
-        friendly-snippets
+        blink-cmp
         telescope-nvim
         plenary-nvim
         telescope-ui-select-nvim
@@ -101,7 +118,6 @@ in
         nvim-surround
         todo-comments-nvim
         lazygit-nvim
-        copilot-lua
         gitsigns-nvim
         diffview-nvim
         oil-nvim
@@ -123,6 +139,7 @@ in
     extraConfigLua =
       ''
         vim.g.codelldb_path = "${pkgs.vscode-extensions.vadimcn.vscode-lldb}/share/vscode/extensions/vadimcn.vscode-lldb/adapter/codelldb"
+        vim.g.prettier_plugin_solidity_path = "${prettierPluginSolidity}/lib/node_modules/prettier-plugin-solidity/dist/index.js"
         local is_vscode = vim.g.vscode ~= nil
       ''
       + "\n\n"

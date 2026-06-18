@@ -1,4 +1,4 @@
-      local prettier_plugin_solidity = vim.fn.expand("~/.nix-profile/lib/node_modules/prettier-plugin-solidity/dist/index.js")
+      local prettier_plugin_solidity = vim.g.prettier_plugin_solidity_path
       local function prettier_args(_, ctx)
         if vim.bo[ctx.buf].filetype == "solidity" then
           return { "--plugin", prettier_plugin_solidity }

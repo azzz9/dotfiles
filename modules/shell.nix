@@ -26,11 +26,6 @@
         zstyle ':autocomplete:*' enabled yes
       '')
       (lib.mkOrder 900 ''
-        dotfiles-sync() {
-          local host="''${1:-${pkgs.stdenv.hostPlatform.system}}"
-          command dotfiles-sync-run "$host"
-        }
-
         dotfiles-upgrade() {
           local host="''${1:-${pkgs.stdenv.hostPlatform.system}}"
           local repo="$HOME/dotfiles"

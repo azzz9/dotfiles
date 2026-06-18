@@ -19,7 +19,8 @@ GIT_NAME="your-name" GIT_EMAIL="your-noreply@users.noreply.github.com" ~/dotfile
 ```
 
 The script installs system dependencies, installs Nix if needed, configures
-Git/Zsh/Docker, and applies the Home Manager flake for the current platform.
+Git/Zsh/Docker, and applies the Home Manager flake for the current platform and
+current user.
 
 Optional overrides:
 
@@ -27,7 +28,7 @@ Optional overrides:
 DOTFILES_DIR=~/dotfiles
 DOTFILES_REPO_URL=https://github.com/azzz9/dotfiles.git
 HM_HOST=x86_64-linux
-NO_REBOOT=1
+REBOOT=1
 ```
 
 Manual Home Manager apply:
@@ -46,12 +47,13 @@ It installs Docker CE (Ubuntu) / Docker (Arch) / Docker Desktop (macOS), sets
 Zsh as the login shell, configures global Git user info, installs Nix when
 missing, and applies this Home Manager configuration.
 
-Ubuntu and Arch Linux reboot at the end so Docker group membership applies.
-macOS does not reboot; open Docker.app once to finish Docker Desktop setup.
+Ubuntu and Arch Linux need a reboot before Docker group membership applies.
+Set `REBOOT=1` to reboot automatically at the end. macOS does not reboot; open
+Docker.app once to finish Docker Desktop setup.
 
 ## Update (pull + apply)
 
-Quick update via zsh function (pull latest from GitHub, then apply):
+Quick update command (pull latest from GitHub, then apply):
 
 ```
 dotfiles-sync
@@ -64,22 +66,6 @@ If you want to refresh `flake.lock` inputs locally:
 ```
 dotfiles-upgrade
 ```
-
-## Auto sync
-
-`dotfiles-sync` is also scheduled automatically by a user timer:
-
-- run: once about 2 minutes after login/startup
-- safety: if local uncommitted changes exist in `~/dotfiles`, it skips
-
-Useful commands:
-
-```
-systemctl --user status dotfiles-sync.timer
-journalctl --user -u dotfiles-sync.service -n 100 --no-pager
-```
-
-The automatic timer is Linux-only. On macOS, run `dotfiles-sync` manually.
 
 ## Local push guard
 

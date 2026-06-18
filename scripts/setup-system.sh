@@ -243,7 +243,7 @@ main() {
   install_nix
   apply_home_manager "$repo_dir" "$host"
 
-  if [[ "$should_reboot" == 1 && "${NO_REBOOT:-0}" != 1 ]]; then
+  if [[ "$should_reboot" == 1 && "${REBOOT:-0}" == 1 ]]; then
     echo "Setup complete. Rebooting now..."
     sudo reboot
   elif [[ "$os_name" == "Darwin" ]]; then

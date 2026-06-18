@@ -13,17 +13,6 @@
         end,
       })
 
-      vim.api.nvim_create_autocmd("BufWritePre", {
-        callback = function(args)
-          if vim.bo[args.buf].buftype ~= "" or not vim.bo[args.buf].modifiable then
-            return
-          end
-          local view = vim.fn.winsaveview()
-          vim.cmd("silent! keepjumps normal! gg=G")
-          vim.fn.winrestview(view)
-        end,
-      })
-
       vim.keymap.set("n", "<Esc>", ":nohlsearch<CR>", { silent = true })
       vim.keymap.set("n", "Y", "y$", { desc = "Yank to end of line" })
       vim.keymap.set("i", "jj", "<Esc>", { noremap = true })
@@ -32,3 +21,5 @@
       vim.keymap.set("n", "<leader>sh", ":split<CR>", { desc = "Horizontal split" })
       vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })
       vim.keymap.set("n", "]d", vim.diagnostic.goto_next, { desc = "Next diagnostic" })
+      vim.keymap.set("n", "<leader>k", vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })
+      vim.keymap.set("n", "<leader>j", vim.diagnostic.goto_next, { desc = "Next diagnostic" })

@@ -1,6 +1,6 @@
       require("smoothcursor").setup({
         autostart = true,
-        interval = 25,
-        speed = 80,
-        threshold = 2,
+        intervals = 16,
+        speed = 100,
+        threshold = 1,
       })

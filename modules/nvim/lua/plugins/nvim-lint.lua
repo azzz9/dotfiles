@@ -6,7 +6,7 @@
         typescriptreact = { "eslint_d" },
         lua = { "selene" },
         python = { "ruff" },
-        solidity = { "solhint", "eslint_d" },
+        solidity = { "solhint" },
       }
       lint.linters.solhint.args = { "stdin", "--disc" }
 
@@ -33,32 +33,12 @@
         return has_config({ ".solhint.json", ".solhint.yaml", ".solhint.yml" })
       end
 
-      local function has_eslint_config()
-        return has_config({
-          "eslint.config.js",
-          "eslint.config.mjs",
-          "eslint.config.cjs",
-          "eslint.config.ts",
-          "eslint.config.mts",
-          "eslint.config.cts",
-          ".eslintrc",
-          ".eslintrc.js",
-          ".eslintrc.cjs",
-          ".eslintrc.json",
-          ".eslintrc.yaml",
-          ".eslintrc.yml",
-        })
-      end
-
       vim.api.nvim_create_autocmd({ "BufWritePost", "InsertLeave" }, {
         callback = function()
           if vim.bo.filetype == "solidity" then
             local linters = {}
             if has_solhint_config() then
               table.insert(linters, "solhint")
-            end
-            if has_eslint_config() then
-              table.insert(linters, "eslint_d")
             end
             if #linters > 0 then
               lint.try_lint(linters)

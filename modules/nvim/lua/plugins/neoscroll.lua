@@ -1,3 +1,3 @@
       require("neoscroll").setup({
-        duration_multiplier = 0.25,
+        duration_multiplier = 0.12,
       })

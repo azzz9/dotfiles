@@ -16,7 +16,6 @@
             "notify",
             "Trouble",
             "oil",
-            "copilot-chat",
           },
         },
       })

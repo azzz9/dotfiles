@@ -7,6 +7,12 @@ cd "$repo_root"
 echo "[pre-push] nix flake check"
 nix flake check
 
+echo "[pre-push] shellcheck"
+nix run nixpkgs#shellcheck -- scripts/setup-system.sh
+
+echo "[pre-push] actionlint"
+nix run nixpkgs#actionlint -- .github/workflows/ci.yml
+
 echo "[pre-push] home-manager build"
 nix run nixpkgs#home-manager -- build --flake .#default --impure
 

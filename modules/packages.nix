@@ -33,6 +33,13 @@ let
       ln -s ${pkgs.prettier}/lib/node_modules/prettier "$out/lib/node_modules/${pname}/node_modules/prettier"
     '';
   };
+  nomicfoundationSolidityLanguageServer = pkgs.writeShellApplication {
+    name = "nomicfoundation-solidity-language-server";
+    runtimeInputs = [ pkgs.nodejs ];
+    text = ''
+      exec node "${pkgs.vscode-extensions.nomicfoundation.hardhat-solidity}/share/vscode/extensions/nomicfoundation.hardhat-solidity/server/out/index.js" "$@"
+    '';
+  };
 in
 {
   home.packages =
@@ -66,7 +73,7 @@ in
       foundry
       slither-analyzer
       solc
-      vscode-solidity-server
+      nomicfoundationSolidityLanguageServer
       solhint
       prettierPluginSolidity
       pkgs."nerd-fonts"."jetbrains-mono"
