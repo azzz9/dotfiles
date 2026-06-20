@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Dev Workflow"
+  short_description: "Turn tickets into reviewed agent prompts."
+  default_prompt: "Use $agent-dev-workflow to turn this ticket into a coding-agent prompt, grill it, review the resulting diff, and prepare follow-up fixes."

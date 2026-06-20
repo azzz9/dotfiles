@@ -3,7 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    nixpkgs-codex.url = "github:NixOS/nixpkgs/master";
+    codex-cli-nix.url = "github:sadjow/codex-cli-nix";
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -14,27 +14,19 @@
     };
   };
 
-  outputs = { nixpkgs, nixpkgs-codex, home-manager, nixvim, ... }:
+  outputs = { nixpkgs, codex-cli-nix, home-manager, nixvim, ... }:
     let
       supportedSystems = [
         "x86_64-linux"
         "aarch64-darwin"
       ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
-      mkPkgs = system:
-        import nixpkgs {
-          inherit system;
-          overlays = [
-            (final: prev: {
-              # Track codex faster than nixos-unstable by sourcing only this package
-              # from nixpkgs master.
-              codex = nixpkgs-codex.legacyPackages.${system}.codex;
-            })
-          ];
-        };
       mkHomeConfiguration = system:
         home-manager.lib.homeManagerConfiguration {
-          pkgs = mkPkgs system;
+          pkgs = import nixpkgs { inherit system; };
+          extraSpecialArgs = {
+            codexPackage = codex-cli-nix.packages.${system}.default;
+          };
           modules = [
             ./hosts/default.nix
             nixvim.homeModules.nixvim

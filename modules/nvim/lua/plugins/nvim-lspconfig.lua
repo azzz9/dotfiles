@@ -38,21 +38,25 @@
         capabilities = lsp_capabilities,
         cmd = { "clangd", "--background-index", "--clang-tidy" },
       }
+      local solidity_project_markers = {
+        "hardhat.config.js",
+        "hardhat.config.ts",
+        "foundry.toml",
+        "remappings.txt",
+        "truffle.js",
+        "truffle-config.js",
+        "ape-config.yaml",
+      }
+      local solidity_fallback_markers = { ".git", "package.json" }
       vim.lsp.config["solidity_ls_nomicfoundation"] = {
-        capabilities = vim.empty_dict(),
+        capabilities = lsp_capabilities,
         cmd = { "nomicfoundation-solidity-language-server", "--stdio" },
         filetypes = { "solidity" },
-        root_markers = {
-          "hardhat.config.js",
-          "hardhat.config.ts",
-          "foundry.toml",
-          "remappings.txt",
-          "truffle.js",
-          "truffle-config.js",
-          "ape-config.yaml",
-          ".git",
-          "package.json",
-        },
+        root_dir = function(bufnr, on_dir)
+          local fname = vim.api.nvim_buf_get_name(bufnr)
+          local root = vim.fs.root(fname, solidity_project_markers) or vim.fs.root(fname, solidity_fallback_markers)
+          on_dir(root or vim.fs.dirname(fname))
+        end,
       }
       vim.lsp.enable({ "lua_ls", "ts_ls", "pyright", "clangd", "solidity_ls_nomicfoundation" })
 

@@ -1,1 +1,1 @@
-../AGENTS.md
+../config/ai/AGENTS.md

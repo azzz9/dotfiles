@@ -1,54 +1,5 @@
-model = "gpt-5.5"
+model = "gpt-5.4-mini"
 model_reasoning_effort = "medium"
-personality = "pragmatic"
-approval_policy = "on-request"
-approvals_reviewer = "auto_review"
-sandbox_mode = "workspace-write"
-allow_login_shell = false
-
-[sandbox_workspace_write]
-network_access = false
-
-[projects."/home/azzz"]
-trust_level = "trusted"
-
-[projects."/home/azzz/azookey"]
-trust_level = "untrusted"
-
-[projects."/home/azzz/rsa-debug"]
-trust_level = "untrusted"
-
-[projects."/home/azzz/daily_alpha_hack/omikuji"]
-trust_level = "untrusted"
-
-[projects."/home/azzz/daily_alpha_hack/log-viewer"]
-trust_level = "trusted"
-
-[projects."/home/azzz/dotfiles"]
-trust_level = "trusted"
-
-[projects."/home/azzz/task-atlas"]
-trust_level = "untrusted"
-
-[projects."/home/azzz/atcoder"]
-trust_level = "trusted"
-
-[projects."/home/azzz/rss"]
-trust_level = "trusted"
-
-[projects."/home/azzz/.codex"]
-trust_level = "trusted"
-
-[notice]
-"hide_gpt-5.1-codex-max_migration_prompt" = true
-
-[notice.model_migrations]
-"gpt-5.1-codex-max" = "gpt-5.2-codex"
-"gpt-5.2-codex" = "gpt-5.4"
-"gpt-5.3-codex" = "gpt-5.4"
-
-[plugins."google-calendar@openai-curated"]
-enabled = true
 
 [tui.model_availability_nux]
-"gpt-5.5" = 4
+"gpt-5.5" = 2

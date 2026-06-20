@@ -1,4 +1,4 @@
-{ lib, pkgs, ... }:
+{ lib, pkgs, codexPackage, ... }:
 let
   debugpyPython = pkgs.python3.withPackages (ps: [ ps.debugpy ]);
   solhint = pkgs.buildNpmPackage rec {
@@ -47,8 +47,9 @@ in
       lazygit
       delta
       debugpyPython
-      codex
+      codexPackage
       nodejs
+      typescript-language-server
       yazi
       fd
       ripgrep

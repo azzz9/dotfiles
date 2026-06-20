@@ -1,0 +1,4 @@
+interface:
+  display_name: "Solidity Agent Dev Workflow"
+  short_description: "Create reviewed Solidity agent prompts."
+  default_prompt: "Use $solidity-agent-dev-workflow to turn a ticket into a Solidity contract and test coding-agent prompt, grill it, and iterate on difit-review feedback."
