@@ -54,7 +54,35 @@
         filetypes = { "solidity" },
         root_dir = function(bufnr, on_dir)
           local fname = vim.api.nvim_buf_get_name(bufnr)
-          local root = vim.fs.root(fname, solidity_project_markers) or vim.fs.root(fname, solidity_fallback_markers)
+          -- Search upward for project markers, but skip markers inside
+          -- lib/ (Foundry dependencies) or node_modules/ (Hardhat dependencies)
+          -- to avoid starting separate LSP instances for dependency files.
+          --
+          -- Without this, opening a .sol file in lib/dependency/src/ would
+          -- find the dependency's own foundry.toml and use that as the workspace
+          -- root, resulting in a separate LSP server that doesn't know about
+          -- the main project's files. Cross-file definition jumps between
+          -- src/ and lib/ would then silently fail.
+          local root = nil
+          local dir = vim.fs.dirname(fname)
+          while dir and dir ~= "" and dir ~= "/" do
+            for _, marker in ipairs(solidity_project_markers) do
+              if vim.fn.filereadable(dir .. "/" .. marker) == 1 then
+                local parent_name = vim.fn.fnamemodify(vim.fs.dirname(dir), ":t")
+                if parent_name ~= "lib" and parent_name ~= "node_modules" then
+                  root = dir
+                  break
+                end
+              end
+            end
+            if root then
+              break
+            end
+            dir = vim.fs.dirname(dir)
+          end
+          if not root then
+            root = vim.fs.root(fname, solidity_fallback_markers)
+          end
           on_dir(root or vim.fs.dirname(fname))
         end,
       }

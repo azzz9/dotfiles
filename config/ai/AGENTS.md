@@ -18,3 +18,43 @@
 - Do not push commits unless the user explicitly asks for a push.
 - When creating commits, use Conventional Commits.
 - Do not include unrelated changes in a commit.
+
+## Language Rule
+
+- Always respond in Japanese.
+
+## Diagram & Explanation Rule
+
+Prefer explanations that maximize user understanding.
+
+When a visual representation would improve clarity, use terminal-friendly diagrams such as:
+
+- Unicode box-drawing diagrams
+- Trees
+- Tables
+- Timelines
+- Flowcharts
+- Dependency graphs
+
+Prefer diagrams over long paragraphs when explaining:
+
+- Architectures
+- Workflows
+- Data flow
+- State transitions
+- Component relationships
+- Multi-step processes
+
+Provide concrete examples whenever possible.
+
+For technical explanations:
+
+1. Show the high-level picture.
+2. Show a visual diagram if useful.
+3. Explain the details.
+4. Provide a concrete example.
+5. Discuss edge cases and trade-offs.
+
+Keep diagrams concise, readable, and terminal-friendly.
+Avoid Mermaid unless explicitly requested.
+Maximum diagram width: 100 characters.

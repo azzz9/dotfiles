@@ -4,7 +4,14 @@ let
   dotfilesSync = pkgs.writeShellScriptBin "dotfiles-sync" ''
     set -euo pipefail
 
-    host="''${1:-default}"
+    # Auto-detect system if no host argument is given.
+    # macOS reports "arm64"; Nix expects "aarch64".
+    arch="$(uname -m)"
+    if [ "$arch" = "arm64" ]; then
+      arch="aarch64"
+    fi
+    os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+    host="''${1:-$arch-$os}"
     tmp_dir="''${XDG_RUNTIME_DIR:-''${TMPDIR:-/tmp}}"
     lock_dir="$tmp_dir/dotfiles-sync.lockdir"
     nix_conf_dir="$(mktemp -d "$tmp_dir/dotfiles-sync-nix-conf.XXXXXX")"
@@ -46,12 +53,14 @@ EOF
     patched_activate="$(mktemp "$tmp_dir/dotfiles-sync-activate.XXXXXX")"
     ${pkgs.coreutils}/bin/cp "$activation_path/activate" "$patched_activate"
     # Determinate Nix supports `nix profile add`; patch Home Manager's generated
-    # command, but fail loudly if the upstream activation script changes shape.
-    if ! ${pkgs.gnugrep}/bin/grep -q 'profile install' "$patched_activate"; then
+    # command if it still uses the older `profile install`. If HM already
+    # emits `profile add`, no patching is needed.
+    if ${pkgs.gnugrep}/bin/grep -q 'profile install' "$patched_activate"; then
+      ${pkgs.gnused}/bin/sed -i 's/profile install/profile add/g' "$patched_activate"
+    elif ! ${pkgs.gnugrep}/bin/grep -q 'profile add' "$patched_activate"; then
       echo "dotfiles-sync: expected activation profile command not found" >&2
       exit 1
     fi
-    ${pkgs.gnused}/bin/sed -i 's/profile install/profile add/g' "$patched_activate"
     ${pkgs.bash}/bin/bash "$patched_activate"
   '';
 in
