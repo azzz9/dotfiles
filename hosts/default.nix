@@ -1,6 +1,6 @@
 { config, lib, ... }:
 let
-  repo = "${config.home.homeDirectory}/dotfiles";
+  repo = "${config.home.homeDirectory}/src/github.com/azzz9/dotfiles";
 in
 {
   home.username = builtins.getEnv "USER";
@@ -52,6 +52,7 @@ in
   imports = [
     ../modules/dotfiles-sync.nix
     ../modules/gh.nix
+    ../modules/git.nix
     ../modules/lazygit.nix
     ../modules/shell.nix
     ../modules/tmux.nix

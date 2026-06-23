@@ -3,6 +3,9 @@
   programs.zsh = {
     enable = true;
     enableCompletion = true;
+    shellAliases = {
+      "olc" = "ollama launch codex --model glm-5.2:cloud";
+    };
     oh-my-zsh = {
       enable = true;
       theme = "";
@@ -33,7 +36,7 @@
       (lib.mkOrder 900 ''
         dotfiles-upgrade() {
           local host="''${1:-${pkgs.stdenv.hostPlatform.system}}"
-          local repo="$HOME/dotfiles"
+          local repo="$HOME/src/github.com/azzz9/dotfiles"
 
           if [ ! -d "$repo" ]; then
             echo "dotfiles-upgrade: $repo not found" >&2
@@ -58,7 +61,6 @@
         unalias scdx 2>/dev/null || true
         unalias gcp 2>/dev/null || true
         unalias gtr 2>/dev/null || true
-        unalias gwt 2>/dev/null || true
 
         cdx() {
           codex --no-alt-screen "$@"
@@ -74,15 +76,8 @@
             --allow-url github.com \
             --allow-url api.github.com \
             --deny-tool 'shell(sudo:*)' \
-            --deny-tool 'shell(rm:*)' \
-            --deny-tool 'shell(find:*)' \
             --deny-tool 'shell(dd:*)' \
             --deny-tool 'shell(mkfs:*)' \
-            --deny-tool 'shell(chmod:*)' \
-            --deny-tool 'shell(chown:*)' \
-            --deny-tool 'shell(git clean)' \
-            --deny-tool 'shell(git reset)' \
-            --deny-tool 'shell(git push)' \
             "$@"
         }
 
@@ -160,161 +155,38 @@
 
         compdef _gtr gtr
 
-        _gwt_worktree_paths() {
-          git worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p'
-        }
+        # git-wt shell integration — enables `git wt <branch>` auto-cd
+        # and tab completion. Only the `git wt` subcommand is intercepted;
+        # all other git commands pass through unchanged.
+        if command -v git-wt >/dev/null 2>&1; then
+          eval "$(git wt --init zsh)"
+        fi
 
-        _gwt_select_worktree() {
+        # Jump to a ghq-managed repository selected with fzf.
+        gqcd() {
           emulate -L zsh
-
-          local query="''${1:-}" selected
-          local -a matches
-
-          if [[ -n "$query" ]]; then
-            matches=("''${(@f)$(_gwt_worktree_paths | grep -i -e "$query")}")
-          else
-            matches=("''${(@f)$(_gwt_worktree_paths)}")
-          fi
-
-          case "''${#matches[@]}" in
-            0)
-              print -u2 -r -- "gwt: no matching worktree"
-              return 1
-              ;;
-            1)
-              print -r -- "$matches[1]"
-              return 0
-              ;;
-          esac
-
-          if command -v fzf >/dev/null 2>&1; then
-            selected="$(printf '%s\n' "$matches[@]" | fzf --prompt='worktree> ')" || return 1
-            print -r -- "$selected"
-          else
-            print -u2 -r -- "gwt: multiple matching worktrees; refine the query:"
-            printf '%s\n' "$matches[@]" >&2
-            return 1
-          fi
+          local dir
+          dir="$(ghq list --full-path 2>/dev/null | fzf --prompt='ghq> ')" || return 1
+          [[ -n "$dir" ]] && builtin cd "$dir"
         }
 
-        _gwt_default_base() {
-          if [[ -n "''${GWT_BASE:-}" ]]; then
-            print -r -- "$GWT_BASE"
-            return
-          fi
-
-          if git show-ref --verify --quiet refs/remotes/origin/main; then
-            print -r -- "origin/main"
-          elif git show-ref --verify --quiet refs/heads/main; then
-            print -r -- "main"
-          elif git show-ref --verify --quiet refs/remotes/origin/master; then
-            print -r -- "origin/master"
-          elif git show-ref --verify --quiet refs/heads/master; then
-            print -r -- "master"
-          else
-            print -r -- "HEAD"
-          fi
-        }
-
-        _gwt_default_path() {
+        # Jump to a sub-root (monorepo package) in the current tree via roots + fzf.
+        rcd() {
           emulate -L zsh
-
-          local root="$1" branch="$2"
-          local repo_name safe_branch base_dir
-
-          repo_name="''${root:t}"
-          safe_branch="''${branch//\//-}"
-          base_dir="''${GWT_DIR:-$HOME/worktrees}"
-
-          print -r -- "$base_dir/$repo_name/$safe_branch"
+          local dir
+          dir="$(roots 2>/dev/null | fzf --prompt='roots> ')" || return 1
+          [[ -n "$dir" ]] && builtin cd "$dir"
         }
 
-        gwt() {
+        # Interactively switch git worktrees with fzf (uses git-wt listing).
+        # NB: do not name the local "path" -- in zsh `path` is tied to `PATH`
+        # and `local path` would empty PATH inside the function.
+        wtcd() {
           emulate -L zsh
-
-          local root repo_name branch base worktree_path selected
-
-          case "''${1:-}" in
-            -h|--help)
-              print -r -- "usage: gwt [query]"
-              print -r -- "       gwt new <branch> [base] [path]"
-              print -r -- "       gwt list"
-              print -r -- "       gwt prune"
-              print -r -- ""
-              print -r -- "default directory: \''${GWT_DIR:-$HOME/worktrees}/<repo>/<branch>"
-              print -r -- "default base: \''${GWT_BASE:-origin/main, main, origin/master, master, or HEAD}"
-              print -r -- "examples:"
-              print -r -- "       gwt new PROJ-123"
-              print -r -- "       gwt new feature/foo origin/develop"
-              print -r -- "       gwt PROJ-123"
-              return 0
-              ;;
-            list|ls)
-              git worktree list
-              return
-              ;;
-            prune)
-              git worktree prune
-              return
-              ;;
-            new|add)
-              shift
-              branch="''${1:-}"
-              base="''${2:-$(_gwt_default_base)}"
-
-              if [[ -z "$branch" ]]; then
-                print -u2 -r -- "gwt: branch name required"
-                print -u2 -r -- "usage: gwt new <branch> [base] [path]"
-                return 2
-              fi
-
-              root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
-                print -u2 -r -- "gwt: not inside a git repository"
-                return 1
-              }
-
-              worktree_path="''${3:-$(_gwt_default_path "$root" "$branch")}"
-
-              if git show-ref --verify --quiet "refs/heads/$branch"; then
-                git worktree add "$worktree_path" "$branch" || return
-              else
-                git worktree add -b "$branch" "$worktree_path" "$base" || return
-              fi
-
-              builtin cd "$worktree_path"
-              return
-              ;;
-          esac
-
-          selected="$(_gwt_select_worktree "''${1:-}")" || return
-          builtin cd "$selected"
+          local wt_path
+          wt_path="$(git-wt 2>/dev/null | fzf --header-lines=1 | awk '{if ($1 == "*") print $2; else print $1}')" || return 1
+          [[ -n "$wt_path" ]] && builtin cd "$wt_path"
         }
-
-        _gwt() {
-          emulate -L zsh
-
-          local -a commands
-          commands=(
-            'new:create a worktree and cd into it'
-            'add:create a worktree and cd into it'
-            'list:list worktrees'
-            'ls:list worktrees'
-            'prune:prune stale worktree metadata'
-          )
-
-          _arguments \
-            '1:command or query:->cmd' \
-            '2:branch/base/path:_guard "^-*" "value"' \
-            '*::args:_guard "^-*" "value"'
-
-          case "$state" in
-            cmd)
-              _describe -t commands 'gwt command' commands
-              ;;
-          esac
-        }
-
-        compdef _gwt gwt
       '')
       (lib.mkOrder 980 ''
         # Ensure zsh-autocomplete keeps Tab; fzf's integration rebinds it.

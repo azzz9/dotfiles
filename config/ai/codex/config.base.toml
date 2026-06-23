@@ -1,13 +1,13 @@
 model = "gpt-5.5"
 model_reasoning_effort = "medium"
 personality = "pragmatic"
-approval_policy = "on-request"
+approval_policy = "on-failure"
 approvals_reviewer = "auto_review"
 sandbox_mode = "workspace-write"
 allow_login_shell = false
 
 [sandbox_workspace_write]
-network_access = false
+network_access = true
 
 [notice]
 "hide_gpt-5.1-codex-max_migration_prompt" = true

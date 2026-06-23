@@ -63,6 +63,7 @@ in
       set -g extended-keys on
 
       bind -T copy-mode-vi y send-keys -X copy-pipe-and-cancel "${tmuxClipboardCopy}/bin/tmux-clipboard-copy"
+      bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "${tmuxClipboardCopy}/bin/tmux-clipboard-copy"
       bind r source-file ~/.config/tmux/tmux.conf \; display-message "tmux.conf reloaded"
       bind C display-popup -E -w 95% -h 95% -d "#{pane_current_path}" "zsh -lc 'codex --no-alt-screen'"
       bind G display-popup -E -w 95% -h 95% -d "#{pane_current_path}" "zsh -lc 'gh copilot'"

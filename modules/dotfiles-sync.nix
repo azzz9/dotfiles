@@ -1,6 +1,6 @@
 { config, pkgs, ... }:
 let
-  repo = "${config.home.homeDirectory}/dotfiles";
+  repo = "${config.home.homeDirectory}/src/github.com/azzz9/dotfiles";
   dotfilesSync = pkgs.writeShellScriptBin "dotfiles-sync" ''
     set -euo pipefail
 
