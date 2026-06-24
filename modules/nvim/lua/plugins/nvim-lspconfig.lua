@@ -38,6 +38,15 @@
         capabilities = lsp_capabilities,
         cmd = { "clangd", "--background-index", "--clang-tidy" },
       }
+      vim.lsp.config["ts_ls"] = {
+        capabilities = lsp_capabilities,
+        cmd = {
+          "typescript-language-server",
+          "--tsserver-path",
+          vim.g.tsserver_path,
+          "--stdio",
+        },
+      }
       local solidity_project_markers = {
         "hardhat.config.js",
         "hardhat.config.ts",
@@ -86,7 +95,16 @@
           on_dir(root or vim.fs.dirname(fname))
         end,
       }
-      vim.lsp.enable({ "lua_ls", "ts_ls", "pyright", "clangd", "solidity_ls_nomicfoundation" })
+      -- Enable LSP servers from the language table.
+      local _lsp_names = {}
+      local _seen = {}
+      for _, _conf in pairs(_langs) do
+        if _conf.lsp and not _seen[_conf.lsp] then
+          _seen[_conf.lsp] = true
+          table.insert(_lsp_names, _conf.lsp)
+        end
+      end
+      vim.lsp.enable(_lsp_names)
 
       vim.api.nvim_create_autocmd("LspAttach", {
         group = vim.api.nvim_create_augroup("my.lsp", {}),

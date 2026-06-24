@@ -66,7 +66,12 @@
           codex --no-alt-screen "$@"
         }
 
+        # SECURITY: Running an AI coding agent as root is dangerous.
+        # The agent can execute arbitrary shell commands with elevated
+        # privileges. Only use scdx when root-level file access is
+        # absolutely required (e.g. system-level config editing).
         scdx() {
+          echo "scdx: WARNING - codex will run as root with full system access" >&2
           sudo "$HOME/.nix-profile/bin/codex" "$@"
         }
 
@@ -199,8 +204,13 @@
 
         _lazy_load_nvm() {
           unset -f nvm node npm npx corepack _lazy_load_nvm
-          [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-          [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
+          if [ -s "$NVM_DIR/nvm.sh" ]; then
+            . "$NVM_DIR/nvm.sh"
+            [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
+          else
+            # NVM not installed - fall through to Nix-managed binaries.
+            echo "nvm: NVM not found at $NVM_DIR/nvm.sh; using system node" >&2
+          fi
         }
 
         nvm() {

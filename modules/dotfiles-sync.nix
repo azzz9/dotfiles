@@ -52,9 +52,16 @@ EOF
     activation_path="$(${pkgs.nix}/bin/nix build --no-link --print-out-paths "${repo}#homeConfigurations.$host.activationPackage" --impure)"
     patched_activate="$(mktemp "$tmp_dir/dotfiles-sync-activate.XXXXXX")"
     ${pkgs.coreutils}/bin/cp "$activation_path/activate" "$patched_activate"
-    # Determinate Nix supports `nix profile add`; patch Home Manager's generated
-    # command if it still uses the older `profile install`. If HM already
-    # emits `profile add`, no patching is needed.
+    # ---
+    # Workaround: Determinate Nix supports `nix profile add`; older Home Manager
+    # generated scripts use `nix profile install`. Patch the activate script if
+    # needed.
+    #
+    # This sed patch is fragile and version-dependent. Once Home Manager fully
+    # migrates to `nix profile add` across all supported versions, this entire
+    # block can be removed. If HM switches to a different command form, the
+    # `elif` guard below will catch it and exit with an error.
+    # ---
     if ${pkgs.gnugrep}/bin/grep -q 'profile install' "$patched_activate"; then
       ${pkgs.gnused}/bin/sed -i 's/profile install/profile add/g' "$patched_activate"
     elif ! ${pkgs.gnugrep}/bin/grep -q 'profile add' "$patched_activate"; then

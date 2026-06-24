@@ -1,3 +1,10 @@
+      local formatters_by_ft = {}
+      for ft, conf in pairs(_langs) do
+        if conf.formatters then
+          formatters_by_ft[ft] = conf.formatters
+        end
+      end
+
       local prettier_plugin_solidity = vim.g.prettier_plugin_solidity_path
       local function prettier_args(_, ctx)
         if vim.bo[ctx.buf].filetype == "solidity" then
@@ -7,19 +14,7 @@
       end
 
       require("conform").setup({
-        formatters_by_ft = {
-          javascript = { "prettierd", "prettier" },
-          javascriptreact = { "prettierd", "prettier" },
-          typescript = { "prettierd", "prettier" },
-          typescriptreact = { "prettierd", "prettier" },
-          json = { "prettierd", "prettier" },
-          css = { "prettierd", "prettier" },
-          html = { "prettierd", "prettier" },
-          markdown = { "prettierd", "prettier" },
-          lua = { "stylua" },
-          python = { "ruff_format" },
-          solidity = { "prettierd", "prettier" },
-        },
+        formatters_by_ft = formatters_by_ft,
         formatters = {
           prettierd = { prepend_args = prettier_args },
           prettier = { prepend_args = prettier_args },

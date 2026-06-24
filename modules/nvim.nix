@@ -1,27 +1,24 @@
 { lib, pkgs, ... }:
 let
-  debugpyPython = pkgs.python3.withPackages (ps: [ ps.debugpy ]);
-  prettierPluginSolidityDist = pkgs.fetchurl {
-    url = "https://registry.npmjs.org/prettier-plugin-solidity/-/prettier-plugin-solidity-2.3.1.tgz";
-    hash = "sha256-KQqnnYIFE37d+qa7AB4LECsEcoFeyRfwgCJE6OtLXwA=";
-  };
-  prettierPluginSolidity = pkgs.buildNpmPackage rec {
-    pname = "prettier-plugin-solidity";
-    version = "2.3.1";
-    src = pkgs.fetchFromGitHub {
-      owner = "prettier-solidity";
-      repo = "prettier-plugin-solidity";
-      rev = "v${version}";
-      hash = "sha256-zo5kw8ObjCRubucNe2MKhcjd5uYv9clfolIHtiM6/rQ=";
-    };
-    npmDepsHash = "sha256-BEk3Sh9NDFVifzCfY6Iq1pesUau3qUi954KR7JPWbZc=";
-    postInstall = ''
-      rm -rf "$out/lib/node_modules/${pname}/dist"
-      tar -xzf ${prettierPluginSolidityDist} -C "$out/lib/node_modules/${pname}" --strip-components=1 package/dist
-      ln -s ${pkgs.prettier}/lib/node_modules/prettier "$out/lib/node_modules/${pname}/node_modules/prettier"
-    '';
-  };
-  treesitterWithGrammars = pkgs.vimPlugins.nvim-treesitter.withAllGrammars;
+  solidity = import ./solidity.nix { inherit pkgs; };
+  treesitterWithGrammars = pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
+    p.tree-sitter-bash
+    p.tree-sitter-c
+    p.tree-sitter-cpp
+    p.tree-sitter-css
+    p.tree-sitter-html
+    p.tree-sitter-javascript
+    p.tree-sitter-json
+    p.tree-sitter-lua
+    p.tree-sitter-markdown
+    p.tree-sitter-python
+    p.tree-sitter-regex
+    p.tree-sitter-solidity
+    p.tree-sitter-toml
+    p.tree-sitter-typescript
+    p.tree-sitter-vim
+    p.tree-sitter-yaml
+  ]);
   smoothcursorPlugin = pkgs.vimUtils.buildVimPlugin {
     pname = "smoothcursor-nvim";
     version = "2024-04-22";
@@ -55,6 +52,7 @@ let
     "plugins/noice.lua"
     "plugins/trouble.lua"
     "plugins/todo-comments.lua"
+    "languages.lua"
     "plugins/conform.lua"
     "plugins/nvim-lint.lua"
     "ui.lua"
@@ -139,7 +137,8 @@ in
     extraConfigLua =
       ''
         vim.g.codelldb_path = "${pkgs.vscode-extensions.vadimcn.vscode-lldb}/share/vscode/extensions/vadimcn.vscode-lldb/adapter/codelldb"
-        vim.g.prettier_plugin_solidity_path = "${prettierPluginSolidity}/lib/node_modules/prettier-plugin-solidity/dist/index.js"
+        vim.g.prettier_plugin_solidity_path = "${solidity.prettierPluginSolidity}/lib/node_modules/prettier-plugin-solidity/dist/index.js"
+        vim.g.tsserver_path = "${pkgs.typescript}/lib/node_modules/typescript/bin/tsserver"
         local is_vscode = vim.g.vscode ~= nil
       ''
       + "\n\n"
@@ -152,7 +151,7 @@ in
       + lib.concatMapStringsSep "\n\n" readLua (builtins.filter (file: file != "core.lua") luaFiles)
       + "\n\n"
       + ''
-        require("dap-python").setup("${debugpyPython}/bin/python")
+        require("dap-python").setup("${solidity.debugpyPython}/bin/python")
         end
       '';
   };

@@ -1,6 +1,26 @@
 { config, lib, ... }:
 let
   repo = "${config.home.homeDirectory}/src/github.com/azzz9/dotfiles";
+  skillNames = [
+    "conventional-commit"
+    "difit-review"
+    "domain-modeling"
+    "grill-me"
+    "grill-with-docs"
+    "grilling"
+    "agent-dev-workflow"
+    "solidity-agent-dev-workflow"
+  ];
+  mkSkillSymlink = base: name: {
+    "${base}/skills/${name}".source =
+      config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/${name}";
+  };
+  skillLinks =
+    builtins.foldl'
+      (acc: base:
+        acc // builtins.foldl' (a: name: a // mkSkillSymlink base name) {} skillNames)
+      {}
+      [ ".codex" ".copilot" ];
 in
 {
   home.username = builtins.getEnv "USER";
@@ -15,28 +35,16 @@ in
     manpages.enable = false;
   };
 
-  home.file.".codex/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/AGENTS.md";
-  home.file.".codex/rules/default.rules" = {
-    source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/codex/rules/default.rules";
-    force = true;
+  # Codex / Copilot shared AI context and skills (out-of-store symlinks
+  # so edits in this repo are immediately reflected at the target path).
+  home.file = skillLinks // {
+    ".codex/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/AGENTS.md";
+    ".codex/rules/default.rules" = {
+      source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/codex/rules/default.rules";
+      force = true;
+    };
+    ".copilot/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/AGENTS.md";
   };
-  home.file.".codex/skills/conventional-commit".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/conventional-commit";
-  home.file.".codex/skills/difit-review".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/difit-review";
-  home.file.".codex/skills/domain-modeling".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/domain-modeling";
-  home.file.".codex/skills/grill-me".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/grill-me";
-  home.file.".codex/skills/grill-with-docs".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/grill-with-docs";
-  home.file.".codex/skills/grilling".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/grilling";
-  home.file.".codex/skills/agent-dev-workflow".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/agent-dev-workflow";
-  home.file.".codex/skills/solidity-agent-dev-workflow".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/solidity-agent-dev-workflow";
-  home.file.".copilot/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/AGENTS.md";
-  home.file.".copilot/skills/conventional-commit".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/conventional-commit";
-  home.file.".copilot/skills/difit-review".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/difit-review";
-  home.file.".copilot/skills/domain-modeling".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/domain-modeling";
-  home.file.".copilot/skills/grill-me".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/grill-me";
-  home.file.".copilot/skills/grill-with-docs".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/grill-with-docs";
-  home.file.".copilot/skills/grilling".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/grilling";
-  home.file.".copilot/skills/agent-dev-workflow".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/agent-dev-workflow";
-  home.file.".copilot/skills/solidity-agent-dev-workflow".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/solidity-agent-dev-workflow";
 
   home.activation.codexConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     target="$HOME/.codex/config.toml"

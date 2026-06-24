@@ -6,6 +6,11 @@ approvals_reviewer = "auto_review"
 sandbox_mode = "workspace-write"
 allow_login_shell = false
 
+# SECURITY: network_access = true allows the sandboxed agent to make outbound
+# network requests (package installs, API calls, git fetch, etc.). This is
+# convenient for development but means a compromised or misbehaving agent can
+# exfiltrate data. If you handle sensitive codebases, consider setting this to
+# false and allowing specific hosts via a proxy or firewall rules.
 [sandbox_workspace_write]
 network_access = true
 

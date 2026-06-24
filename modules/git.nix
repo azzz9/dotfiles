@@ -11,7 +11,12 @@
 
     # git-wt: place worktrees alongside the repo as <repo>-wt
     git config --global wt.basedir "../{gitroot}-wt"
-    # Carry over gitignored files (e.g. .env) into new worktrees
+    # SECURITY: wt.copyignored copies gitignored files (e.g. .env, .env.local)
+    # into new worktrees so they remain usable without committing secrets.
+    # This is convenient but means secret files exist in multiple locations.
+    # Ensure worktree directories are not shared or backed up to untrusted
+    # destinations. Set to false per-repo if a project has no ignored files
+    # or if you prefer to re-create them manually: git config wt.copyignored false
     git config --global wt.copyignored true
 
     unset -f git

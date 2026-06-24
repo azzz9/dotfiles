@@ -1,4 +1,4 @@
-      vim.g.start_time = vim.loop.hrtime()
+      vim.g.start_time = vim.uv.hrtime()
       vim.keymap.set("n", "<C-v>", "<C-v>", { noremap = true })
       vim.keymap.set("i", "<C-v>", "<C-v>", { noremap = true })
 

@@ -34,10 +34,6 @@
         };
     in
       {
-        homeConfigurations =
-          (forAllSystems mkHomeConfiguration)
-          // {
-            default = mkHomeConfiguration "x86_64-linux";
-          };
+        homeConfigurations = forAllSystems mkHomeConfiguration;
       };
 }

@@ -8,3 +8,5 @@
           show_close_icon = false,
         },
       })
+      vim.keymap.set("n", "<leader>q", "<cmd>BufferLineCloseCurrent<cr>", { desc = "Close buffer" })
+      vim.keymap.set("n", "<leader>bo", "<cmd>BufferLineCloseOthers<cr>", { desc = "Close other buffers" })

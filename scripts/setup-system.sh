@@ -61,6 +61,11 @@ detect_home_configuration() {
     Darwin:arm64)
       printf '%s\n' "aarch64-darwin"
       ;;
+    Darwin:x86_64)
+      echo "Intel Mac (x86_64-darwin) is not supported. This flake only provides" >&2
+      echo "an aarch64-darwin configuration. Set HM_HOST=x86_64-darwin to override." >&2
+      exit 1
+      ;;
     *)
       echo "Unsupported Home Manager target: ${os_name}:${machine}. Set HM_HOST to override." >&2
       exit 1

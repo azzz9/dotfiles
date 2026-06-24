@@ -31,25 +31,14 @@ HM_HOST=x86_64-linux
 REBOOT=1
 ```
 
-Manual Home Manager apply:
+Manual Home Manager apply (use the system-specific attribute):
 
 ```
-nix run nixpkgs#home-manager -- switch --flake ~/dotfiles#default --impure -b backup
+nix run nixpkgs#home-manager -- switch --flake ~/dotfiles#x86_64-linux --impure -b backup
 
 # Apple Silicon
 nix run nixpkgs#home-manager -- switch --flake ~/dotfiles#aarch64-darwin --impure -b backup
 ```
-
-## System Bootstrap Details
-
-`scripts/setup-system.sh` supports Ubuntu, Arch Linux, and Apple Silicon macOS.
-It installs Docker CE (Ubuntu) / Docker (Arch) / Docker Desktop (macOS), sets
-Zsh as the login shell, configures global Git user info, installs Nix when
-missing, and applies this Home Manager configuration.
-
-Ubuntu and Arch Linux need a reboot before Docker group membership applies.
-Set `REBOOT=1` to reboot automatically at the end. macOS does not reboot; open
-Docker.app once to finish Docker Desktop setup.
 
 ## Update (pull + apply)
 
@@ -74,6 +63,19 @@ Enable local pre-push checks (blocks push if eval/build fails):
 ```
 git config core.hooksPath .githooks
 ```
+
+## CI binary cache (optional)
+
+To speed up CI builds, create a [Cachix](https://cachix.org) cache and set
+these repository variables/secrets:
+
+| Name | Type | Purpose |
+|------|------|---------|
+| `CACHIX_NAME` | Variable | Cache name |
+| `CACHIX_AUTH_TOKEN` | Secret | Auth token for push/pull |
+
+When `CACHIX_NAME` is set, the CI workflow automatically configures Cachix
+for build caching. Without it, only the public nixpkgs cache is used.
 
 ## Notes
 

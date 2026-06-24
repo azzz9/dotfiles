@@ -4,6 +4,14 @@ set -euo pipefail
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
+# Auto-detect system: macOS reports "arm64"; Nix expects "aarch64".
+arch="$(uname -m)"
+if [ "$arch" = "arm64" ]; then
+  arch="aarch64"
+fi
+os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+host="${arch}-${os}"
+
 echo "[pre-push] nix flake check"
 nix flake check
 
@@ -13,7 +21,7 @@ nix run nixpkgs#shellcheck -- scripts/setup-system.sh
 echo "[pre-push] actionlint"
 nix run nixpkgs#actionlint -- .github/workflows/ci.yml
 
-echo "[pre-push] home-manager build"
-nix run nixpkgs#home-manager -- build --flake .#default --impure
+echo "[pre-push] home-manager build ($host)"
+nix run nixpkgs#home-manager -- build --flake ".#$host" --impure
 
 echo "[pre-push] ok"

@@ -1,14 +1,17 @@
       local lint = require("lint")
-      lint.linters_by_ft = {
-        javascript = { "eslint_d" },
-        typescript = { "eslint_d" },
-        javascriptreact = { "eslint_d" },
-        typescriptreact = { "eslint_d" },
-        lua = { "selene" },
-        python = { "ruff" },
-        solidity = { "solhint" },
-      }
-      lint.linters.solhint.args = { "stdin", "--disc" }
+      local linters_by_ft = {}
+      for ft, conf in pairs(_langs) do
+        if conf.linters then
+          linters_by_ft[ft] = conf.linters
+        end
+      end
+      lint.linters_by_ft = linters_by_ft
+
+      -- Preserve default args (stdin, --formatter unix) and add --disc.
+      lint.linters.solhint.args = vim.list_extend(
+        vim.deepcopy(lint.linters.solhint.args or {}),
+        { "--disc" }
+      )
 
       local has_clangd = vim.fn.executable("clangd") == 1
       if vim.fn.executable("clang-tidy") == 1 and not has_clangd then
