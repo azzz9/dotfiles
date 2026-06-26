@@ -5,14 +5,19 @@ approval_policy = "on-request"
 approvals_reviewer = "auto_review"
 sandbox_mode = "workspace-write"
 allow_login_shell = false
+web_search = "cached"
 
-# SECURITY: network_access = true allows the sandboxed agent to make outbound
-# network requests (package installs, API calls, git fetch, etc.). This is
-# convenient for development but means a compromised or misbehaving agent can
-# exfiltrate data. If you handle sensitive codebases, consider setting this to
-# false and allowing specific hosts via a proxy or firewall rules.
+[features]
+guardian_approval = true
+
+# SECURITY: network_access = false blocks the sandboxed agent from making
+# outbound network requests (package installs, API calls, git fetch, etc.).
+# This is the safer default: a compromised or misbehaving agent cannot
+# exfiltrate data or fetch untrusted content. Set to true only when you need
+# the agent to reach the network, and prefer allowing specific hosts via a
+# proxy or firewall rules rather than opening access broadly.
 [sandbox_workspace_write]
-network_access = true
+network_access = false
 
 [notice]
 "hide_gpt-5.1-codex-max_migration_prompt" = true

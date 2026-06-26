@@ -11,6 +11,7 @@ let
     "agent-dev-workflow"
     "solidity-agent-dev-workflow"
     "tmux"
+    "ascii-art-diagrams"
   ];
   skillBases = [ ".codex" ".copilot" ];
   # Build a flat attrset of out-of-store symlinks for every skill x base

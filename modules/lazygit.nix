@@ -11,7 +11,7 @@
     git:
       pagers:
         - colorArg: always
-          pager: delta --dark --paging=never --side-by-side
+          pager: delta --dark --paging=never --side-by-side --wrap-max-lines=0
   '';
   xdg.configFile."lazygit/config.yml".force = true;
 }
