@@ -40,20 +40,32 @@ nix run nixpkgs#home-manager -- switch --flake ~/dotfiles#x86_64-linux --impure 
 nix run nixpkgs#home-manager -- switch --flake ~/dotfiles#aarch64-darwin --impure -b backup
 ```
 
-## Update (pull + apply)
+## Apply and update
 
-Quick update command (pull latest from GitHub, then apply):
-
-```
-dotfiles-sync
-```
-
-## Update lock inputs (optional)
-
-If you want to refresh `flake.lock` inputs locally:
+Build and apply the current checkout:
 
 ```
-dotfiles-upgrade
+dotfiles apply
+```
+
+Require a clean repo, pull latest changes from GitHub, then build and apply:
+
+```
+dotfiles sync
+```
+
+Require a clean repo, refresh `flake.lock` inputs, then build and apply.
+If the update, build, or activation fails, `flake.lock` is restored:
+
+```
+dotfiles upgrade
+```
+
+Compatibility wrappers are still available:
+
+```
+dotfiles-sync     # same as dotfiles sync
+dotfiles-upgrade  # same as dotfiles upgrade
 ```
 
 ## Local push guard

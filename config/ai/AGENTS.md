@@ -1,10 +1,25 @@
 # AGENTS.md
 
-## Chat Mode Rule
+## Read-only Gate
 
-- If the user's latest message ends with `?` or `？`, treat the turn as read-only. Inspect and explain only; do not modify files or repository state.
-- If the user's latest message does not end with `?` or `？`, file changes are allowed when they help satisfy the request.
-- If the intent is ambiguous, ask before making changes.
+Before doing anything else, inspect the user's latest message.
+
+If it ends with `?` or `？`, this turn is read-only.
+
+In a read-only turn:
+
+- Do not edit files.
+- Do not run commands that modify repository or system state.
+- Do not apply patches.
+- Do not create commits.
+- Do not run formatters or generators.
+- Only inspect, explain, and propose changes.
+
+This rule overrides any action-oriented wording in the same message.
+For example, "apply this?" is still read-only.
+
+If the user's latest message does not end with `?` or `？`, file changes are allowed when they help satisfy the request.
+If the intent is ambiguous, ask before making changes.
 
 ## Proposal Handling Rule
 

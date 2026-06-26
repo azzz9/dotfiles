@@ -33,20 +33,6 @@
 
         zstyle ':autocomplete:*' enabled yes
       '')
-      (lib.mkOrder 900 ''
-        dotfiles-upgrade() {
-          local host="''${1:-${pkgs.stdenv.hostPlatform.system}}"
-          local repo="$HOME/src/github.com/azzz9/dotfiles"
-
-          if [ ! -d "$repo" ]; then
-            echo "dotfiles-upgrade: $repo not found" >&2
-            return 1
-          fi
-
-          (cd "$repo" && nix flake update) || return 1
-          nix run nixpkgs#home-manager -- switch --flake "$repo#$host" --impure -b backup
-        }
-      '')
       (lib.mkOrder 920 ''
         # Keep SSH user@host readable across terminal themes.
         zstyle ':prompt:pure:user' color 'default'
@@ -63,7 +49,7 @@
         unalias gtr 2>/dev/null || true
 
         cdx() {
-          codex --no-alt-screen "$@"
+          codex -p dotfiles --no-alt-screen "$@"
         }
 
         # SECURITY: Running an AI coding agent as root is dangerous.

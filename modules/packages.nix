@@ -1,25 +1,6 @@
-{ lib, pkgs, codexPackage, ... }:
+{ lib, pkgs, codexPackage, copilotPackage, ... }:
 let
   solidity = import ./solidity.nix { inherit pkgs; };
-  solhint = pkgs.buildNpmPackage rec {
-    pname = "solhint";
-    version = "6.2.1";
-    src = pkgs.fetchFromGitHub {
-      owner = "protofire";
-      repo = "solhint";
-      rev = "v${version}";
-      hash = "sha256-1wXgRQdVwRCY+dEmT5O+WsGfkFbYKdSjo/N4Bjhrpis=";
-    };
-    npmDepsHash = "sha256-y3P+Lgycyp6RCuo2ke4HLkwJw4BPrdyEWeKn5oRs52o=";
-    dontNpmBuild = true;
-  };
-  nomicfoundationSolidityLanguageServer = pkgs.writeShellApplication {
-    name = "nomicfoundation-solidity-language-server";
-    runtimeInputs = [ pkgs.nodejs ];
-    text = ''
-      exec node "${pkgs.vscode-extensions.nomicfoundation.hardhat-solidity}/share/vscode/extensions/nomicfoundation.hardhat-solidity/server/out/index.js" "$@"
-    '';
-  };
   roots = pkgs.buildGoModule rec {
     pname = "roots";
     version = "0.4.1";
@@ -41,7 +22,6 @@ in
       ghq
       git-wt
       delta
-      codexPackage
       yazi
       fd
       ripgrep
@@ -78,16 +58,18 @@ in
       clang-tools           # LSP (clangd) + clang-tidy
 
       # --- Solidity ---
-      foundry                            # forge, cast, anvil
-      slither-analyzer                   # linter / static analysis
-      solc                               # compiler
-      nomicfoundationSolidityLanguageServer  # LSP
-      solhint                            # linter
-      solidity.prettierPluginSolidity   # formatter plugin
+      foundry                                      # forge, cast, anvil
+      slither-analyzer                             # linter / static analysis
+      solc                                         # compiler
+      solidity.nomicfoundationSolidityLanguageServer  # LSP
+      solidity.solhint                             # linter
+      solidity.prettierPluginSolidity              # formatter plugin
     ])
     ++ lib.optionals pkgs.stdenv.isLinux (with pkgs; [
       xclip
       wl-clipboard
     ])
-    ++ [ roots ];
+    ++ [ roots ]
+    ++ lib.optional (codexPackage != null) codexPackage
+    ++ lib.optional (copilotPackage != null) copilotPackage;
 }

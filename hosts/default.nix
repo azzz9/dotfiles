@@ -10,17 +10,18 @@ let
     "grilling"
     "agent-dev-workflow"
     "solidity-agent-dev-workflow"
+    "tmux"
   ];
-  mkSkillSymlink = base: name: {
-    "${base}/skills/${name}".source =
-      config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/${name}";
-  };
-  skillLinks =
-    builtins.foldl'
-      (acc: base:
-        acc // builtins.foldl' (a: name: a // mkSkillSymlink base name) {} skillNames)
-      {}
-      [ ".codex" ".copilot" ];
+  skillBases = [ ".codex" ".copilot" ];
+  # Build a flat attrset of out-of-store symlinks for every skill x base
+  # combination, e.g. ".codex/skills/tmux" -> symlink to repo.
+  skillLinks = builtins.listToAttrs (
+    lib.concatMap (base: map (name: {
+      name = "${base}/skills/${name}";
+      value.source =
+        config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/${name}";
+    }) skillNames) skillBases
+  );
 in
 {
   home.username = builtins.getEnv "USER";
@@ -43,22 +44,19 @@ in
       source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/codex/rules/default.rules";
       force = true;
     };
-    ".copilot/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/AGENTS.md";
+    # Codex profile: repo-owned static settings layered on top of the
+    # runtime-mutated ~/.codex/config.toml via `codex -p dotfiles`.
+    # config.toml itself is intentionally NOT Nix-managed because Codex
+    # writes per-project trust_level and other runtime state into it.
+    ".codex/dotfiles.config.toml" = {
+      source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/codex/config.base.toml";
+      force = true;
+    };
+    ".copilot/copilot-instructions.md".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/AGENTS.md";
   };
 
-  home.activation.codexConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    target="$HOME/.codex/config.toml"
-    source="${repo}/config/ai/codex/config.base.toml"
-
-    mkdir -p "$HOME/.codex"
-    if [ ! -e "$target" ]; then
-      cp "$source" "$target"
-      chmod 600 "$target"
-    fi
-  '';
-
   imports = [
-    ../modules/dotfiles-sync.nix
+    ../modules/dotfiles.nix
     ../modules/gh.nix
     ../modules/git.nix
     ../modules/lazygit.nix

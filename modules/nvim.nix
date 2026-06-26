@@ -61,6 +61,28 @@ let
     "plugins/nvim-dap.lua"
   ];
   readLua = file: builtins.readFile (luaConfigDir + "/${file}");
+  # core.lua is always loaded (even inside VSCode). All other files are
+  # wrapped in `if not is_vscode then ... end` so Neovim-only plugins
+  # are skipped when Neovim runs as a VSCode extension.
+  extraConfigLua = lib.concatStringsSep "\n\n" (
+    [
+      ''
+        vim.g.codelldb_path = "${pkgs.vscode-extensions.vadimcn.vscode-lldb}/share/vscode/extensions/vadimcn.vscode-lldb/adapter/codelldb"
+        vim.g.prettier_plugin_solidity_path = "${solidity.prettierPluginSolidity}/lib/node_modules/prettier-plugin-solidity/dist/index.js"
+        vim.g.tsserver_path = "${pkgs.typescript}/lib/node_modules/typescript/bin/tsserver"
+        local is_vscode = vim.g.vscode ~= nil
+      ''
+      (readLua "core.lua")
+      "if not is_vscode then"
+    ]
+    ++ (map readLua (builtins.filter (file: file != "core.lua") luaFiles))
+    ++ [
+      ''
+        require("dap-python").setup("${solidity.debugpyPython}/bin/python")
+        end
+      ''
+    ]
+  );
 in
 {
   programs.nixvim = {
@@ -134,25 +156,6 @@ in
         smoothcursorPlugin
       ]
       ++ [ treesitterWithGrammars ];
-    extraConfigLua =
-      ''
-        vim.g.codelldb_path = "${pkgs.vscode-extensions.vadimcn.vscode-lldb}/share/vscode/extensions/vadimcn.vscode-lldb/adapter/codelldb"
-        vim.g.prettier_plugin_solidity_path = "${solidity.prettierPluginSolidity}/lib/node_modules/prettier-plugin-solidity/dist/index.js"
-        vim.g.tsserver_path = "${pkgs.typescript}/lib/node_modules/typescript/bin/tsserver"
-        local is_vscode = vim.g.vscode ~= nil
-      ''
-      + "\n\n"
-      + readLua "core.lua"
-      + "\n\n"
-      + ''
-        if not is_vscode then
-      ''
-      + "\n\n"
-      + lib.concatMapStringsSep "\n\n" readLua (builtins.filter (file: file != "core.lua") luaFiles)
-      + "\n\n"
-      + ''
-        require("dap-python").setup("${solidity.debugpyPython}/bin/python")
-        end
-      '';
+    inherit extraConfigLua;
   };
 }

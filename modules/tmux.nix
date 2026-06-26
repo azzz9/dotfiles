@@ -1,7 +1,6 @@
 { pkgs, ... }:
 let
   tmuxClipboardCopy = pkgs.writeShellScriptBin "tmux-clipboard-copy" ''
-    #!/usr/bin/env bash
     set -euo pipefail
 
     if command -v wl-copy >/dev/null 2>&1 && [ -n "''${WAYLAND_DISPLAY:-}" ]; then

@@ -1,4 +1,4 @@
-# Shared derivations used by both modules/nvim.nix and modules/packages.nix.
+# Shared Solidity derivations used by modules/nvim.nix and modules/packages.nix.
 # Import as: solidity = import ./solidity.nix { inherit pkgs; };
 { pkgs }:
 let
@@ -25,7 +25,28 @@ let
       ln -s ${pkgs.prettier}/lib/node_modules/prettier "$out/lib/node_modules/${pname}/node_modules/prettier"
     '';
   };
+
+  solhint = pkgs.buildNpmPackage rec {
+    pname = "solhint";
+    version = "6.2.1";
+    src = pkgs.fetchFromGitHub {
+      owner = "protofire";
+      repo = "solhint";
+      rev = "v${version}";
+      hash = "sha256-1wXgRQdVwRCY+dEmT5O+WsGfkFbYKdSjo/N4Bjhrpis=";
+    };
+    npmDepsHash = "sha256-y3P+Lgycyp6RCuo2ke4HLkwJw4BPrdyEWeKn5oRs52o=";
+    dontNpmBuild = true;
+  };
+
+  nomicfoundationSolidityLanguageServer = pkgs.writeShellApplication {
+    name = "nomicfoundation-solidity-language-server";
+    runtimeInputs = [ pkgs.nodejs ];
+    text = ''
+      exec node "${pkgs.vscode-extensions.nomicfoundation.hardhat-solidity}/share/vscode/extensions/nomicfoundation.hardhat-solidity/server/out/index.js" "$@"
+    '';
+  };
 in
 {
-  inherit debugpyPython prettierPluginSolidity;
+  inherit debugpyPython prettierPluginSolidity solhint nomicfoundationSolidityLanguageServer;
 }
