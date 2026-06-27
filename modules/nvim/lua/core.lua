@@ -3,7 +3,7 @@
       vim.keymap.set("i", "<C-v>", "<C-v>", { noremap = true })
 
       vim.api.nvim_create_autocmd(
-        { "FocusGained", "BufEnter", "CursorHold", "CursorHoldI", "TermClose", "TermLeave" },
+        { "FocusGained", "BufEnter", "TermClose", "TermLeave" },
         { command = "checktime" }
       )
 

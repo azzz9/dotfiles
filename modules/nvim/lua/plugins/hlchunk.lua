@@ -1,6 +1,6 @@
       require("hlchunk").setup({
         chunk = {
-          enable = true,
+          enable = false,
           chars = {
             horizontal_line = "─",
             vertical_line = "│",
@@ -15,7 +15,7 @@
           chars = { "▏" },
         },
         line_num = {
-          enable = true,
+          enable = false,
         },
         blank = {
           enable = false,

@@ -19,16 +19,6 @@ let
     p.tree-sitter-vim
     p.tree-sitter-yaml
   ]);
-  smoothcursorPlugin = pkgs.vimUtils.buildVimPlugin {
-    pname = "smoothcursor-nvim";
-    version = "2024-04-22";
-    src = pkgs.fetchFromGitHub {
-      owner = "gen740";
-      repo = "SmoothCursor.nvim";
-      rev = "12518b284e1e3f7c6c703b346815968e1620bee2";
-      hash = "sha256-P0jGm5ODEVbtmqPGgDFBPDeuOF49CFq5x1PzubEJgaM=";
-    };
-  };
   luaConfigDir = ./nvim/lua;
   luaFiles = [
     "core.lua"
@@ -40,6 +30,7 @@ let
     "plugins/lualine.lua"
     "plugins/nvim-treesitter.lua"
     "plugins/hlchunk.lua"
+    "plugins/smear-cursor.lua"
     "plugins/gitsigns.lua"
     "plugins/gitblame.lua"
     "plugins/diffview.lua"
@@ -48,9 +39,6 @@ let
     "plugins/nvim-autopairs.lua"
     "plugins/nvim-surround.lua"
     "plugins/which-key.lua"
-    "plugins/neoscroll.lua"
-    "plugins/smoothcursor.lua"
-    "plugins/noice.lua"
     "plugins/trouble.lua"
     "plugins/todo-comments.lua"
     "languages.lua"
@@ -121,9 +109,6 @@ in
       with pkgs.vimPlugins;
       [
         kanagawa-nvim
-        noice-nvim
-        nui-nvim
-        nvim-notify
         flash-nvim
         lualine-nvim
         nvim-web-devicons
@@ -152,10 +137,8 @@ in
         nvim-nio
         nvim-treesitter-textobjects
         hlchunk-nvim
-        rainbow-delimiters-nvim
+        smear-cursor-nvim
         which-key-nvim
-        neoscroll-nvim
-        smoothcursorPlugin
       ]
       ++ [ treesitterWithGrammars ];
     inherit extraConfigLua;

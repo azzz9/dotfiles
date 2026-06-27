@@ -55,7 +55,7 @@
         },
         virtual_lines = false,
         underline = false,
-        update_in_insert = true,
+        update_in_insert = false,
         float = { border = "rounded", source = true },
         signs = {
           text = {
@@ -63,18 +63,6 @@
             [vim.diagnostic.severity.WARN] = "",
             [vim.diagnostic.severity.INFO] = "",
             [vim.diagnostic.severity.HINT] = "",
-          },
-          linehl = {
-            [vim.diagnostic.severity.ERROR] = "DiagnosticErrorLine",
-            [vim.diagnostic.severity.WARN] = "DiagnosticWarnLine",
-            [vim.diagnostic.severity.INFO] = "DiagnosticInfoLine",
-            [vim.diagnostic.severity.HINT] = "DiagnosticHintLine",
-          },
-          numhl = {
-            [vim.diagnostic.severity.ERROR] = "DiagnosticErrorNr",
-            [vim.diagnostic.severity.WARN] = "DiagnosticWarnNr",
-            [vim.diagnostic.severity.INFO] = "DiagnosticInfoNr",
-            [vim.diagnostic.severity.HINT] = "DiagnosticHintNr",
           },
         },
       })

@@ -27,7 +27,7 @@
             },
           },
           lualine_x = { "encoding", "fileformat" },
-          lualine_y = { "filetype", "searchcount" },
+          lualine_y = { "filetype" },
           lualine_z = {},
         },
         inactive_sections = {
