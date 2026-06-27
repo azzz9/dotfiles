@@ -61,12 +61,6 @@ If the update, build, or activation fails, `flake.lock` is restored:
 dotfiles upgrade
 ```
 
-Compatibility wrappers are still available:
-
-```
-dotfiles-sync     # same as dotfiles sync
-dotfiles-upgrade  # same as dotfiles upgrade
-```
 
 ## Local push guard
 

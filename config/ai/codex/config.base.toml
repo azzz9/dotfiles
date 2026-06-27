@@ -32,3 +32,11 @@ enabled = true
 
 [tui.model_availability_nux]
 "gpt-5.5" = 4
+
+# Ollama provider: declares the provider so `codex -p dotfiles` can use it
+# via `-c model_provider="ollama-launch"`. Inert unless explicitly selected;
+# does not affect the default (gpt-5.5 / OpenAI) model used by `cdx`.
+[model_providers.ollama-launch]
+name = "Ollama"
+base_url = "http://127.0.0.1:11434/v1/"
+wire_api = "responses"

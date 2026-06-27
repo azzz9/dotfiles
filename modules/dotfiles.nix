@@ -150,17 +150,9 @@ EOF
         ;;
     esac
   '';
-  dotfilesSync = pkgs.writeShellScriptBin "dotfiles-sync" ''
-    exec ${dotfiles}/bin/dotfiles sync "$@"
-  '';
-  dotfilesUpgrade = pkgs.writeShellScriptBin "dotfiles-upgrade" ''
-    exec ${dotfiles}/bin/dotfiles upgrade "$@"
-  '';
 in
 {
   home.packages = [
     dotfiles
-    dotfilesSync
-    dotfilesUpgrade
   ];
 }
