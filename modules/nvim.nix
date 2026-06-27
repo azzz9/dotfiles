@@ -36,10 +36,10 @@ let
     "plugins/telescope.lua"
     "plugins/flash.lua"
     "plugins/lazygit.lua"
-    "plugins/bufferline.lua"
+    "plugins/barbar.lua"
     "plugins/lualine.lua"
     "plugins/nvim-treesitter.lua"
-    "plugins/indent-blankline.lua"
+    "plugins/hlchunk.lua"
     "plugins/gitsigns.lua"
     "plugins/gitblame.lua"
     "plugins/diffview.lua"
@@ -140,18 +140,18 @@ in
         todo-comments-nvim
         lazygit-nvim
         gitsigns-nvim
-        gitblame
+        git-blame-nvim
         diffview-nvim
         oil-nvim
         mini-nvim
-        bufferline-nvim
+        barbar-nvim
         nvim-dap
         nvim-dap-ui
         nvim-dap-virtual-text
         nvim-dap-python
         nvim-nio
         nvim-treesitter-textobjects
-        indent-blankline-nvim
+        hlchunk-nvim
         rainbow-delimiters-nvim
         which-key-nvim
         neoscroll-nvim

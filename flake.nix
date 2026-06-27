@@ -34,7 +34,12 @@
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
       mkHomeConfiguration = system:
         home-manager.lib.homeManagerConfiguration {
-          pkgs = import nixpkgs { inherit system; };
+          pkgs = import nixpkgs {
+          inherit system;
+          config.allowUnfreePredicate = pkg: builtins.elem (nixpkgs.lib.getName pkg) [
+            "barbar.nvim"
+          ];
+        };
           extraSpecialArgs = {
             # llm-agents.nix is packages-only (no overlay/HM module).
             # Guard with `or null` so unsupported systems (e.g. aarch64-darwin
