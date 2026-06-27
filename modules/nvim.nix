@@ -41,6 +41,7 @@ let
     "plugins/nvim-treesitter.lua"
     "plugins/indent-blankline.lua"
     "plugins/gitsigns.lua"
+    "plugins/gitblame.lua"
     "plugins/diffview.lua"
     "plugins/mini.lua"
     "plugins/oil.lua"
@@ -139,6 +140,7 @@ in
         todo-comments-nvim
         lazygit-nvim
         gitsigns-nvim
+        gitblame
         diffview-nvim
         oil-nvim
         mini-nvim

@@ -12,3 +12,6 @@
       vim.keymap.set("n", "<leader>gh", "<cmd>DiffviewFileHistory %<cr>", { desc = "Current file history" })
       vim.keymap.set("n", "<leader>gH", "<cmd>DiffviewFileHistory<cr>", { desc = "Repository file history" })
       vim.keymap.set("n", "<leader>gq", "<cmd>DiffviewClose<cr>", { desc = "Close git diff" })
+
+      -- Jump to the new (right) diff window inside diffview.
+      vim.keymap.set("n", "<leader>b", "<C-w>l", { desc = "Move to new buffer (diffview)" })
