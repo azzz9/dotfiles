@@ -58,7 +58,7 @@ gcp() {
 
 # dev: add a dev window (nvim + AI agent + free shell) to the current session.
 # Layout: nvim (65% width) | AI agent (35% width, 75% height) + free (25% height)
-# Each invocation creates a new window (dev, dev2, dev3, ...).
+# Each invocation creates a new window named after the current directory.
 # Usage: dev [codex|gcp]  (default: codex)
 dev() {
   local agent="${1:-codex}"
@@ -69,12 +69,13 @@ dev() {
     *)     echo "usage: dev [codex|gcp]" >&2; return 1 ;;
   esac
 
-  # Find a unique window name: dev, dev2, dev3, ...
-  local name="dev"
+  # Find a unique window name based on the current directory name.
+  local base="$(basename "$PWD")"
+  local name="$base"
   local n=1
   while tmux list-windows -F '#{window_name}' 2>/dev/null | grep -qx "$name"; do
     n=$((n + 1))
-    name="dev${n}"
+    name="${base}${n}"
   done
 
   # Create new window in current session, pane 0 = nvim
