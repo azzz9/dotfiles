@@ -42,9 +42,14 @@
         capabilities = lsp_capabilities,
         cmd = {
           "typescript-language-server",
-          "--tsserver-path",
-          vim.g.tsserver_path,
           "--stdio",
+        },
+        -- typescript-language-server v5 removed the --tsserver-path CLI flag.
+        -- Use initializationOptions.tsserver.path instead.
+        init_options = {
+          tsserver = {
+            path = vim.g.tsserver_path,
+          },
         },
       }
       local solidity_project_markers = {

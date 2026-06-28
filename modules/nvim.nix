@@ -58,7 +58,7 @@ let
       ''
         vim.g.codelldb_path = "${pkgs.vscode-extensions.vadimcn.vscode-lldb}/share/vscode/extensions/vadimcn.vscode-lldb/adapter/codelldb"
         vim.g.prettier_plugin_solidity_path = "${solidity.prettierPluginSolidity}/lib/node_modules/prettier-plugin-solidity/dist/index.js"
-        vim.g.tsserver_path = "${pkgs.typescript}/lib/node_modules/typescript/bin/tsserver"
+        vim.g.tsserver_path = "${pkgs.typescript}/lib/node_modules/typescript/lib/tsserver.js"
         local is_vscode = vim.g.vscode ~= nil
       ''
       (readLua "core.lua")
