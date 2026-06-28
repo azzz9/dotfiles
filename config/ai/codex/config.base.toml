@@ -5,7 +5,7 @@ approval_policy = "on-request"
 approvals_reviewer = "auto_review"
 sandbox_mode = "workspace-write"
 allow_login_shell = false
-web_search = "cached"
+web_search = "live"
 
 [features]
 guardian_approval = true
@@ -40,3 +40,6 @@ enabled = true
 name = "Ollama"
 base_url = "http://127.0.0.1:11434/v1/"
 wire_api = "responses"
+
+[projects."/home/azzz/src/github.com/azzz9/atcoder"]
+trust_level = "trusted"
