@@ -18,6 +18,7 @@ in
   home.packages =
     (with pkgs; [
       # --- General tools ---
+      tmuxinator
       lazygit
       ghq
       git-wt

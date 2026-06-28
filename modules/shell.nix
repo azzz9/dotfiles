@@ -61,6 +61,12 @@ in
     enableZshIntegration = false;
   };
 
+  # z: smart directory jumping (Oh My Zsh z replacement)
+  programs.zoxide = {
+    enable = true;
+    enableZshIntegration = true;
+  };
+
   home.packages = [
     pkgs.pure-prompt
   ];

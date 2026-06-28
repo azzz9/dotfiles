@@ -56,6 +56,44 @@ gcp() {
     "$@"
 }
 
+# dev: add a dev window (nvim + AI agent + free shell) to the current session.
+# Layout: nvim (65% width) | AI agent (35% width, 75% height) + free (25% height)
+# Each invocation creates a new window (dev, dev2, dev3, ...).
+# Usage: dev [codex|gcp]  (default: codex)
+dev() {
+  local agent="${1:-codex}"
+  local cmd
+  case "$agent" in
+    codex) cmd="codex --no-alt-screen" ;;
+    gcp)   cmd="copilot --allow-all-tools --allow-url github.com --allow-url api.github.com --deny-tool 'shell(sudo:*)' --deny-tool 'shell(dd:*)' --deny-tool 'shell(mkfs:*)'" ;;
+    *)     echo "usage: dev [codex|gcp]" >&2; return 1 ;;
+  esac
+
+  # Find a unique window name: dev, dev2, dev3, ...
+  local name="dev"
+  local n=1
+  while tmux list-windows -F '#{window_name}' 2>/dev/null | grep -qx "$name"; do
+    n=$((n + 1))
+    name="dev${n}"
+  done
+
+  # Create new window in current session, pane 0 = nvim
+  tmux new-window -n "$name" -c "$PWD"
+  tmux send-keys "nvim" Enter
+  # Split right: AI agent pane (35% width, nvim gets 65%)
+  tmux split-window -h -l 35% -c "$PWD"
+  tmux send-keys "$cmd" Enter
+  # Split AI agent pane vertically: free shell (25% height, AI agent gets 75%)
+  tmux split-window -v -l 25% -c "$PWD"
+  # Focus nvim
+  tmux select-pane -t 0
+}
+
+_dev() {
+  _arguments '1:agent:(codex gcp)'
+}
+compdef _dev dev
+
 # git-wt shell integration — enables `git wt <branch>` auto-cd
 # and tab completion. Only the `git wt` subcommand is intercepted;
 # all other git commands pass through unchanged.
