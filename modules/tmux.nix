@@ -65,6 +65,7 @@ in
       {
         plugin = resurrect;
         extraConfig = ''
+          set -g @resurrect-dir '~/.local/share/tmux/resurrect'
           set -g @resurrect-capture-pane-contents 'on'
         '';
       }
