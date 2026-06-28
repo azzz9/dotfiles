@@ -178,8 +178,20 @@
               end
               return { stdin_file, nil, nil }
             end,
+            args = function()
+              local input = vim.fn.input("Args: ")
+              if input == nil or input == "" then
+                return nil
+              end
+              local args = {}
+              for word in input:gmatch("%S+") do
+                table.insert(args, word)
+              end
+              return args
+            end,
             cwd = vim.fn.getcwd(),
             stopOnEntry = false,
+            showDisassembly = "never",
           },
         }
       end
