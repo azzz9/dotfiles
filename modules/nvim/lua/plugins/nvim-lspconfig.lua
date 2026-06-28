@@ -36,7 +36,7 @@
       }
       vim.lsp.config["clangd"] = {
         capabilities = lsp_capabilities,
-        cmd = { "clangd", "--background-index", "--clang-tidy" },
+        cmd = { "clangd", "--background-index", "--clang-tidy", "--function-arg-placeholders=false" },
       }
       vim.lsp.config["ts_ls"] = {
         capabilities = lsp_capabilities,
