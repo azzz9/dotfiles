@@ -1,79 +1,93 @@
 # dotfiles
 
-Home Manager + Nix flake setup.(I'm not a NixOS user.)
+Home Manager + Nix flake setup (not a NixOS user).
 
-## Install (new machine)
+## Quick start (new machine)
 
 Prerequisites: `curl` and `git`
 
-1. Clone this repo:
+### 1. Clone & bootstrap
 
-```
+```bash
 git clone https://github.com/azzz9/dotfiles.git ~/dotfiles
-```
-
-2. Run the bootstrap script:
-
-```
-GIT_NAME="your-name" GIT_EMAIL="your-noreply@users.noreply.github.com" ~/dotfiles/scripts/setup-system.sh
+GIT_NAME="your-name" GIT_EMAIL="your-noreply@users.noreply.github.com" \
+  ~/dotfiles/scripts/setup-system.sh
 ```
 
 The script installs system dependencies, installs Nix if needed, configures
-Git/Zsh/Docker, and applies the Home Manager flake for the current platform and
-current user.
+Git/Zsh/Docker, and applies the Home Manager flake for the current platform
+and user.
 
 Optional overrides:
 
-```
-DOTFILES_DIR=~/dotfiles
-DOTFILES_REPO_URL=https://github.com/azzz9/dotfiles.git
-HM_HOST=x86_64-linux
-REBOOT=1
-```
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `DOTFILES_DIR` | `~/dotfiles` | Clone location |
+| `DOTFILES_REPO_URL` | `https://github.com/azzz9/dotfiles.git` | Repo URL |
+| `HM_HOST` | auto-detect | Home Manager attribute (e.g. `x86_64-linux`) |
+| `REBOOT` | `0` | Reboot after setup |
 
-Manual Home Manager apply (use the system-specific attribute):
+### 2. Manual apply (alternative)
 
-```
+```bash
 nix run nixpkgs#home-manager -- switch --flake ~/dotfiles#x86_64-linux --impure -b backup
 
 # Apple Silicon
 nix run nixpkgs#home-manager -- switch --flake ~/dotfiles#aarch64-darwin --impure -b backup
 ```
 
-## Apply and update
+## Day-to-day commands
 
-Build and apply the current checkout:
+| Command | Description |
+|---------|-------------|
+| `dotfiles apply` | Build and apply the current checkout |
+| `dotfiles sync` | Pull latest, then apply (requires clean repo) |
+| `dotfiles upgrade` | Refresh `flake.lock` inputs, then apply (requires clean repo; restores `flake.lock` on failure) |
 
-```
-dotfiles apply
-```
-
-Require a clean repo, pull latest changes from GitHub, then build and apply:
-
-```
-dotfiles sync
-```
-
-Require a clean repo, refresh `flake.lock` inputs, then build and apply.
-If the update, build, or activation fails, `flake.lock` is restored:
+## Repository layout
 
 ```
-dotfiles upgrade
+dotfiles/
++-- flake.nix                  # homeConfigurations: x86_64-linux, aarch64-darwin
++-- hosts/default.nix          # HM entry point, AI symlinks (codex + copilot)
++-- modules/
+|   +-- dotfiles.nix           # `dotfiles` CLI (apply / sync / upgrade)
+|   +-- git.nix                # Git config + ghq + git-wt defaults
+|   +-- gh.nix                 # GitHub CLI aliases
+|   +-- shell.nix              # Zsh + helpers (gqcd, rcd, wtcd, dev)
+|   +-- tmux.nix               # tmux plugins (managed by HM, not TPM)
+|   +-- nvim.nix               # Neovim (via nixvim)
+|   +-- packages.nix           # Additional system packages
+|   +-- solidity.nix           # Solidity toolchain
+|   +-- lazygit.nix            # lazygit config
++-- config/ai/                 # AI agent config (codex + copilot shared)
+|   +-- AGENTS.md              # Core rules (read-only gate, language, dispatch)
+|   +-- rules/                 # On-demand rule files (read when needed)
+|   +-- codex/                 # Codex-specific config + rules
+|   +-- skills/                # Reusable AI skills
++-- scripts/setup-system.sh    # Bootstrap script
++-- .githooks/pre-push         # Local pre-push checks
++-- .github/workflows/ci.yml   # CI: static checks + builds
 ```
-
 
 ## Local push guard
 
-Enable local pre-push checks (blocks push if eval/build fails):
-
-```
+```bash
 git config core.hooksPath .githooks
 ```
 
-## CI binary cache (optional)
+Runs `nix flake check`, `shellcheck`, `actionlint`, and a Home Manager
+build before push.
 
-To speed up CI builds, create a [Cachix](https://cachix.org) cache and set
-these repository variables/secrets:
+## CI
+
+CI runs static checks (shellcheck, actionlint, `nix flake check`, HM eval)
+and builds for `x86_64-linux` and `aarch64-darwin`.
+
+### Binary cache (optional)
+
+Create a [Cachix](https://cachix.org) cache and set these repository
+variables/secrets:
 
 | Name | Type | Purpose |
 |------|------|---------|
@@ -88,7 +102,5 @@ for build caching. Without it, only the public nixpkgs cache is used.
 - If you add new files to the flake, they must be `git add`'d before running
   `home-manager switch`, otherwise Nix will not see them.
 - tmux plugins are managed by Home Manager, not TPM.
-- AI tool workflow notes for `codex` and `gh copilot` live in
-  [docs/ai-tools.md](./docs/ai-tools.md).
-- Shared repo AI context can start from
-  [docs/ai-context-template.md](./docs/ai-context-template.md).
+- AI agent rules are split: `config/ai/AGENTS.md` holds core rules only;
+  detailed rules in `config/ai/rules/` are read on demand.
