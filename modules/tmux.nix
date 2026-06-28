@@ -1,5 +1,24 @@
 { pkgs, ... }:
 let
+  # Tokyo Night palette (github.com/folke/tokyonight.nvim)
+  # Used for pane-border, popup, message, and other non-status-line styling.
+  tn = {
+    bg          = "#1a1b26";
+    bgDark      = "#16161e";
+    bgHighlight = "#292e42";
+    fg          = "#c0caf5";
+    fgGutter    = "#3b4261";
+    comment     = "#737aa2";
+    blue        = "#7aa2f7";
+    cyan        = "#7dcfff";
+    magenta     = "#bb9af7";
+    green       = "#9ece6a";
+    yellow      = "#e0af68";
+    orange      = "#ff9e64";
+    red         = "#f7768e";
+    purple      = "#9d7cd8";
+  };
+
   tmuxClipboardCopy = pkgs.writeShellScriptBin "tmux-clipboard-copy" ''
     set -euo pipefail
 
@@ -26,7 +45,23 @@ in
   programs.tmux = {
     enable = true;
     plugins = with pkgs.tmuxPlugins; [
-      gruvbox
+      {
+        plugin = tokyo-night-tmux;
+        extraConfig = ''
+          set -g @tokyo-night-tmux_theme "night"
+          set -g @tokyo-night-tmux_show_datetime 1
+          set -g @tokyo-night-tmux_date_format "%Y-%m-%d"
+          set -g @tokyo-night-tmux_time_format "%H:%M"
+          set -g @tokyo-night-tmux_show_cpu_usage 1
+          set -g @tokyo-night-tmux_show_ram_usage 1
+          set -g @tokyo-night-tmux_show_network 1
+          set -g @tokyo-night-tmux_show_wbg 0
+          set -g @tokyo-night-tmux_show_path 1
+          set -g @tokyo-night-tmux_window_id_style "hide"
+          set -g @tokyo-night-tmux_pane_id_style "hide"
+          set -g @tokyo-night-tmux_zoom_id_style "hide"
+        '';
+      }
       {
         plugin = resurrect;
         extraConfig = ''
@@ -42,6 +77,7 @@ in
       }
     ];
     extraConfig = ''
+      # === Key bindings ===
       unbind C-a
       unbind C-g
       unbind C-Space
@@ -69,8 +105,8 @@ in
 
       unbind '"'
       unbind %
-      bind / split-window -h
-      bind - split-window -v
+      bind / split-window -h -c "#{pane_current_path}"
+      bind - split-window -v -c "#{pane_current_path}"
 
       bind -r h select-pane -L
       bind -r j select-pane -D
@@ -94,10 +130,8 @@ in
       bind -n M-Up switch-client -p
       bind -n M-Down switch-client -n
 
-      set -g pane-border-status top
-      set -g pane-border-format ' #{pane_index}#{?pane_active,*,} #{pane_id} #{pane_current_command} '
-
-      # Let gruvbox theme control window status formats
+      # Reset: clear resurrect data + kill server (restart with `tmux`)
+      bind X confirm-before -p "Reset all tmux sessions? (y/n)" "run-shell 'rm -rf ~/.local/share/tmux/resurrect/ && tmux kill-server'"
 
       set -g status-interval 2
 
@@ -109,7 +143,42 @@ in
       set -ga terminal-features 'tmux-256color:RGB'
       set -ga terminal-features 'tmux-256color:extkeys'
 
-      set -g @tmux-gruvbox 'dark'
+      # === Theme: tokyo-night-tmux plugin handles status line & window tabs ===
+      # Override: keep status bar at top (plugin default is bottom)
+      set -g status-position top
+
+      # Override window tab formats for clearer active/inactive distinction
+      setw -g window-status-current-format "#[bg=${tn.blue},fg=${tn.bg},bold] #W #[bg=${tn.bg}]"
+      setw -g window-status-format "#[fg=${tn.comment},dim] #W #[nodim]"
+      setw -g window-status-separator ""
+
+      # --- Pane borders (heavy lines) ---
+      set -g pane-border-status top
+      set -g pane-border-lines heavy
+      set -g pane-border-style "fg=${tn.fgGutter}"
+      set -g pane-border-active-style "fg=${tn.blue}"
+      set -g pane-border-format " #[fg=${tn.cyan}]#{pane_index}#[fg=${tn.fg}] #{pane_current_command} "
+      set -g pane-border-indicators colour
+
+      # --- Popup (rounded corners for codex / gh copilot) ---
+      set -g popup-style "bg=${tn.bg},fg=${tn.fg}"
+      set -g popup-border-style "fg=${tn.blue}"
+      set -g popup-border-lines rounded
+
+      # --- Copy mode ---
+      setw -g mode-style "bg=${tn.bgHighlight},fg=${tn.fg}"
+
+      # --- Message / command prompt ---
+      set -g message-style "bg=${tn.blue},fg=${tn.bg},bold"
+      set -g message-command-style "bg=${tn.blue},fg=${tn.bg},bold"
+
+      # --- Display panes (prefix q) ---
+      set -g display-panes-colour "${tn.fg}"
+      set -g display-panes-active-colour "${tn.blue}"
+
+      # --- Clock mode ---
+      set -g clock-mode-colour "${tn.cyan}"
+      set -g clock-mode-style 24
     '';
   };
 }
