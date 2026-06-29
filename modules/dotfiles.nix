@@ -49,6 +49,17 @@ EOF
     # Use nix from nixpkgs and an isolated config to avoid host-specific
     # unknown/deprecation warnings from Determinate Nix defaults.
     export PATH="${pkgs.nix}/bin:${pkgs.git}/bin:${pkgs.coreutils}/bin:${pkgs.gnugrep}/bin:${pkgs.gnused}/bin:/run/current-system/sw/bin:/usr/bin:/bin:$PATH"
+
+    if [ ! -d "${repo}/.git" ]; then
+      echo "dotfiles: ${repo} not found" >&2
+      exit 1
+    fi
+
+    # The daemon must trust a substituter before an unprivileged client can
+    # use it. Configure the Numtide cache once per machine so llm-agents.nix
+    # packages such as Codex are downloaded instead of built locally.
+    ${pkgs.bash}/bin/bash "${repo}/scripts/configure-nix-cache.sh"
+
     cat > "$nix_conf_dir/nix.conf" <<'EOF'
 experimental-features = nix-command flakes
 accept-flake-config = true
@@ -61,11 +72,6 @@ extra-substituters = ${numtideCache.url}
 extra-trusted-public-keys = ${numtideCache.key}
 EOF
     export NIX_CONF_DIR="$nix_conf_dir"
-
-    if [ ! -d "${repo}/.git" ]; then
-      echo "dotfiles: ${repo} not found" >&2
-      exit 1
-    fi
 
     cd "${repo}"
 

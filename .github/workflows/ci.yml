@@ -35,8 +35,8 @@ jobs:
 
       - name: Check shell scripts
         run: |
-          bash -n scripts/setup-system.sh
-          nix run nixpkgs#shellcheck -- scripts/setup-system.sh
+          bash -n scripts/*.sh
+          nix run nixpkgs#shellcheck -- scripts/*.sh
 
       - name: Check GitHub Actions workflows
         run: nix run nixpkgs#actionlint -- .github/workflows/ci.yml

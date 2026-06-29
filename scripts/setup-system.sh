@@ -8,7 +8,7 @@ if [[ -z "${GIT_NAME:-}" || -z "${GIT_EMAIL:-}" ]]; then
 fi
 
 DOTFILES_REPO_URL="${DOTFILES_REPO_URL:-https://github.com/azzz9/dotfiles.git}"
-DEFAULT_DOTFILES_DIR="${HOME}/dotfiles"
+DEFAULT_DOTFILES_DIR="${HOME}/src/github.com/azzz9/dotfiles"
 HM_HOST="${HM_HOST:-}"
 
 os_name="$(uname -s)"
@@ -212,6 +212,7 @@ ensure_dotfiles_repo() {
     exit 1
   fi
 
+  mkdir -p "$(dirname "$repo_dir")"
   git clone "$DOTFILES_REPO_URL" "$repo_dir"
 }
 
@@ -220,6 +221,12 @@ apply_home_manager() {
   local host="$2"
 
   nix_cmd run nixpkgs#home-manager -- switch --flake "$repo_dir#$host" --impure -b backup
+}
+
+configure_nix_cache() {
+  local repo_dir="$1"
+
+  bash "$repo_dir/scripts/configure-nix-cache.sh"
 }
 
 main() {
@@ -246,6 +253,7 @@ main() {
   configure_git
   ensure_dotfiles_repo "$repo_dir"
   install_nix
+  configure_nix_cache "$repo_dir"
   apply_home_manager "$repo_dir" "$host"
 
   if [[ "$should_reboot" == 1 && "${REBOOT:-0}" == 1 ]]; then

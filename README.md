@@ -9,9 +9,9 @@ Prerequisites: `curl` and `git`
 ### 1. Clone & bootstrap
 
 ```bash
-git clone https://github.com/azzz9/dotfiles.git ~/dotfiles
+git clone https://github.com/azzz9/dotfiles.git ~/src/github.com/azzz9/dotfiles
 GIT_NAME="your-name" GIT_EMAIL="your-noreply@users.noreply.github.com" \
-  ~/dotfiles/scripts/setup-system.sh
+  ~/src/github.com/azzz9/dotfiles/scripts/setup-system.sh
 ```
 
 The script installs system dependencies, installs Nix if needed, configures
@@ -22,7 +22,7 @@ Optional overrides:
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `DOTFILES_DIR` | `~/dotfiles` | Clone location |
+| `DOTFILES_DIR` | `~/src/github.com/azzz9/dotfiles` | Clone location |
 | `DOTFILES_REPO_URL` | `https://github.com/azzz9/dotfiles.git` | Repo URL |
 | `HM_HOST` | auto-detect | Home Manager attribute (e.g. `x86_64-linux`) |
 | `REBOOT` | `0` | Reboot after setup |
@@ -30,19 +30,24 @@ Optional overrides:
 ### 2. Manual apply (alternative)
 
 ```bash
-nix run nixpkgs#home-manager -- switch --flake ~/dotfiles#x86_64-linux --impure -b backup
+nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#x86_64-linux --impure -b backup
 
 # Apple Silicon
-nix run nixpkgs#home-manager -- switch --flake ~/dotfiles#aarch64-darwin --impure -b backup
+nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#aarch64-darwin --impure -b backup
 ```
 
 ## Day-to-day commands
 
 | Command | Description |
 |---------|-------------|
-| `dotfiles apply` | Build and apply the current checkout |
+| `dotfiles apply` | Configure the Numtide cache if needed, then build and apply the current checkout |
 | `dotfiles sync` | Pull latest, then apply (requires clean repo) |
 | `dotfiles upgrade` | Refresh `flake.lock` inputs, then apply (requires clean repo; restores `flake.lock` on failure) |
+
+The first apply on a machine may prompt for `sudo` to register
+`cache.numtide.com` as a trusted Nix substituter. Later applies reuse that
+system-wide setting, so packages from `llm-agents.nix` such as Codex are
+downloaded from the binary cache instead of built locally.
 
 ## Repository layout
 
