@@ -56,9 +56,11 @@ gcp() {
     "$@"
 }
 
-# dev: add a dev window (nvim + AI agent + free shell) to the current session.
+# dev: arrange the current window into a dev layout (nvim + AI agent + free shell).
 # Layout: nvim (65% width) | AI agent (35% width, 75% height) + free (25% height)
-# Each invocation creates a new window named after the current directory.
+# Rearranges the current window in place: all other panes are killed (with a
+# confirmation prompt when any has a running process) and the window is renamed
+# after the current directory.
 # Usage: dev [codex|gcp]  (default: codex)
 dev() {
   local agent="${1:-codex}"
@@ -69,17 +71,51 @@ dev() {
     *)     echo "usage: dev [codex|gcp]" >&2; return 1 ;;
   esac
 
-  # Find a unique window name based on the current directory name.
+  # Collect the panes to kill (everything except the active one) and detect
+  # whether any of them has a running process that is not just an idle shell.
+  local current_pane
+  current_pane="$(tmux display-message -p '#{pane_id}')"
+  local pane pane_cmd has_process=0
+  local kill_panes=()
+  for pane in $(tmux list-panes -F '#{pane_id}' 2>/dev/null); do
+    if [[ "$pane" != "$current_pane" ]]; then
+      kill_panes+=("$pane")
+      pane_cmd="$(tmux display-message -p -t "$pane" '#{pane_current_command}')"
+      case "$pane_cmd" in
+        zsh|bash|fish|sh|dash|ksh|mksh|csh|tcsh) ;;  # idle shell
+        *) has_process=1 ;;
+      esac
+    fi
+  done
+
+  # Confirm before discarding panes that have running processes.
+  if (( ${#kill_panes[@]} > 0 )) && (( has_process )); then
+    printf 'dev: %d pane(s) with running processes will be killed. Continue? [y/N] ' "${#kill_panes[@]}"
+    local reply
+    read -r reply
+    if [[ "$reply" != [yY]* ]]; then
+      echo "aborted." >&2
+      return 1
+    fi
+  fi
+
+  for pane in "${kill_panes[@]}"; do
+    tmux kill-pane -t "$pane"
+  done
+
+  # Rename the current window to a unique name based on the current directory.
   local base="$(basename "$PWD")"
   local name="$base"
   local n=1
-  while tmux list-windows -F '#{window_name}' 2>/dev/null | grep -qx "$name"; do
+  local cur_win
+  cur_win="$(tmux display-message -p '#{window_name}')"
+  while tmux list-windows -F '#{window_name}' 2>/dev/null | grep -v -F -x "$cur_win" | grep -qx "$name"; do
     n=$((n + 1))
     name="${base}${n}"
   done
+  tmux rename-window "$name"
 
-  # Create new window in current session, pane 0 = nvim
-  tmux new-window -n "$name" -c "$PWD"
+  # Remaining pane becomes the nvim pane.
   tmux send-keys "nvim" Enter
   # Split right: AI agent pane (35% width, nvim gets 65%)
   tmux split-window -h -l 35% -c "$PWD"
