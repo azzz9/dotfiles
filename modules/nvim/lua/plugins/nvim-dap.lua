@@ -137,6 +137,18 @@
         return typed
       end
 
+      local adapter_settings = {
+        showDisassembly = "never",
+        suppressMissingSourceFiles = true,
+      }
+
+      -- Export helpers for external config overrides (e.g. atcoder contest mode)
+      package.loaded["dap.codelldb_helpers"] = {
+        collect_stdin_candidates = collect_stdin_candidates,
+        pick_path_from_candidates = pick_path_from_candidates,
+        adapter_settings = adapter_settings,
+      }
+
       dap.adapters.codelldb = {
         type = "server",
         port = "${port}",
@@ -191,7 +203,7 @@
             end,
             cwd = vim.fn.getcwd(),
             stopOnEntry = false,
-            showDisassembly = "never",
+            _adapterSettings = adapter_settings,
           },
         }
       end
