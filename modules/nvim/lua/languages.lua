@@ -57,4 +57,9 @@
         cpp = {
           lsp = "clangd",
         },
+        nix = {
+          lsp = "nil_ls",
+          formatters = { "nixpkgs_fmt" },
+          linters = { "statix", "deadnix" },
+        },
       }

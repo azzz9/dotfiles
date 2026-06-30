@@ -38,6 +38,16 @@
         capabilities = lsp_capabilities,
         cmd = { "clangd", "--background-index", "--clang-tidy", "--function-arg-placeholders=false" },
       }
+      vim.lsp.config["nil_ls"] = {
+        capabilities = lsp_capabilities,
+        settings = {
+          ["nil"] = {
+            formatting = {
+              command = { "nixpkgs-fmt" },
+            },
+          },
+        },
+      }
       vim.lsp.config["ts_ls"] = {
         capabilities = lsp_capabilities,
         cmd = {

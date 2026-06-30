@@ -4,6 +4,7 @@ let
   treesitterWithGrammars = pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
     p.tree-sitter-bash
     p.tree-sitter-c
+    p.tree-sitter-nix
     p.tree-sitter-cpp
     p.tree-sitter-css
     p.tree-sitter-html
