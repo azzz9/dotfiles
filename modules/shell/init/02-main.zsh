@@ -61,14 +61,15 @@ gcp() {
 # Rearranges the current window in place: all other panes are killed (with a
 # confirmation prompt when any has a running process) and the window is renamed
 # after the current directory.
-# Usage: dev [codex|gcp]  (default: codex)
+# Usage: dev [cdx|olc|gcp]  (default: cdx)
 dev() {
-  local agent="${1:-codex}"
+  local agent="${1:-cdx}"
   local cmd
   case "$agent" in
-    codex) cmd="codex --no-alt-screen" ;;
-    gcp)   cmd="copilot --allow-all-tools --allow-url github.com --allow-url api.github.com --deny-tool 'shell(sudo:*)' --deny-tool 'shell(dd:*)' --deny-tool 'shell(mkfs:*)'" ;;
-    *)     echo "usage: dev [codex|gcp]" >&2; return 1 ;;
+    cdx)   cmd="cdx" ;;
+    olc)   cmd="olc" ;;
+    gcp)   cmd="gcp" ;;
+    *)     echo "usage: dev [cdx|olc|gcp]" >&2; return 1 ;;
   esac
 
   # Collect the panes to kill (everything except the active one) and detect
@@ -127,7 +128,7 @@ dev() {
 }
 
 _dev() {
-  _arguments '1:agent:(codex gcp)'
+  _arguments '1:agent:(cdx olc gcp)'
 }
 compdef _dev dev
 
