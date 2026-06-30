@@ -35,18 +35,18 @@
       mkHomeConfiguration = system:
         home-manager.lib.homeManagerConfiguration {
           pkgs = import nixpkgs {
-          inherit system;
-          config.allowUnfreePredicate = pkg: builtins.elem (nixpkgs.lib.getName pkg) [
-            "barbar.nvim"
-          ];
-        };
+            inherit system;
+            config.allowUnfreePredicate = pkg: builtins.elem (nixpkgs.lib.getName pkg) [
+              "barbar.nvim"
+            ];
+          };
           extraSpecialArgs = {
             # llm-agents.nix is packages-only (no overlay/HM module).
             # Guard with `or null` so unsupported systems (e.g. aarch64-darwin
             # if not yet packaged) do not break the build; packages.nix
             # skips null entries.
-            codexPackage = (llm-agents.packages.${system} or {}).codex or null;
-            copilotPackage = (llm-agents.packages.${system} or {})."copilot-cli" or null;
+            codexPackage = (llm-agents.packages.${system} or { }).codex or null;
+            copilotPackage = (llm-agents.packages.${system} or { })."copilot-cli" or null;
           };
           modules = [
             ./hosts/default.nix
@@ -54,7 +54,7 @@
           ];
         };
     in
-      {
-        homeConfigurations = forAllSystems mkHomeConfiguration;
-      };
+    {
+      homeConfigurations = forAllSystems mkHomeConfiguration;
+    };
 }
