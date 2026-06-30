@@ -48,7 +48,10 @@ let
     "ui.lua"
     "plugins/nvim-lspconfig.lua"
     "plugins/blink-cmp.lua"
-    "plugins/nvim-dap.lua"
+    "plugins/dap/init.lua"
+    "plugins/dap/c.lua"
+    "plugins/dap/python.lua"
+    "plugins/dap/javascript.lua"
   ];
   readLua = file: builtins.readFile (luaConfigDir + "/${file}");
   # core.lua is always loaded (even inside VSCode). All other files are
@@ -60,6 +63,8 @@ let
         vim.g.codelldb_path = "${pkgs.vscode-extensions.vadimcn.vscode-lldb}/share/vscode/extensions/vadimcn.vscode-lldb/adapter/codelldb"
         vim.g.prettier_plugin_solidity_path = "${solidity.prettierPluginSolidity}/lib/node_modules/prettier-plugin-solidity/dist/index.js"
         vim.g.tsserver_path = "${pkgs.typescript}/lib/node_modules/typescript/lib/tsserver.js"
+        vim.g.debugpy_python = "${solidity.debugpyPython}/bin/python"
+        vim.g.js_debug_path = "${pkgs.vscode-js-debug}/bin/js-debug"
         local is_vscode = vim.g.vscode ~= nil
       ''
       (readLua "core.lua")
@@ -68,7 +73,6 @@ let
     ++ (map readLua (builtins.filter (file: file != "core.lua") luaFiles))
     ++ [
       ''
-        require("dap-python").setup("${solidity.debugpyPython}/bin/python")
         end
       ''
     ]

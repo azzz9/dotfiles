@@ -1,3 +1,8 @@
+      -- DAP core: keymaps, shared helpers, UI, virtual-text.
+      -- Per-language adapters/configurations live in sibling files
+      -- (c.lua, python.lua, javascript.lua) and reuse the locals
+      -- declared here because all DAP files are concatenated into one
+      -- Lua chunk by modules/nvim.nix.
       vim.keymap.set("n", "<leader>dc", function()
         require("dap").continue()
       end, { desc = "DAP continue" })
@@ -27,6 +32,7 @@
           vim.notify("dapui is unavailable", vim.log.levels.WARN)
         end
       end, { desc = "DAP UI toggle" })
+
       local dap = require("dap")
       local dapui_ok, dapui = pcall(require, "dapui")
 
@@ -137,6 +143,22 @@
         return typed
       end
 
+      -- Interactive args prompt shared by all language configs.
+      -- Mirrors the C/C++ behavior: prompt for a space-separated arg
+      -- string, split on whitespace, return nil when left empty so the
+      -- adapter receives no args.
+      local function pick_args(prompt, default)
+        local input = vim.fn.input(prompt or "Args: ", default or "")
+        if input == nil or input == "" then
+          return nil
+        end
+        local args = {}
+        for word in input:gmatch("%S+") do
+          table.insert(args, word)
+        end
+        return args
+      end
+
       local adapter_settings = {
         showDisassembly = "never",
         suppressMissingSourceFiles = true,
@@ -146,67 +168,9 @@
       package.loaded["dap.codelldb_helpers"] = {
         collect_stdin_candidates = collect_stdin_candidates,
         pick_path_from_candidates = pick_path_from_candidates,
+        pick_args = pick_args,
         adapter_settings = adapter_settings,
       }
-
-      dap.adapters.codelldb = {
-        type = "server",
-        port = "${port}",
-        executable = {
-          command = vim.g.codelldb_path,
-          args = { "--port", "${port}" },
-        },
-      }
-
-      for _, lang in ipairs({ "c", "cpp" }) do
-        dap.configurations[lang] = {
-          {
-            name = "Launch executable",
-            type = "codelldb",
-            request = "launch",
-            program = function()
-              local cwd = vim.fn.getcwd()
-              local program = pick_path_from_candidates(
-                "Executable: ",
-                collect_executable_candidates(cwd),
-                cwd .. "/",
-                false
-              )
-              if program == nil or program == "" then
-                return dap.ABORT
-              end
-              return program
-            end,
-            stdio = function()
-              local cwd = vim.fn.getcwd()
-              local stdin_file = pick_path_from_candidates(
-                "stdin file (empty: none): ",
-                collect_stdin_candidates(cwd),
-                cwd .. "/",
-                true
-              )
-              if stdin_file == nil or stdin_file == "" then
-                return nil
-              end
-              return { stdin_file, nil, nil }
-            end,
-            args = function()
-              local input = vim.fn.input("Args: ")
-              if input == nil or input == "" then
-                return nil
-              end
-              local args = {}
-              for word in input:gmatch("%S+") do
-                table.insert(args, word)
-              end
-              return args
-            end,
-            cwd = vim.fn.getcwd(),
-            stopOnEntry = false,
-            _adapterSettings = adapter_settings,
-          },
-        }
-      end
 
       if dapui_ok then
         dapui.setup()

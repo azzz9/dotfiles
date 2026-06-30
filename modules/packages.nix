@@ -54,9 +54,16 @@ in
       eslint                      # linter
       eslint_d                    # linter (daemon)
       nodejs                      # runtime
+      vscode-js-debug             # DAP debugger (Node.js / Chrome)
 
       # --- C / C++ ---
       clang-tools           # LSP (clangd) + clang-tidy
+
+      # --- Nix ---
+      nil                       # LSP
+      nixpkgs-fmt                # formatter
+      statix                    # linter (static analysis)
+      deadnix                   # linter (unused bindings)
 
       # --- Solidity ---
       foundry                                      # forge, cast, anvil
