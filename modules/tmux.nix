@@ -95,7 +95,6 @@ in
       setw -g mode-keys vi
       set -g status-keys vi
       set -g set-clipboard on
-      set -g xterm-keys on
       set -g extended-keys on
 
       bind -T copy-mode-vi y send-keys -X copy-pipe-and-cancel "${tmuxClipboardCopy}/bin/tmux-clipboard-copy"
