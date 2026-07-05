@@ -32,10 +32,17 @@ If the intent is ambiguous, ask before making changes.
 
 ## On-demand Rules
 
-The following rule files live in `rules/` next to this file. Read the relevant one(s) **only when the situation applies** — not at startup.
+The following rule files are **read only when the situation applies** — not at startup.
 
-| Situation | File to read |
-|-----------|-------------|
-| You are about to edit files or have finished editing | `rules/file-change-reporting.md` |
-| You are about to create a git commit or push | `rules/git-commit-push.md` |
-| You are about to create a diagram or visual explanation | `rules/diagrams.md` |
+Each rule is installed as an identical symlinked copy in two locations:
+
+- Copilot CLI → `~/.copilot/rules/<name>.md`
+- Codex       → `~/.codex/rules/<name>.md`
+
+Both copies resolve to the same source file, so their contents are identical. Read the one for the tool you are running in; if unsure, read whichever path exists.
+
+| Situation | Rule file (`<name>.md`) |
+|-----------|-------------------------|
+| You are about to edit files or have finished editing | `file-change-reporting` |
+| You are about to create a git commit or push | `git-commit-push` |
+| You are about to create a diagram or visual explanation | `diagrams` |
