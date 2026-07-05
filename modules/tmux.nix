@@ -40,21 +40,34 @@ let
 
     cat >/dev/null
   '';
+
+  # tokyo-night-tmux uses bash associative arrays (declare -A) in
+  # themes.sh / netspeed.sh, which require bash >= 4. macOS ships
+  # /bin/bash 3.2, so patch every script shebang to the Nix bash 5.
+  # Using an absolute store path avoids depending on runtime PATH
+  # (which macOS tmux may not populate with Nix profile bins).
+  tokyoNightTmux = pkgs.tmuxPlugins.tokyo-night-tmux.overrideAttrs (oa: {
+    postInstall = (oa.postInstall or "") + ''
+      for f in "$out/share/tmux-plugins/tokyo-night-tmux/tokyo-night.tmux" \
+               "$out"/share/tmux-plugins/tokyo-night-tmux/src/*.sh; do
+        substituteInPlace "$f" \
+          --replace '#!/usr/bin/env bash' '#!${pkgs.bash}/bin/bash'
+      done
+    '';
+  });
 in
 {
   programs.tmux = {
     enable = true;
     plugins = with pkgs.tmuxPlugins; [
       {
-        plugin = tokyo-night-tmux;
+        plugin = tokyoNightTmux;
         extraConfig = ''
           set -g @tokyo-night-tmux_theme "night"
           set -g @tokyo-night-tmux_show_datetime 1
           set -g @tokyo-night-tmux_date_format "%Y-%m-%d"
           set -g @tokyo-night-tmux_time_format "%H:%M"
-          set -g @tokyo-night-tmux_show_cpu_usage 1
-          set -g @tokyo-night-tmux_show_ram_usage 1
-          set -g @tokyo-night-tmux_show_network 1
+          set -g @tokyo-night-tmux_show_netspeed 1
           set -g @tokyo-night-tmux_show_wbg 0
           set -g @tokyo-night-tmux_show_path 1
           set -g @tokyo-night-tmux_window_id_style "hide"
@@ -156,7 +169,6 @@ in
       set -g pane-border-status top
       set -g pane-border-lines heavy
       set -g pane-border-style "fg=${tn.fgGutter}"
-      set -g pane-border-active-style "fg=${tn.blue}"
       set -g pane-border-format " #[fg=${tn.cyan}]#{pane_index}#[fg=${tn.fg}] #{pane_current_command} "
       set -g pane-border-indicators colour
 
