@@ -4,25 +4,38 @@ let
 
   # The upstream hunk package builds with `bun build --compile` and ships with
   # `dontFixup = true`, so the single-file binary has no DT_RUNPATH. Its
-  # interpreter is Nix's ld-linux, but without a runpath it resolves libc from
-  # the host (e.g. glibc 2.43 on Arch/WSL2), which mismatches Nix's glibc 2.42
-  # ld-linux and segfaults on startup.
+  # interpreter is Nix's ld-linux but it resolves libc from the host (e.g.
+  # glibc 2.43 on Arch/WSL2), mismatching Nix's glibc 2.42 ld-linux and
+  # segfaulting on startup.
   #
-  # patchelf can't fix this: it relocates ELF sections and corrupts Bun's
-  # embedded archive. Instead we wrap the binary, prepending the matching Nix
-  # glibc to LD_LIBRARY_PATH. This keeps process.execPath pointing at the real
-  # binary (so the daemon self-reexec in `hunk session` and the bundled skill
-  # path resolution still work) and only affects hunk's own libc load.
+  # We cannot fix this with patchelf (it relocates ELF sections and corrupts
+  # Bun's embedded archive) nor with LD_LIBRARY_PATH alone: even with the
+  # matching Nix glibc loaded, the kernel-mapped direct launch segfaults in a
+  # BSS page (strace: SEGV_MAPERR @ 0x6510e40) because the kernel does not map
+  # the binary's last BSS page the way ld-linux does. The binary runs correctly
+  # only when ld-linux maps it explicitly.
+  #
+  # So on Linux we wrap `hunk` to launch the real binary through the matching
+  # ld-linux with --library-path. Trade-off: process.execPath then points at
+  # ld-linux, which breaks the TUI's auto-spawn of the session daemon
+  # (`hunk session` uses process.execPath to relaunch itself) and the bundled
+  # `hunk skill path` lookup. The session daemon can still be started manually
+  # with `hunk daemon serve`, and the review skill is deployed separately to
+  # ~/.codex/skills/hunk-review and ~/.copilot/skills/hunk-review below.
+  # darwin is unaffected (no ld-linux) and uses the upstream package directly.
   hunkPackage =
     if pkgs.stdenv.isLinux then
-      pkgs.runCommand "hunk-wrapped"
-        { nativeBuildInputs = [ pkgs.makeWrapper ]; }
-        ''
-          mkdir -p $out
-          cp -r ${upstreamHunk}/. $out/
-          chmod -R u+w $out
-          wrapProgram $out/bin/hunk --prefix LD_LIBRARY_PATH : ${lib.getLib pkgs.glibc}/lib
-        ''
+      pkgs.runCommand "hunk-wrapped" { } ''
+        mkdir -p $out
+        cp -r ${upstreamHunk}/. $out/
+        chmod -R u+w $out
+        mv $out/bin/hunk $out/bin/.hunk-real
+        cat > $out/bin/hunk <<EOF
+        #!${pkgs.bash}/bin/bash
+        exec ${lib.getLib pkgs.glibc}/lib/ld-linux-x86-64.so.2 --library-path ${lib.getLib pkgs.glibc}/lib $out/bin/.hunk-real "\$@"
+        EOF
+        chmod +x $out/bin/hunk
+      ''
     else
       upstreamHunk;
 in
@@ -53,6 +66,8 @@ in
   # hunk version automatically, unlike a static copy in the repo. The repo's
   # own skill symlinks (hosts/default.nix) point into the checkout, so we do
   # NOT add "hunk-review" to `skillNames` there to avoid a duplicate key.
+  # This also works around the wrapper breaking `hunk skill path`: agents can
+  # read the skill directly from these deployed paths.
   home.file = {
     ".codex/skills/hunk-review".source =
       "${config.programs.hunk.package}/skills/hunk-review";
