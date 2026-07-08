@@ -56,10 +56,10 @@ gcp() {
     "$@"
 }
 
-# dev: arrange the current window into a dev layout (nvim + AI agent + free shell).
+# dev: arrange the current tab into a dev layout (nvim + AI agent + free shell).
 # Layout: nvim (65% width) | AI agent (35% width, 75% height) + free (25% height)
-# Rearranges the current window in place: all other panes are killed (with a
-# confirmation prompt when any has a running process) and the window is renamed
+# Rearranges the current tab in place: all other panes are killed (with a
+# confirmation prompt when any has a running process) and the tab is renamed
 # after the current directory.
 # Usage: dev [cdx|olc|gcp]  (default: cdx)
 dev() {
@@ -72,20 +72,26 @@ dev() {
     *)     echo "usage: dev [cdx|olc|gcp]" >&2; return 1 ;;
   esac
 
+  local current_pane="${HERDR_PANE_ID:-}"
+  if [[ -z "$current_pane" ]]; then
+    echo "dev: not inside a herdr session (HERDR_PANE_ID not set)" >&2
+    return 1
+  fi
+
   # Collect the panes to kill (everything except the active one) and detect
   # whether any of them has a running process that is not just an idle shell.
-  local current_pane
-  current_pane="$(tmux display-message -p '#{pane_id}')"
-  local pane pane_cmd has_process=0
+  local pane has_process=0
   local kill_panes=()
-  for pane in $(tmux list-panes -F '#{pane_id}' 2>/dev/null); do
+  for pane in $(herdr pane list 2>/dev/null | awk 'NF{print $1}'); do
     if [[ "$pane" != "$current_pane" ]]; then
       kill_panes+=("$pane")
-      pane_cmd="$(tmux display-message -p -t "$pane" '#{pane_current_command}')"
-      case "$pane_cmd" in
-        zsh|bash|fish|sh|dash|ksh|mksh|csh|tcsh) ;;  # idle shell
-        *) has_process=1 ;;
-      esac
+      # Best-effort: check foreground process via herdr pane process-info.
+      # Output format unknown; grep for shell binary names.
+      local proc
+      proc="$(herdr pane process-info --pane "$pane" 2>/dev/null)"
+      if ! grep -qE '(^|/)(zsh|bash|fish|sh|dash|ksh|mksh|csh|tcsh)( |$)' <<< "$proc" 2>/dev/null; then
+        has_process=1
+      fi
     fi
   done
 
@@ -101,30 +107,40 @@ dev() {
   fi
 
   for pane in "${kill_panes[@]}"; do
-    tmux kill-pane -t "$pane"
+    herdr pane close "$pane" 2>/dev/null
   done
 
-  # Rename the current window to a unique name based on the current directory.
+  # Rename the current tab to a unique name based on the current directory.
   local base="$(basename "$PWD")"
   local name="$base"
   local n=1
-  local cur_win
-  cur_win="$(tmux display-message -p '#{window_name}')"
-  while tmux list-windows -F '#{window_name}' 2>/dev/null | grep -v -F -x "$cur_win" | grep -qx "$name"; do
+  while herdr tab list 2>/dev/null | awk 'NF{print $2}' | grep -qx "$name" 2>/dev/null; do
     n=$((n + 1))
     name="${base}${n}"
   done
-  tmux rename-window "$name"
+  herdr tab rename "$HERDR_TAB_ID" "$name" 2>/dev/null
 
   # Remaining pane becomes the nvim pane.
-  tmux send-keys "nvim" Enter
-  # Split right: AI agent pane (35% width, nvim gets 65%)
-  tmux split-window -h -l 35% -c "$PWD"
-  tmux send-keys "$cmd" Enter
-  # Split AI agent pane vertically: free shell (25% height, AI agent gets 75%)
-  tmux split-window -v -l 25% -c "$PWD"
-  # Focus nvim
-  tmux select-pane -t 0
+  herdr pane send-text "$current_pane" "nvim"
+  herdr pane send-keys "$current_pane" Enter
+
+  # Split right: AI agent pane (35% width, nvim gets 65%), focus the new pane.
+  herdr pane split --current --direction right --ratio 0.35 --cwd "$PWD" --focus 2>/dev/null
+
+  # The new pane is now focused. Get its ID via herdr pane current.
+  # NB: output format is unknown; best-effort parse of first token.
+  local agent_pane
+  agent_pane="$(herdr pane current 2>/dev/null | awk 'NF{print $1}' | head -1)"
+  if [[ -n "$agent_pane" && "$agent_pane" != "$current_pane" ]]; then
+    herdr pane send-text "$agent_pane" "$cmd"
+    herdr pane send-keys "$agent_pane" Enter
+  fi
+
+  # Split the agent pane down: free shell (25% height), don't focus.
+  herdr pane split --current --direction down --ratio 0.25 --cwd "$PWD" --no-focus 2>/dev/null
+
+  # Focus back to the nvim pane (left direction from agent pane).
+  herdr pane focus --direction left 2>/dev/null
 }
 
 _dev() {
