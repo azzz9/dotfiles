@@ -14,6 +14,11 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # Temporary: nixos-unstable does not yet have herdr 0.7.3 (PR #539412
+    # merged 2026-07-08, channel propagation pending). Pull herdr from
+    # master via an overlay until nixos-unstable catches up, then remove
+    # this input and the overlay below.
+    nixpkgs-master.url = "github:NixOS/nixpkgs/master";
     llm-agents.url = "github:numtide/llm-agents.nix";
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -29,7 +34,7 @@
     };
   };
 
-  outputs = { nixpkgs, llm-agents, home-manager, nixvim, hunk, ... }:
+  outputs = { nixpkgs, nixpkgs-master, llm-agents, home-manager, nixvim, hunk, ... }:
     let
       supportedSystems = [
         "x86_64-linux"
@@ -42,6 +47,17 @@
             inherit system;
             config.allowUnfreePredicate = pkg: builtins.elem (nixpkgs.lib.getName pkg) [
               "barbar.nvim"
+            ];
+            overlays = [
+              # Temporary: override herdr with 0.7.3 from nixpkgs master.
+              # Remove this overlay (and the nixpkgs-master input) once
+              # nixos-unstable includes herdr >= 0.7.3.
+              (final: prev: {
+                herdr = (import nixpkgs-master {
+                  inherit system;
+                  config.allowUnfreePredicate = prev.config.allowUnfreePredicate;
+                }).herdr;
+              })
             ];
           };
           extraSpecialArgs = {

@@ -10,6 +10,7 @@ let
     "grilling"
     "agent-dev-workflow"
     "solidity-agent-dev-workflow"
+    "herdr"
     "tmux"
     "ascii-art-diagrams"
     "dotfiles-context"
