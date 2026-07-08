@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 {
   # herdr — agent multiplexer that lives in your terminal
   # https://github.com/ogulcancelik/herdr
@@ -84,4 +84,13 @@
     show_agent_labels_on_pane_borders = true
   '';
   xdg.configFile."herdr/config.toml".force = true;
+
+  # Keep Herdr's agent integrations installed after Home Manager activation.
+  # The commands are idempotent and update the generated hook files/settings
+  # when Herdr changes its integration assets.
+  home.activation.herdrIntegrations = lib.hm.dag.entryAfter [ "writeBoundary" "installPackages" ] ''
+    for integration in codex copilot; do
+      ${pkgs.herdr}/bin/herdr integration install "$integration" >/dev/null
+    done
+  '';
 }
