@@ -17,7 +17,7 @@ guardian_approval = true
 # the agent to reach the network, and prefer allowing specific hosts via a
 # proxy or firewall rules rather than opening access broadly.
 [sandbox_workspace_write]
-network_access = false
+network_access = true
 
 [notice]
 "hide_gpt-5.1-codex-max_migration_prompt" = true

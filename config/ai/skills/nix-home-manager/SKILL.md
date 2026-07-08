@@ -95,12 +95,20 @@ nix build .#homeConfigurations.x86_64-linux.activationPackage --impure
 `dotfiles sync` and `dotfiles upgrade` require a clean git tree. Use
 `dotfiles apply` when you have uncommitted changes (it does not check).
 
-### 4. Sandbox network restrictions
+### 4. Sandbox nix cache workaround
 
-`nix build` inside Codex sandbox will fail if it needs to download
-packages (network is blocked). Pre-built substitutes from Numtide cache
-or nixpkgs cache may still work. For full builds, use escalated sandbox
-or run outside sandbox.
+Network access is enabled (`network_access = true`), but `~/.cache/nix`
+is on a read-only filesystem in the sandbox. Prefix nix commands with
+`XDG_CACHE_HOME=/tmp/nix-cache` to redirect the cache to a writable
+temp directory:
+
+```bash
+XDG_CACHE_HOME=/tmp/nix-cache nix build .#homeConfigurations.x86_64-linux.activationPackage --impure
+XDG_CACHE_HOME=/tmp/nix-cache nix search nixpkgs <package>
+```
+
+Without this, nix fails with `unable to open database file
+(fetcher-cache-v4.sqlite)`.
 
 ### 5. Home Manager activation
 
@@ -115,8 +123,8 @@ compatibility (see `modules/dotfiles.nix`).
 | File not found in flake | `git add` the file, then retry |
 | `error: impure` | Add `--impure` flag |
 | `index.lock` error | `.git` is read-only in sandbox; escalate |
-| `nix flake show` fails | `~/.cache/nix` unwritable; set `NIX_CONF_DIR` |
-| Build hangs | Network blocked; needs binary cache or escalated |
+| `nix flake show` fails | `~/.cache/nix` unwritable; use `XDG_CACHE_HOME=/tmp/nix-cache` |
+| Build hangs | First download may be slow; ensure `XDG_CACHE_HOME` is set |
 | Syntax error | `nix-instantiate --parse <file>` first |
 | Type/attr error | `nix eval --raw .#...` to find the issue |
 | Activation fails | Check `profile add` vs `profile install` patch |
@@ -129,6 +137,9 @@ find . -name '*.nix' -exec nix-instantiate --parse {} > /dev/null \;
 
 # Eval a specific attribute
 nix eval --raw .#homeConfigurations.x86_64-linux.activationPackage --impure
+
+# Build and activate (inside sandbox — needs XDG_CACHE_HOME workaround)
+XDG_CACHE_HOME=/tmp/nix-cache dotfiles apply
 
 # Build and activate (outside sandbox)
 dotfiles apply

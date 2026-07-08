@@ -91,9 +91,11 @@ All commands auto-detect host (`uname -m` + `uname -s`).
 
 - `.git` directory is **read-only**. Commits require
   `sandbox_permissions="require_escalated"` or manual user execution.
-- Network is **blocked**. `nix build` needing downloads will fail.
+- Network is **available** (`network_access = true`). `nix build` can
+  download packages, but may be slow on first run.
+- `~/.cache/nix` is **read-only**. Prefix nix commands with
+  `XDG_CACHE_HOME=/tmp/nix-cache` to use a writable temp cache directory.
 - tmux sockets are **inaccessible**. Cannot verify tmux config at runtime.
-- `~/.cache/nix` may be unwritable, causing `nix flake show` to fail.
 
 ## Supported platforms
 
