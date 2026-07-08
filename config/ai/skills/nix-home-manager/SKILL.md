@@ -60,7 +60,7 @@ target. Used for AGENTS.md, rules, and skills deployment.
 imports = [
   ../modules/dotfiles.nix
   ../modules/shell.nix
-  ../modules/tmux.nix
+  ../modules/herdr.nix
   ../modules/nvim.nix
   # ...
 ];

@@ -37,7 +37,7 @@ When running inside Codex sandbox:
 - `.git` is **read-only**. Commits require `sandbox_permissions="require_escalated"`.
 - Network is **available** (`network_access = true` in codex config). `nix build` can download packages.
 - `~/.cache/nix` is **read-only**. Prefix nix commands with `XDG_CACHE_HOME=/tmp/nix-cache` to use a writable cache.
-- tmux sockets are **inaccessible**. Cannot verify tmux config at runtime.
+- tmux sockets are **inaccessible**. Cannot verify the tmux skill (send-keys control) at runtime.
 
 ## On-demand Rules
 

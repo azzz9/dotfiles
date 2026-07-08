@@ -99,7 +99,7 @@ All commands auto-detect host (`uname -m` + `uname -s`).
   download packages, but may be slow on first run.
 - `~/.cache/nix` is **read-only**. Prefix nix commands with
   `XDG_CACHE_HOME=/tmp/nix-cache` to use a writable temp cache directory.
-- tmux sockets are **inaccessible**. Cannot verify tmux config at runtime.
+- tmux sockets are **inaccessible**. Cannot verify the tmux skill (send-keys control) at runtime.
 
 ## Supported platforms
 
