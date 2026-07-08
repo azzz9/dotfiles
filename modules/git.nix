@@ -24,6 +24,14 @@
     # git output and falls back to normal paging.
     git config --global core.pager "hunk pager"
 
+    # Sign commits by default using SSH keys. The signing key itself
+    # (user.signingkey) is machine-specific and must be set manually:
+    #   git config --global user.signingkey ~/.ssh/signing_key.pub
+    # This keeps dotfiles free of any key material while the signing
+    # format and default-on setting remain portable.
+    git config --global gpg.format ssh
+    git config --global commit.gpgsign true
+
     unset -f git
   '';
 }
