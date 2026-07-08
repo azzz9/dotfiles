@@ -80,7 +80,7 @@ in
     ../modules/hunk.nix
     ../modules/lazygit.nix
     ../modules/shell.nix
-    ../modules/tmux.nix
+    ../modules/herdr.nix
     ../modules/nvim.nix
     ../modules/packages.nix
   ];

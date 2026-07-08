@@ -19,7 +19,7 @@ dotfiles/
 |   +-- git.nix             # Git config + ghq + git-wt defaults
 |   +-- gh.nix              # GitHub CLI aliases
 |   +-- shell.nix           # Zsh + fzf + autocomplete + dev()
-|   +-- tmux.nix            # tmux plugins (tokyo-night, resurrect, continuum)
+|   +-- herdr.nix           # herdr agent multiplexer (tokyo-night theme, agent launchers)
 |   +-- nvim.nix            # Neovim via nixvim
 |   +-- nvim/lua/           # Lua configs loaded by nixvim extraConfigLua
 |   +-- packages.nix        # Additional system packages
@@ -48,11 +48,15 @@ Key Lua files:
 - `modules/nvim/lua/plugins/*.lua` — individual plugin configs
 - `modules/nvim/lua/plugins/dap/*.lua` — DAP per-language configs
 
-## tmux config
+## herdr config
 
-`modules/tmux.nix` generates `~/.config/tmux/tmux.conf` via HM.
-Plugins (tokyo-night, resurrect, continuum) are managed by HM, not TPM.
-Theme: tokyo-night-tmux. Variables prefixed `tn.` come from the theme.
+`modules/herdr.nix` installs herdr + tmux (for the tmux skill) and
+generates `~/.config/herdr/config.toml` via HM.
+Theme: tokyo-night (built-in). Key bindings match the previous tmux
+layout (prefix ctrl+b, / and - for splits, h/j/k/l for pane nav).
+Agent launchers: prefix+shift+c (codex), prefix+shift+g (gh copilot).
+tmux is kept as a package for the tmux skill (programmatic terminal
+control via send-keys / capture-pane).
 
 ## AI config deployment model
 
