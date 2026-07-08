@@ -19,6 +19,11 @@
     # or if you prefer to re-create them manually: git config wt.copyignored false
     git config --global wt.copyignored true
 
+    # Use hunk as the default git pager so `git diff`/`git show` open in the
+    # hunk review TUI instead of plain text. hunk pager auto-detects non-diff
+    # git output and falls back to normal paging.
+    git config --global core.pager "hunk pager"
+
     unset -f git
   '';
 }

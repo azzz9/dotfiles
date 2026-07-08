@@ -70,6 +70,7 @@ Read the skill when the situation applies — not at startup.
 | Editing `.nix` files or running `nix` / `home-manager` commands | `nix-home-manager` |
 | Creating Conventional Commits | `conventional-commit` |
 | Reviewing a diff with difit | `difit-review` |
+| Reviewing diffs interactively with a live Hunk session | `hunk-review` |
 | Stress-testing a plan or design before building | `grill-me` / `grilling` / `grill-with-docs` |
 | Turning a ticket into a coding-agent prompt | `agent-dev-workflow` |
 | Solidity-specific agent dev workflow | `solidity-agent-dev-workflow` |

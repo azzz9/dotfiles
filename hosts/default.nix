@@ -77,6 +77,7 @@ in
     ../modules/dotfiles.nix
     ../modules/gh.nix
     ../modules/git.nix
+    ../modules/hunk.nix
     ../modules/lazygit.nix
     ../modules/shell.nix
     ../modules/tmux.nix

@@ -23,9 +23,13 @@
       url = "github:nix-community/nixvim";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    hunk = {
+      url = "github:modem-dev/hunk";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { nixpkgs, llm-agents, home-manager, nixvim, ... }:
+  outputs = { nixpkgs, llm-agents, home-manager, nixvim, hunk, ... }:
     let
       supportedSystems = [
         "x86_64-linux"
@@ -41,6 +45,7 @@
             ];
           };
           extraSpecialArgs = {
+            hunk = hunk;
             # llm-agents.nix is packages-only (no overlay/HM module).
             # Guard with `or null` so unsupported systems (e.g. aarch64-darwin
             # if not yet packaged) do not break the build; packages.nix
