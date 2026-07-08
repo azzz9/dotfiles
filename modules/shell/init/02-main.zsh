@@ -147,7 +147,7 @@ for pane in data["result"]["panes"]:
   done
   herdr tab rename "$current_tab" "$name" 2>/dev/null
 
-  # Layout B: nvim (left, 80% width) | AI agent (right, 20% width)
+  # Layout B: nvim (left, 70% width) | AI agent (right, 30% width)
   #           free shell (bottom, 25% height, full width)
   #
   # Split down first to create the full-width free shell pane, then split
@@ -160,9 +160,9 @@ for pane in data["result"]["panes"]:
     return 1
   }
 
-  # Step 2: Split nvim pane right -> AI agent (20% width), keep focus on nvim.
+  # Step 2: Split nvim pane right -> AI agent (30% width), keep focus on nvim.
   local split_json agent_pane
-  split_json="$(herdr pane split "$current_pane" --direction right --ratio 0.8 --cwd "$PWD" --no-focus 2>/dev/null)" || {
+  split_json="$(herdr pane split "$current_pane" --direction right --ratio 0.7 --cwd "$PWD" --no-focus 2>/dev/null)" || {
     echo "dev: failed to create AI agent pane" >&2
     return 1
   }
@@ -174,7 +174,7 @@ for pane in data["result"]["panes"]:
   }
 
   # Normalize the nested right split as well. For `--direction right`, Herdr's
-  # ratio is the left pane width, so 0.8 means nvim:AI = 8:2.
+  # ratio is the left pane width, so 0.7 means nvim:AI = 7:3.
   local right_ratio right_resize_plan right_resize_direction right_resize_amount
   right_ratio="$(
     herdr pane layout --pane "$current_pane" 2>/dev/null | python3 -c '
@@ -190,7 +190,7 @@ for split in layout.get("splits", []):
     right_resize_plan="$(python3 -c '
 import sys
 current = float(sys.argv[1])
-target = 0.8
+target = 0.7
 delta = target - current
 if abs(delta) >= 0.01:
     print(("right" if delta > 0 else "left") + " " + str(abs(delta)))

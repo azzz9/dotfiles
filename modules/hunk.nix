@@ -19,9 +19,12 @@ let
   # ld-linux with --library-path. Trade-off: process.execPath then points at
   # ld-linux, which breaks the TUI's auto-spawn of the session daemon
   # (`hunk session` uses process.execPath to relaunch itself) and the bundled
-  # `hunk skill path` lookup. The session daemon can still be started manually
-  # with `hunk daemon serve`, and the review skill is deployed separately to
-  # ~/.codex/skills/hunk-review and ~/.copilot/skills/hunk-review below.
+  # `hunk skill path` lookup. The wrapper below restores those two user-facing
+  # behaviors without patching Hunk's compiled Bun archive:
+  #
+  # - review commands start the daemon first, so `hunk diff` registers a live
+  #   session without a separate `hunk daemon serve` terminal;
+  # - `hunk skill path` returns the bundled skill path from this package.
   # darwin is unaffected (no ld-linux) and uses the upstream package directly.
   hunkPackage =
     if pkgs.stdenv.isLinux then
@@ -32,7 +35,74 @@ let
         mv $out/bin/hunk $out/bin/.hunk-real
         cat > $out/bin/hunk <<EOF
         #!${pkgs.bash}/bin/bash
-        exec ${lib.getLib pkgs.glibc}/lib/ld-linux-x86-64.so.2 --library-path ${lib.getLib pkgs.glibc}/lib $out/bin/.hunk-real "\$@"
+        set -euo pipefail
+
+        real="$out/bin/.hunk-real"
+        ld="${lib.getLib pkgs.glibc}/lib/ld-linux-x86-64.so.2"
+        lib_path="${lib.getLib pkgs.glibc}/lib"
+        curl="${pkgs.curl}/bin/curl"
+
+        run_hunk() {
+          exec "\$ld" --library-path "\$lib_path" "\$real" "\$@"
+        }
+
+        is_help_request() {
+          for arg in "\$@"; do
+            case "\$arg" in
+              -h|--help)
+                return 0
+                ;;
+            esac
+          done
+
+          return 1
+        }
+
+        daemon_health_url() {
+          local host="\''${HUNK_MCP_HOST:-127.0.0.1}"
+          local port="\''${HUNK_MCP_PORT:-47657}"
+          printf 'http://%s:%s/health' "\$host" "\$port"
+        }
+
+        daemon_is_healthy() {
+          "\$curl" --silent --fail --max-time 0.2 "\$(daemon_health_url)" >/dev/null 2>&1
+        }
+
+        ensure_daemon() {
+          if daemon_is_healthy; then
+            return 0
+          fi
+
+          "\$0" daemon serve >/dev/null 2>&1 &
+          disown || true
+
+          for _ in {1..40}; do
+            if daemon_is_healthy; then
+              return 0
+            fi
+            sleep 0.05
+          done
+        }
+
+        if ! is_help_request "\$@"; then
+          case "\''${1:-}" in
+            diff|show|patch|pager|difftool)
+              ensure_daemon
+              ;;
+            stash)
+              if [[ "\''${2:-}" == "show" ]]; then
+                ensure_daemon
+              fi
+              ;;
+          esac
+        fi
+
+        if [[ "\''${1:-}" == "skill" && "\''${2:-}" == "path" ]]; then
+          printf '%s\n' "$out/skills/hunk-review/SKILL.md"
+          exit 0
+        fi
+
+        run_hunk "\$@"
         EOF
         chmod +x $out/bin/hunk
       ''
@@ -60,18 +130,6 @@ in
     };
   };
 
-  # Expose the hunk-review agent skill (bundled in the hunk package) to the
-  # same two bases the repo uses for its skills (Codex + Copilot). Symlinking
-  # the package's bundled copy keeps the skill in sync with the installed
-  # hunk version automatically, unlike a static copy in the repo. The repo's
-  # own skill symlinks (hosts/default.nix) point into the checkout, so we do
-  # NOT add "hunk-review" to `skillNames` there to avoid a duplicate key.
-  # This also works around the wrapper breaking `hunk skill path`: agents can
-  # read the skill directly from these deployed paths.
-  home.file = {
-    ".codex/skills/hunk-review".source =
-      "${config.programs.hunk.package}/skills/hunk-review";
-    ".copilot/skills/hunk-review".source =
-      "${config.programs.hunk.package}/skills/hunk-review";
-  };
+  # The repo owns the deployed hunk-review skill so local review policy can be
+  # adjusted without patching Hunk's bundled copy.
 }

@@ -11,6 +11,7 @@ let
     "agent-dev-workflow"
     "solidity-agent-dev-workflow"
     "herdr"
+    "hunk-review"
     "tmux"
     "ascii-art-diagrams"
     "dotfiles-context"
