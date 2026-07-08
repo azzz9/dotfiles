@@ -30,6 +30,14 @@ If the intent is ambiguous, ask before making changes.
 
 - Always respond in Japanese.
 
+## Sandbox Awareness
+
+When running inside Codex sandbox:
+
+- `.git` is **read-only**. Commits require `sandbox_permissions="require_escalated"`.
+- Network is **blocked**. `nix build` needing downloads will fail.
+- tmux sockets are **inaccessible**. Cannot verify tmux config at runtime.
+
 ## On-demand Rules
 
 The following rule files are **read only when the situation applies** — not at startup.
@@ -46,3 +54,25 @@ Both copies resolve to the same source file, so their contents are identical. Re
 | You are about to edit files or have finished editing | `file-change-reporting` |
 | You are about to create a git commit or push | `git-commit-push` |
 | You are about to create a diagram or visual explanation | `diagrams` |
+
+## On-demand Skills
+
+The following skills are installed as symlinked copies in two locations:
+
+- Copilot CLI → `~/.copilot/skills/<name>/SKILL.md`
+- Codex       → `~/.codex/skills/<name>/SKILL.md`
+
+Read the skill when the situation applies — not at startup.
+
+| Situation | Skill (`<name>`) |
+|-----------|------------------|
+| Working inside `~/src/github.com/azzz9/dotfiles` specifically | `dotfiles-context` |
+| Editing `.nix` files or running `nix` / `home-manager` commands | `nix-home-manager` |
+| Creating Conventional Commits | `conventional-commit` |
+| Reviewing a diff with difit | `difit-review` |
+| Stress-testing a plan or design before building | `grill-me` / `grilling` / `grill-with-docs` |
+| Turning a ticket into a coding-agent prompt | `agent-dev-workflow` |
+| Solidity-specific agent dev workflow | `solidity-agent-dev-workflow` |
+| Remote-controlling tmux sessions for interactive CLIs | `tmux` |
+| Creating ASCII art or text-based diagrams | `ascii-art-diagrams` |
+| Building or sharpening a domain model | `domain-modeling` |
