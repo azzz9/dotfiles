@@ -149,7 +149,7 @@ After the implementation agent completes, run validation before sending the diff
 - **Tests**: run the project's test suite. All existing tests must pass (no regressions).
 - **Coverage**: check that coverage has not decreased compared to the base branch. If coverage tools are unavailable, skip silently.
 - **Lint / typecheck**: run the project's linter and type checker. All must pass.
-- **Format**: run the project's formatter in check mode (e.g., `prettier --check`, `black --check`, `nixpkgs-fmt --check`, `rustfmt --check`, `gofmt -l`). If no formatter is configured, skip silently.
+- **Format**: run the project's formatter in check mode. If no formatter is configured, skip silently.
 - **Build**: run the project's build command. Must succeed.
 - **Diff scope**: verify with `git diff --stat` that changes are within the intended scope.
 
