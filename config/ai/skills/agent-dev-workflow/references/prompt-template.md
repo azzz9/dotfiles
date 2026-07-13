@@ -64,7 +64,7 @@ Source extraction:
 - Authoritative source: <source, if one is clearly authoritative>
 - Relevant sections: <sections, comments, examples, notes, links, or issue details>
 - Interpretation rules: <how statuses, flags, examples, and notes should be read>
-- Ambiguities resolved before implementation: <grill-me decisions>
+- Ambiguities resolved before implementation: <Step 3 interview decisions>
 
 Acceptance criteria:
 - <testable criterion 1>
@@ -85,14 +85,17 @@ Repository instructions:
 - If the ticket is ambiguous or requires a product decision, stop and ask before changing direction.
 
 Implementation notes:
-- <known design decision from grill-me>
+- <known design decision from Step 3 interview>
 - <edge case handling>
 - <linked docs or examples>
 
 Validation:
-- Run or discover the relevant tests/typecheck/lint for the touched area.
+- Run the project's test suite. Compare against the baseline (which tests were passing before).
+- Run lint/typecheck. New warnings compared to the baseline must be caused by this change.
+- Run the formatter in check mode. New violations compared to the baseline must be caused by this change.
+- Run the build command. If the baseline already had build failures, only new failures count.
+- Verify that tests exist for the new behavior introduced by this change.
 - If a command cannot be run, explain why and what risk remains.
-- Add or update tests for the changed behavior when practical.
 
 Final response:
 - Summarize changed behavior.
@@ -114,7 +117,8 @@ Context:
 Required fixes from review:
 - [Blocker] <concrete issue and expected correction>
 - [Blocker] <concrete issue and expected correction>
-- [Cleanup] <optional or low-risk cleanup, if the user wants it>
+- [Warning] <should fix if time permits, but can be ignored>
+- [Info] <informational note, no action required>
 
 Constraints:
 - Do not redo unrelated parts of the implementation.
@@ -123,7 +127,9 @@ Constraints:
 - If a finding requires product clarification, stop and ask instead of guessing.
 
 Validation:
-- Rerun the relevant tests/typecheck/lint.
+- Rerun the project's test suite. Compare against the baseline.
+- Rerun lint/typecheck and format checks. New issues compared to the baseline must be caused by this fix.
+- Rerun the build command.
 - Add or adjust tests if the fix changes behavior.
 
 Final response:
