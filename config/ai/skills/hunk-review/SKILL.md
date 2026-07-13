@@ -5,9 +5,17 @@ description: Interacts with live Hunk diff review sessions via CLI. Inspects rev
 
 # Hunk Review
 
-Hunk is an interactive terminal diff viewer. The TUI is for the user -- do NOT run `hunk diff`, `hunk show`, or other interactive commands directly. Use `hunk session *` CLI commands to inspect and control live sessions through the local daemon.
+Hunk is an interactive terminal diff viewer. The TUI is for the user -- do NOT run `hunk diff`, `hunk show`, or other interactive commands directly in the agent's own terminal. Use `hunk session *` CLI commands to inspect and control live sessions through the local daemon.
 
-If no session exists, ask the user to launch Hunk in their terminal first.
+If no session exists and Herdr is available, launch Hunk automatically in a new pane:
+
+```bash
+herdr pane split --current --direction right --cwd <repo> --focus   # create a pane
+herdr pane run <pane_id> "hunk diff"                                 # launch Hunk
+hunk session list                                                     # verify the session appeared
+```
+
+If Herdr is not running (check with `herdr status`), ask the user to launch Hunk in their terminal first.
 
 ## Workflow
 
@@ -147,7 +155,7 @@ Guidelines:
 ## Common errors
 
 - **"No visible diff file matches ..."** -- the file is not in the loaded review. Check `context`, then `reload` if needed.
-- **"No active Hunk sessions"** -- if Hunk is visibly running, localhost may be blocked by the agent sandbox; retry with network/sandbox escalation. Otherwise ask the user to open Hunk.
+- **"No active Hunk sessions"** -- if Herdr is running, auto-launch Hunk in a new pane (see above). Otherwise, if Hunk is visibly running, localhost may be blocked by the agent sandbox; retry with network/sandbox escalation. If neither applies, ask the user to open Hunk.
 - **"Multiple active sessions match"** -- pass `<session-id>` explicitly.
 - **"No active Hunk session matches session path ..."** -- for advanced split-path reloads, verify the live window `Path` via `hunk session get` or `list`, then use `--session-path`.
 - **"Pass the replacement Hunk command after `--`"** -- include `--` before the nested `diff` / `show` command.
