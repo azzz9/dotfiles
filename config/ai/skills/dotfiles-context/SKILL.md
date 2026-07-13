@@ -26,8 +26,7 @@ dotfiles/
 |   +-- solidity.nix        # Solidity toolchain
 |   +-- lazygit.nix          # lazygit config (delta side-by-side)
 +-- config/ai/
-|   +-- AGENTS.md           # Core rules (read-only gate, language, dispatch)
-|   +-- rules/              # On-demand rule files
+|   +-- AGENTS.md           # Core rules + inline rules (read-only gate, language, etc.)
 |   +-- codex/              # Codex-specific config + default.rules
 |   +-- skills/             # AI skills (symlinked to ~/.codex and ~/.copilot)
 +-- scripts/setup-system.sh # Bootstrap script
@@ -60,26 +59,25 @@ control via send-keys / capture-pane).
 
 ## AI config deployment model
 
-`hosts/default.nix` creates **out-of-store symlinks** so edits in this
-repo are immediately reflected at the target paths:
+`hosts/default.nix` deploys AI config using out-of-store symlinks so
+edits in this repo are immediately reflected at the target path:
 
 ```
-config/ai/AGENTS.md        -> ~/.codex/AGENTS.md
-                           -> ~/.copilot/copilot-instructions.md
-config/ai/rules/<name>.md  -> ~/.codex/rules/<name>.md
-                           -> ~/.copilot/rules/<name>.md
-config/ai/skills/<name>    -> ~/.codex/skills/<name>
-                           -> ~/.copilot/skills/<name>
-config/ai/codex/config.base.toml -> ~/.codex/dotfiles.config.toml
-config/ai/codex/rules/default.rules -> ~/.codex/rules/default.rules
+config/ai/AGENTS.md                  -> ~/.codex/AGENTS.md
+                                    -> ~/.copilot/copilot-instructions.md
+config/ai/skills/<name>              -> ~/.codex/skills/<name>
+                                    -> ~/.copilot/skills/<name>
+config/ai/codex/config.base.toml     -> ~/.codex/dotfiles.config.toml
+config/ai/codex/rules/default.rules  -> ~/.codex/rules/default.rules
 ```
+
+All rules (file-change-reporting, git-commit-push, diagrams) are inline
+in `config/ai/AGENTS.md`. Both Codex and Copilot CLI read them via the
+AGENTS.md symlink — no separate rule files or `.instructions.md`
+generation needed.
 
 To add a new skill: create `config/ai/skills/<name>/SKILL.md` and add
 the name to `skillNames` in `hosts/default.nix`.
-
-To add a new rule: create `config/ai/rules/<name>.md`, add to `ruleNames`
-in `hosts/default.nix`, and add a row to the On-demand Rules table in
-`config/ai/AGENTS.md`.
 
 ## dotfiles CLI commands
 

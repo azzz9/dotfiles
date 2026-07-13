@@ -27,21 +27,6 @@ let
         config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/${name}";
     }) skillNames) skillBases
   );
-  # On-demand rule files split from AGENTS.md. Symlinked alongside the
-  # main instructions file so agents can read them via relative path
-  # `rules/<name>.md` when the situation applies.
-  ruleNames = [
-    "file-change-reporting"
-    "git-commit-push"
-    "diagrams"
-  ];
-  ruleLinks = builtins.listToAttrs (
-    lib.concatMap (base: map (name: {
-      name = "${base}/rules/${name}.md";
-      value.source =
-        config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/rules/${name}.md";
-    }) ruleNames) skillBases
-  );
 in
 {
   home.username = builtins.getEnv "USER";
@@ -58,7 +43,7 @@ in
 
   # Codex / Copilot shared AI context and skills (out-of-store symlinks
   # so edits in this repo are immediately reflected at the target path).
-  home.file = skillLinks // ruleLinks // {
+  home.file = skillLinks // {
     ".codex/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/AGENTS.md";
     ".codex/rules/default.rules" = {
       source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/codex/rules/default.rules";
