@@ -74,7 +74,14 @@ Explore the codebase:
 - Docs, README sections, and past plan files.
 - Any patterns or conventions the implementation must follow.
 
-Run the existing test suite and record the baseline (pass/fail count, coverage if available). This baseline is used in Step 6 to distinguish pre-existing failures from regressions caused by the implementation.
+Run the existing test suite and record the baseline:
+- Which tests are currently failing (if any).
+- Coverage percentage (if available).
+- Lint/typecheck warnings or errors (if any pre-existing).
+- Format violations (if any pre-existing).
+- Build status (does it currently build successfully?).
+
+This baseline is used in Step 6 to distinguish pre-existing issues from regressions caused by the implementation.
 
 Cross-reference with source-assistant output:
 
@@ -148,12 +155,12 @@ The handoff prompt must be self-contained:
 
 After the implementation agent completes, run validation before sending the diff to a review agent. The Main Agent runs these checks:
 
-- **Tests**: run the project's test suite. Compare against the Step 3 baseline. New failures must be caused by the implementation, not pre-existing issues.
+- **Tests**: run the project's test suite. Any test that was passing in the Step 3 baseline but now fails is a regression.
 - **Coverage**: compare against the Step 3 baseline. Must not decrease. If coverage tools are unavailable, skip silently.
 - **New tests**: verify that tests exist for the new behavior introduced by this change. If no tests were added, flag this as a finding for the review agent.
-- **Lint / typecheck**: run the project's linter and type checker. All must pass.
-- **Format**: run the project's formatter in check mode. If no formatter is configured, skip silently.
-- **Build**: run the project's build command. Must succeed.
+- **Lint / typecheck**: run the project's linter and type checker. New warnings compared to the Step 3 baseline must be caused by the implementation.
+- **Format**: run the project's formatter in check mode. New violations compared to the Step 3 baseline must be caused by the implementation. If no formatter is configured, skip silently.
+- **Build**: run the project's build command. If the Step 3 baseline already had build failures, only new failures count.
 - **Diff scope**: verify with `git diff --stat` that changes are within the intended scope.
 
 If any check fails, re-enter the Fix-and-Reinspect Loop with the failure output as the fix prompt. Do not proceed to review until all checks pass.
