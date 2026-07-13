@@ -192,7 +192,7 @@ Turn review findings into a focused repair prompt. The prompt should:
 
 Execute the fix by spawning a new implementation agent (same mechanism as Step 5). Do not fix in the Main Agent context -- it carries investigation bias. The fix prompt is self-contained and includes the current diff context, so the implementation agent does not need prior session history.
 
-After the fix, re-review with a separate review agent (same mechanism as Step 6). Do not fall back to `git diff` in the Main Agent -- every iteration must use a separate review agent to maintain context separation.
+After the fix, re-review with a separate review agent (same mechanism as Step 7). Do not fall back to `git diff` in the Main Agent -- every iteration must use a separate review agent to maintain context separation.
 
 Loop guard: if the fix-and-reinspect loop runs more than 3 iterations without converging, stop and escalate to the human with a summary of persistent findings. Do not loop indefinitely.
 
@@ -259,7 +259,7 @@ If actionable comments exist:
 
 1. Create a follow-up fix prompt (same structure as the Fix-and-Reinspect Loop). Run validation (Step 6) after each fix.
 2. Execute the fix by spawning a new implementation agent (same mechanism as Step 5).
-3. Re-review with a separate review agent (same mechanism as Step 6).
+3. Re-review with a separate review agent (same mechanism as Step 7).
 4. Commit with Conventional Commits and capture the commit hash.
 5. Reply to each addressed review comment via the GitHub API:
 
