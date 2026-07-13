@@ -46,9 +46,31 @@ Return a structured implementation brief with these sections:
 - Include when the coding agent should stop and ask for clarification.
 ```
 
-# Coding Agent Prompt Template
+# Conversation Plan and Handoff Template
 
-Use this after the source assistant returns the structured implementation brief. Remove sections that are irrelevant, but keep the prompt self-contained.
+Use this after the source assistant returns the structured implementation brief. First present the implementation plan in the conversation for human approval, then include a concise handoff summary that makes the final coding-agent prompt reviewable without printing the whole prompt by default. Do not write a plan file unless the human explicitly asks for one.
+
+```markdown
+Conversation implementation plan for approval:
+- Objective:
+- Acceptance criteria:
+- Intended changes:
+- Validation plan:
+- Risks and non-goals:
+- Assumptions:
+
+Handoff summary for approval:
+- Implementation-agent objective:
+- Scope and non-goals:
+- Key constraints and assumptions:
+- Stop-and-ask conditions:
+- Validation requirements:
+
+Full final prompt:
+Not shown by default. I will hand off a complete prompt matching this approved plan and summary. Ask to see the exact prompt if you want to review the full text before approval.
+```
+
+After the human approves, hand off a complete prompt in this shape:
 
 ```markdown
 You are implementing ticket <TICKET_KEY>: <TITLE>.
@@ -95,6 +117,7 @@ Validation:
 - Run the formatter in check mode. New violations compared to the baseline must be caused by this change.
 - Run the build command. If the baseline already had build failures, only new failures count.
 - Verify that tests exist for the new behavior introduced by this change.
+- Run `git status --short` and `git diff --stat` to verify that tracked and untracked changes are within scope.
 - If a command cannot be run, explain why and what risk remains.
 
 Final response:
@@ -103,6 +126,8 @@ Final response:
 - List validation commands and results.
 - Call out unresolved risks or follow-up needed.
 ```
+
+Please approve this plan before implementation starts.
 
 ## Follow-Up Repair Prompt Template
 
@@ -114,9 +139,11 @@ Context:
 - Existing implementation is already in the working tree or branch.
 - Inspect the current diff before editing.
 
-Required fixes from review:
+Required blocker fixes from review:
 - [Blocker] <concrete issue and expected correction>
 - [Blocker] <concrete issue and expected correction>
+
+Optional findings to acknowledge but not block on:
 - [Warning] <should fix if time permits, but can be ignored>
 - [Info] <informational note, no action required>
 
@@ -131,6 +158,7 @@ Validation:
 - Rerun lint/typecheck and format checks. New issues compared to the baseline must be caused by this fix.
 - Rerun the build command.
 - Add or adjust tests if the fix changes behavior.
+- Run `git status --short` and `git diff --stat` to verify that tracked and untracked changes are within scope.
 
 Final response:
 - Explain each fix.

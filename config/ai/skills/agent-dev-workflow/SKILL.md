@@ -10,12 +10,14 @@ Coordinate the user's normal development loop:
 1. Create a prompt for the source assistant to inspect the ticket and all pasted/linked sources.
 2. Use the source assistant output as the source for a coding-agent implementation prompt.
 3. Investigate the repository and interview the user to close Material Ambiguity before implementation.
-4. Produce the coding-agent prompt and spawn a separate agent for implementation.
-5. Validate: run tests, lint, format, build, and coverage checks. Fix regressions before review.
-6. Review the result with a separate agent, then fix blockers in an automated loop until none remain.
-7. Launch Hunk via Herdr for the human's final review of the diff.
-8. Commit with Conventional Commits, then ask the human to confirm before pushing.
-9. Ask the human to approve PR creation, then poll for review comments and fix until approved (every push requires human permission).
+4. Produce the implementation plan and coding-agent prompt.
+5. Ask the human to approve the plan before starting implementation.
+6. Hand off to a separate implementation agent only after approval.
+7. Validate: run tests, lint, format, build, and coverage checks. Fix regressions before review.
+8. Review the result with a separate agent, then fix blockers in an automated loop until none remain.
+9. Launch Hunk via Herdr for the human's final review of the diff.
+10. Commit with Conventional Commits, then ask the human to confirm before pushing.
+11. Ask the human to approve PR creation, then poll for review comments and fix until approved (every push requires human permission).
 
 Human involvement is limited to: answering interview questions, approving the plan, and verifying behavior. Everything else (investigation, design, implementation, review, follow-up) is driven by the agent.
 
@@ -81,7 +83,7 @@ Run the existing test suite and record the baseline:
 - Format violations (if any pre-existing).
 - Build status (does it currently build successfully?).
 
-This baseline is used in Step 6 to distinguish pre-existing issues from regressions caused by the implementation.
+This baseline is used in Step 7 to distinguish pre-existing issues from regressions caused by the implementation.
 
 Cross-reference with source-assistant output:
 
@@ -139,9 +141,26 @@ Rules:
 
 If no ticket exists and no source assistant was used, start directly from this step.
 
-### 4. Produce the Coding-Agent Prompt
+### 4. Produce the Conversation Plan and Coding-Agent Prompt
 
 Use [prompt-template.md](./references/prompt-template.md) when drafting the prompt.
+
+First present a concise implementation plan in the conversation for human approval. Do not write a plan file unless the human explicitly asks for one. The plan must include:
+
+- Objective and acceptance criteria.
+- Intended files, modules, commands, or workflows to change.
+- Test and validation strategy, including baseline comparison.
+- Known risks, rollout concerns, and explicit non-goals.
+- Any assumptions that would materially change the implementation if wrong.
+
+Then present a concise handoff summary that makes the final coding-agent prompt reviewable without printing the entire prompt by default. The summary must cover:
+
+- Objective handed to the implementation agent.
+- Scope and explicit non-goals.
+- Key constraints, assumptions, and stop-and-ask conditions.
+- Validation requirements.
+
+Print the exact final coding-agent prompt only when the human asks for it, when exact wording is important for a risky handoff, or when the prompt is short enough that showing it would not add noise.
 
 The prompt must include:
 
@@ -165,7 +184,15 @@ The implementation prompt must be isolated from investigation noise. Include onl
 
 Rationale: carrying investigation context into implementation causes the coding agent to drag in unnecessary assumptions and stale ideas that were explicitly rejected.
 
-### 5. Hand Off to a Separate Implementation Agent
+### 5. Human Approval Gate
+
+Stop after presenting the implementation plan and handoff summary in the conversation. Do not spawn an implementation agent, edit files, run generators, write a plan file, or otherwise begin implementation until the human explicitly approves the plan.
+
+Approval must be explicit in the current conversation, such as "approved", "go ahead", "implement it", or an equivalent instruction. If the human asks a question, requests changes, or gives ambiguous feedback, answer or revise the plan first and ask for approval again.
+
+After approval, hand off the complete final coding-agent prompt that matches the approved plan and handoff summary. If the human changed the plan, update the prompt before handoff and make the changed scope visible.
+
+### 6. Hand Off to a Separate Implementation Agent
 
 Spawn a separate agent for implementation to avoid carrying investigation context (discarded ideas, rejected approaches, exploration notes) into the build phase.
 
@@ -181,7 +208,7 @@ The handoff prompt must be self-contained:
 - Include unresolved questions only if the coding agent must stop and ask them.
 - Preserve links and ticket keys when available.
 
-### 6. Validate
+### 7. Validate
 
 After the implementation agent completes, run validation before sending the diff to a review agent. The Main Agent runs these checks:
 
@@ -191,19 +218,22 @@ After the implementation agent completes, run validation before sending the diff
 - **Lint / typecheck**: run the project's linter and type checker. New warnings compared to the Step 3 baseline must be caused by the implementation.
 - **Format**: run the project's formatter in check mode. New violations compared to the Step 3 baseline must be caused by the implementation. If no formatter is configured, skip silently.
 - **Build**: run the project's build command. If the Step 3 baseline already had build failures, only new failures count.
-- **Diff scope**: verify with `git diff --stat` that changes are within the intended scope.
+- **Diff scope**: verify with both `git status --short` and `git diff --stat` that changes are within the intended scope. `git diff --stat` does not show untracked files, so use `git status --short` to catch new tests, generated files, or accidental artifacts.
 
 If any check fails, re-enter the Fix-and-Reinspect Loop with the failure output as the fix prompt. Do not proceed to review until all checks pass.
 
-### 7. Review with a Separate Agent
+### 8. Review with a Separate Agent
 
 Spawn a separate agent for review to avoid confirmation bias. The review agent must not carry the investigation or implementation context.
 
 Use whichever mechanism is available in your environment:
 
-- **Codex**: `codex exec review --uncommitted --ephemeral -o review.txt "Focus on acceptance criteria coverage and behavioral regressions"`
+- **Codex built-in review**: `codex exec review --uncommitted --ephemeral -o review.txt`
+- **Codex prompt-driven review**: `codex exec --ephemeral --sandbox read-only -o review.txt "Review the uncommitted changes. Focus on acceptance criteria coverage and behavioral regressions. Classify findings as Blocker, Warning, or Info."`
 - **Copilot CLI**: `copilot -p '/review the changes on this branch. Focus on bugs and security issues.' -s --allow-tool='shell(git:*)' --no-ask-user`
 - **Manual**: output a review prompt for the user to paste into a fresh agent session.
+
+Use the prompt-driven Codex form when you need custom classification instructions. Some Codex CLI versions do not accept a custom prompt together with `codex exec review --uncommitted`.
 
 The review agent should classify findings as:
 
@@ -224,9 +254,9 @@ Turn review findings into a focused repair prompt. The prompt should:
 - Require rerunning relevant validation.
 - Forbid unrelated refactors unless the user explicitly asks for them.
 
-Execute the fix by spawning a new implementation agent (same mechanism as Step 5). Do not fix in the Main Agent context -- it carries investigation bias. The fix prompt is self-contained and includes the current diff context, so the implementation agent does not need prior session history.
+Execute the fix by spawning a new implementation agent (same mechanism as Step 6). Do not fix in the Main Agent context -- it carries investigation bias. The fix prompt is self-contained and includes the current diff context, so the implementation agent does not need prior session history.
 
-After the fix, re-review with a separate review agent (same mechanism as Step 7). Do not fall back to `git diff` in the Main Agent -- every iteration must use a separate review agent to maintain context separation.
+After the fix, re-review with a separate review agent (same mechanism as Step 8). Do not fall back to `git diff` in the Main Agent -- every iteration must use a separate review agent to maintain context separation.
 
 The fix loop only addresses blockers. Warnings and info findings are acknowledged but do not block progression. When no blockers remain, proceed to Final Human Review.
 
@@ -234,7 +264,7 @@ Loop guard: if the fix-and-reinspect loop runs more than 3 iterations without co
 
 Only stop for human input before the guard limit when a blocker requires a product or design decision rather than a straightforward code correction.
 
-### Final Human Review
+### 9. Final Human Review
 
 Once the agent finds no blockers, launch Hunk for the human to review the diff in the TUI:
 
@@ -260,7 +290,7 @@ If the human finds issues:
 
 The human may also choose to address warnings or info findings at this stage.
 
-### 8. Commit and Push
+### 10. Commit and Push
 
 Once the human approves the diff, commit the changes using Conventional Commits:
 
@@ -277,7 +307,7 @@ After the human confirms, push:
 git push
 ```
 
-### 9. Post-PR Review Loop
+### 11. Post-PR Review Loop
 
 Ask the human for permission before creating the PR:
 
@@ -295,9 +325,9 @@ gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews   # review summaries
 
 If actionable comments exist:
 
-1. Create a follow-up fix prompt (same structure as the Fix-and-Reinspect Loop). Run validation (Step 6) after each fix.
-2. Execute the fix by spawning a new implementation agent (same mechanism as Step 5).
-3. Re-review with a separate review agent (same mechanism as Step 7).
+1. Create a follow-up fix prompt (same structure as the Fix-and-Reinspect Loop). Run validation (Step 7) after each fix.
+2. Execute the fix by spawning a new implementation agent (same mechanism as Step 6).
+3. Re-review with a separate review agent (same mechanism as Step 8).
 4. Commit with Conventional Commits and capture the commit hash.
 5. Reply to each addressed review comment via the GitHub API:
 
@@ -319,6 +349,7 @@ Choose the output that matches the user's current stage:
 - **Source-assistant prompt**: produce the prompt the user should run in the source system.
 - **Source output to coding prompt**: convert source-assistant output into a coding-agent prompt.
 - **Investigate and interview**: explore the repository and return Material Ambiguity questions.
+- **Plan approval**: present the implementation plan and handoff summary in the conversation, then stop until the human explicitly approves.
 - **Validate**: run tests, lint, build, and coverage checks before review.
 - **Diff review**: spawn a separate review agent (Codex: `codex exec review`, Copilot: `/review`) or `hunk-review` (human final review).
 - **Review to repair prompt**: produce the follow-up coding-agent prompt.
