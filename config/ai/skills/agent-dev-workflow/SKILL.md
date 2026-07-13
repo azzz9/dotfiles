@@ -12,7 +12,7 @@ Coordinate the user's normal development loop:
 3. Investigate the repository and interview the user to close Material Ambiguity before implementation.
 4. Produce the coding-agent prompt and spawn a separate agent for implementation.
 5. Validate: run tests, lint, format, build, and coverage checks. Fix regressions before review.
-6. Review the result with a separate agent, then fix issues in an automated loop until no findings remain.
+6. Review the result with a separate agent, then fix blockers in an automated loop until none remain.
 7. Launch Hunk via Herdr for the human's final review of the diff.
 8. Commit with Conventional Commits, then ask the human to confirm before pushing.
 9. Ask the human to approve PR creation, then poll for review comments and fix until approved (every push requires human permission).
@@ -175,16 +175,13 @@ Use whichever mechanism is available in your environment:
 - **Copilot CLI**: `copilot -p '/review the changes on this branch. Focus on bugs and security issues.' -s --allow-tool='shell(git:*)' --no-ask-user`
 - **Manual**: output a review prompt for the user to paste into a fresh agent session.
 
-The review agent should check for:
+The review agent should classify findings as:
 
-- Acceptance criteria coverage.
-- Behavioral regressions.
-- Missing tests or weak validation.
-- Overbroad changes outside the ticket scope.
-- Unhandled edge cases surfaced during investigation.
-- Security, migration, and compatibility risks.
+- **Blocker**: must be fixed before proceeding (bugs, security, regressions, scope violations, missing tests for critical behavior).
+- **Warning**: should be fixed if time permits, but can be ignored (style, minor naming, optional improvements).
+- **Info**: informational notes, no action required.
 
-If no issues are found, proceed to Final Human Review.
+If no blockers are found, proceed to Final Human Review. The human can decide whether to address warnings or info.
 
 ### Fix-and-Reinspect Loop
 
@@ -201,13 +198,15 @@ Execute the fix by spawning a new implementation agent (same mechanism as Step 5
 
 After the fix, re-review with a separate review agent (same mechanism as Step 7). Do not fall back to `git diff` in the Main Agent -- every iteration must use a separate review agent to maintain context separation.
 
-Loop guard: if the fix-and-reinspect loop runs more than 3 iterations without converging, stop and escalate to the human with a summary of persistent findings. Do not loop indefinitely.
+The fix loop only addresses blockers. Warnings and info findings are acknowledged but do not block progression. When no blockers remain, proceed to Final Human Review.
 
-Only stop for human input before the guard limit when a finding requires a product or design decision rather than a straightforward code correction.
+Loop guard: if the fix-and-reinspect loop runs more than 3 iterations without converging on blockers, stop and escalate to the human with a summary of persistent findings. Do not loop indefinitely.
+
+Only stop for human input before the guard limit when a blocker requires a product or design decision rather than a straightforward code correction.
 
 ### Final Human Review
 
-Once the agent finds no issues, launch Hunk for the human to review the diff in the TUI:
+Once the agent finds no blockers, launch Hunk for the human to review the diff in the TUI:
 
 ```bash
 herdr status                                       # verify Herdr is available
@@ -227,7 +226,9 @@ If the human finds issues:
 
 1. Apply the fixes.
 2. Re-enter the Fix-and-Reinspect Loop (fix → validate → separate review agent).
-3. Ask for human review again when the agent finds no issues.
+3. Ask for human review again when the agent finds no blockers.
+
+The human may also choose to address warnings or info findings at this stage.
 
 ### 8. Commit and Push
 
