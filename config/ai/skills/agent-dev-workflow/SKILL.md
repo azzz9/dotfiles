@@ -11,7 +11,7 @@ Coordinate the user's normal development loop:
 2. Use the source assistant output as the source for a coding-agent implementation prompt.
 3. Investigate the repository and interview the user to close Material Ambiguity before implementation.
 4. Produce the coding-agent prompt and spawn a separate agent for implementation.
-5. Validate: run tests, lint, format, build, coverage, and security checks. Fix regressions before review.
+5. Validate: run tests, lint, format, build, and coverage checks. Fix regressions before review.
 6. Review the result with a separate agent, then fix issues in an automated loop until no findings remain.
 7. Launch Hunk via Herdr for the human's final review of the diff.
 8. Commit with Conventional Commits, then ask the human to confirm before pushing.
@@ -149,9 +149,8 @@ After the implementation agent completes, run validation before sending the diff
 - **Tests**: run the project's test suite. All existing tests must pass (no regressions).
 - **Coverage**: check that coverage has not decreased compared to the base branch. If coverage tools are unavailable, skip silently.
 - **Lint / typecheck**: run the project's linter and type checker. All must pass.
-- **Format**: run the project's formatter in check mode (e.g., `prettier --check`, `black --check`, `nixpkgs-fmt --check`). If no formatter is configured, skip silently.
+- **Format**: run the project's formatter in check mode (e.g., `prettier --check`, `black --check`, `nixpkgs-fmt --check`, `rustfmt --check`, `gofmt -l`). If no formatter is configured, skip silently.
 - **Build**: run the project's build command. Must succeed.
-- **Security scan**: run the project's security scanner if configured (e.g., `bandit`, `npm audit`, `trivy`). If no scanner is configured, skip silently.
 - **Diff scope**: verify with `git diff --stat` that changes are within the intended scope.
 
 If any check fails, re-enter the Fix-and-Reinspect Loop with the failure output as the fix prompt. Do not proceed to review until all checks pass.
