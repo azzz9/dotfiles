@@ -100,12 +100,42 @@ Identify Material Ambiguity -- uncertainty that could change one of:
 
 Only these qualify as interview questions. Do not ask about things that are essentially decided or that do not affect the implementation direction.
 
-Return structured questions, one at a time, with:
+Return questions one at a time in this format:
 
-- Current state (what the repo shows).
-- Why it matters (what changes if the answer differs).
-- 2-3 realistic options (a recommended option is fine, but every option must be genuinely selectable).
-- The recommended option and a short rationale.
+```text
+Q1. <question>
+
+Current as-is:
+<what the code or repo currently does>
+
+This resolves:
+<which ambiguity this question addresses>
+
+Why user choice is needed:
+<why this requires a human decision rather than being discoverable from the repository>
+
+How this changes the plan:
+<what implementation impact the answer has — which files, tests, or rollout paths differ>
+
+A) <option>
+<what this means for implementation>
+
+B) <option>
+<what this means for implementation>
+
+C) <option>
+<what this means for implementation>
+
+Recommendation:
+<recommended option and rationale>
+
+Please choose A, B, or C.
+```
+
+Rules:
+- Each option must be genuinely selectable, not a placeholder that will never be chosen.
+- Maximum 3 options per question.
+- Do not ask questions whose answer can be discovered from the repository.
 
 If no ticket exists and no source assistant was used, start directly from this step.
 
