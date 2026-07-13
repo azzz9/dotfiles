@@ -74,6 +74,8 @@ Explore the codebase:
 - Docs, README sections, and past plan files.
 - Any patterns or conventions the implementation must follow.
 
+Run the existing test suite and record the baseline (pass/fail count, coverage if available). This baseline is used in Step 6 to distinguish pre-existing failures from regressions caused by the implementation.
+
 Cross-reference with source-assistant output:
 
 - Detect contradictions between the ticket description and repository reality.
@@ -146,8 +148,9 @@ The handoff prompt must be self-contained:
 
 After the implementation agent completes, run validation before sending the diff to a review agent. The Main Agent runs these checks:
 
-- **Tests**: run the project's test suite. All existing tests must pass (no regressions).
-- **Coverage**: check that coverage has not decreased compared to the base branch. If coverage tools are unavailable, skip silently.
+- **Tests**: run the project's test suite. Compare against the Step 3 baseline. New failures must be caused by the implementation, not pre-existing issues.
+- **Coverage**: compare against the Step 3 baseline. Must not decrease. If coverage tools are unavailable, skip silently.
+- **New tests**: verify that tests exist for the new behavior introduced by this change. If no tests were added, flag this as a finding for the review agent.
 - **Lint / typecheck**: run the project's linter and type checker. All must pass.
 - **Format**: run the project's formatter in check mode. If no formatter is configured, skip silently.
 - **Build**: run the project's build command. Must succeed.
