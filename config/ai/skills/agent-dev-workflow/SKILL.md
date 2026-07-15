@@ -33,6 +33,19 @@ Prefer concrete source material over assumptions:
 
 Assume this environment often cannot access the original ticket or its linked sources directly. In that case, produce a source-assistant prompt for the user to run in the source system rather than asking for manual exports first.
 
+The ticket key and title are required at PR creation (Step 11). If the source assistant was used, these come from Section 1 of the brief. If no source assistant was used and the user has not provided a ticket key or title, ask the user before proceeding to PR creation.
+
+## Working Files
+
+Some artifacts are written to `.agent-dev-workflow/` to survive context loss during long sessions. Use the ticket key as the file ID (or `YYYYMMDD` if no ticket exists):
+
+| File | Written at | Purpose |
+|-----|-----------|---------|
+| `.agent-dev-workflow/<key>_brief.md` | Step 1 (after source assistant returns) | Preserves the full brief for re-reading if context grows long |
+| `.agent-dev-workflow/<key>_baseline.md` | Step 3 (after baseline recording) | Preserves test/coverage/lint/build numbers for Step 7 comparison |
+
+Add `.agent-dev-workflow/` to `.git/info/exclude` (not `.gitignore` — this keeps the repo clean without committing). If `.git` is read-only (e.g. sandboxed environments), skip this step and avoid staging the directory manually. Do not commit these files.
+
 ## Workflow
 
 ### 1. Draft the Source-Assistant Prompt
@@ -48,6 +61,10 @@ Ask the source assistant to return structured output:
 - Constraints, migration risks, compatibility concerns, permissions, API/UI contracts, and rollout notes.
 - Ambiguities, conflicting information, and decisions needed before implementation.
 - A final coding-agent prompt draft using [prompt-template.md](./references/prompt-template.md).
+
+Ask the source assistant to follow the template in [prompt-template.md](./references/prompt-template.md) for the exact output format.
+
+After the source assistant returns the brief, save it to `.agent-dev-workflow/<key>_brief.md` (see Working Files above).
 
 ### 2. Normalize the Source-Assistant Output
 
@@ -83,7 +100,7 @@ Run the existing test suite and record the baseline:
 - Format violations (if any pre-existing).
 - Build status (does it currently build successfully?).
 
-This baseline is used in Step 7 to distinguish pre-existing issues from regressions caused by the implementation.
+This baseline is used in Step 7 to distinguish pre-existing issues from regressions caused by the implementation. Save it to `.agent-dev-workflow/<key>_baseline.md` (see Working Files above).
 
 Cross-reference with source-assistant output:
 
@@ -102,7 +119,25 @@ Identify Material Ambiguity -- uncertainty that could change one of:
 
 Only these qualify as interview questions. Do not ask about things that are essentially decided or that do not affect the implementation direction.
 
-Return questions one at a time in this format:
+**Prohibition on guessing**: When the ticket and linked sources do not provide enough information to determine an implementation detail, do not fill the gap with assumptions. Surface the gap as a Material Ambiguity question to the user instead. The same applies when the source-assistant brief contradicts repository reality -- the contradiction must be resolved by the user, not silently resolved by the agent.
+
+After investigating each category, complete the Material Ambiguity Checklist:
+
+```text
+Material Ambiguity Checklist:
+- [ ] Implementation direction: <"found (Q<n>)" or "clear: <1-line reason>">
+- [ ] Verification approach: <"found (Q<n>)" or "clear: <1-line reason>">
+- [ ] Rollout strategy: <"found (Q<n>)" or "clear: <1-line reason>">
+- [ ] Data handling: <"found (Q<n>)" or "clear: <1-line reason>">
+- [ ] Permissions/security: <"found (Q<n>)" or "clear: <1-line reason>">
+- [ ] User-visible behavior: <"found (Q<n>)" or "clear: <1-line reason>">
+
+Interview status: <N> questions asked.
+  or
+Interview status: 0 ambiguities found (checklist verified).
+```
+
+If ambiguities were found, return questions one at a time in this format:
 
 ```text
 Q1. <question>
@@ -138,20 +173,17 @@ Rules:
 - Each option must be genuinely selectable, not a placeholder that will never be chosen.
 - Maximum 3 options per question.
 - Do not ask questions whose answer can be discovered from the repository.
+- When the checklist shows 0 ambiguities, each "clear" entry must include a 1-line reason explaining what was checked and why no ambiguity remains. Bare "clear" without a reason is not acceptable.
+
+The checklist and interview status are a hard gate: Step 4 must not begin until the checklist is printed and all questions (if any) are answered by the user.
 
 If no ticket exists and no source assistant was used, start directly from this step.
 
 ### 4. Produce the Conversation Plan and Coding-Agent Prompt
 
-Use [prompt-template.md](./references/prompt-template.md) when drafting the prompt.
+Use the **Implementation Plan** template in [prompt-template.md](./references/prompt-template.md) when presenting the plan. The template includes structured sections for objective, acceptance criteria, intended changes, interview decisions reflected, validation plan with baseline values, risks, non-goals, and assumptions. Do not deviate from the template structure.
 
-First present a concise implementation plan in the conversation for human approval. Do not write a plan file unless the human explicitly asks for one. The plan must include:
-
-- Objective and acceptance criteria.
-- Intended files, modules, commands, or workflows to change.
-- Test and validation strategy, including baseline comparison.
-- Known risks, rollout concerns, and explicit non-goals.
-- Any assumptions that would materially change the implementation if wrong.
+Do not write a plan file unless the human explicitly asks for one.
 
 Then present a concise handoff summary that makes the final coding-agent prompt reviewable without printing the entire prompt by default. The summary must cover:
 
@@ -213,7 +245,10 @@ The handoff prompt must be self-contained:
 After the implementation agent completes, run validation before sending the diff to a review agent. The Main Agent runs these checks:
 
 - **Tests**: run the project's test suite. Any test that was passing in the Step 3 baseline but now fails is a regression.
-- **Coverage**: compare against the Step 3 baseline. Must not decrease. If coverage tools are unavailable, skip silently.
+- **Coverage**: run the project's coverage tool. Report before and after as concrete numbers:
+  - Baseline: <XX.X%>  After: <YY.Y%>  Delta: <+/-Z.Z%>
+  - Coverage must not decrease. If it decreases, treat as a regression and re-enter the Fix-and-Reinspect Loop.
+  - If no coverage tool is configured, state "No coverage tool configured" explicitly — do not skip silently.
 - **New tests**: verify that tests exist for the new behavior introduced by this change. If no tests were added, flag this as a finding for the review agent.
 - **Lint / typecheck**: run the project's linter and type checker. New warnings compared to the Step 3 baseline must be caused by the implementation.
 - **Format**: run the project's formatter in check mode. New violations compared to the Step 3 baseline must be caused by the implementation. If no formatter is configured, skip silently.
@@ -276,11 +311,18 @@ herdr pane run <pane_id> "hunk diff"
 
 If Herdr is not running, ask the user to launch `hunk diff` in their terminal.
 
-After the Hunk session is live, add summary comments explaining what was checked and why, so the human can verify efficiently:
+After the Hunk session is live, add summary comments explaining what was checked and why, so the human can verify efficiently. Write detailed comments with full context — the user should be able to understand the reasoning without asking follow-up questions.
+
+Prefer `hunk session comment apply --repo . --stdin` with a JSON payload for all comments. This avoids shell quoting and truncation issues that occur with `--summary` / `--rationale` flags (shell expands `$`, `` ` ``, `!`, and `"` inside flag arguments, corrupting the comment text).
 
 ```bash
-hunk session comment apply --repo . --stdin   # batch-add review notes
+printf '%s\n' '{"comments":[{"filePath":"<file>","newLine":<line>,"summary":"<comment>","rationale":"<details>"}]}' | hunk session comment apply --repo . --stdin
 ```
+
+Rules:
+- In the JSON payload, use `\n` for line breaks. Do not embed raw newlines.
+- `comment add` with `--summary` / `--rationale` is fine for short one-liners only.
+- Avoid special shell characters in `--summary` without proper quoting. When in doubt, use the JSON batch form.
 
 If the human finds issues:
 
@@ -309,10 +351,54 @@ git push
 
 ### 11. Post-PR Review Loop
 
-Ask the human for permission before creating the PR:
+Before creating the PR, ask the human for the base branch:
+
+"What base branch should this PR target? (default: main)"
+
+After the human confirms the base branch and grants permission, create the PR.
+
+PR title format:
+- With ticket: `<ticket_key> <ticket_title>` (half-width space separator)
+  Example: `PROJ-123 Add rate limiter to search endpoint`
+- Without ticket: Conventional Commits format `type(scope): subject`
+  Example: `feat(middleware): add rate limiter to search endpoint`
+
+Before writing the PR body, check for a PR template in the repository:
 
 ```bash
-gh pr create --title "<conventional commit subject>" --body "<description>"
+ls .github/PULL_REQUEST_TEMPLATE.md .github/pull_request_template.md    PULL_REQUEST_TEMPLATE.md pull_request_template.md 2>/dev/null
+```
+
+If found, use it as the base structure for the PR body.
+If not found, use this default:
+
+```markdown
+## Summary
+<what changed and why>
+
+## Related ticket
+<ticket key + title, or "N/A">
+
+## Changes
+- <change 1>
+- <change 2>
+
+## Test plan
+- [ ] <how to verify change 1>
+- [ ] <how to verify change 2>
+
+## Breaking changes
+<if any, describe impact and migration path; otherwise "None">
+
+## Checklist
+- [ ] Tests pass
+- [ ] Lint passes
+- [ ] Build succeeds
+- [ ] Coverage did not decrease
+```
+
+```bash
+gh pr create --base <base> --title "<title>" --body "<description>"
 ```
 
 Then poll for review comments:
@@ -329,11 +415,11 @@ If actionable comments exist:
 2. Execute the fix by spawning a new implementation agent (same mechanism as Step 6).
 3. Re-review with a separate review agent (same mechanism as Step 8).
 4. Commit with Conventional Commits and capture the commit hash.
-5. Reply to each addressed review comment via the GitHub API:
+5. Reply to each addressed review comment via the GitHub API using the templates in [pr-reply-template.md](./references/pr-reply-template.md):
 
    ```bash
    gh api --method POST repos/{owner}/{repo}/pulls/{pr_number}/comments/{comment_id}/replies \
-     -f body="Addressed in commit <hash>: <how this comment was resolved>"
+     -f body="<reply body from pr-reply-template.md>"
    ```
 6. Ask the human for permission to push, then push.
 7. Re-poll for comments.

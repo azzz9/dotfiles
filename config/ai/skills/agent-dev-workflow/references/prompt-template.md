@@ -3,47 +3,98 @@
 Use this in an upstream AI chat when it can access the ticket, comments, attachments, linked issues, and linked sources better than Codex can.
 
 ```markdown
-I need to create an implementation prompt for a coding agent from this ticket.
+I need to create an implementation brief for a coding agent from this ticket.
 
-Please inspect this ticket thoroughly: ticket body, comments, attachments, linked issues, and every URL or linked source pasted in the ticket or comments.
+Please inspect this ticket thoroughly: ticket body, comments, attachments,
+linked issues, and every linked source pasted in the ticket or comments.
 
-Return a structured implementation brief with these sections:
+CRITICAL RULES:
+1. The consumer of this brief is a coding agent that cannot access
+   external URLs. The brief MUST be self-contained. Copy all relevant
+   content from tickets, comments, attachments, and linked sources
+   directly into the brief. Never write "see <URL>" alone.
+2. Do not include URLs in the brief. Tag each extract with a short
+   source label such as [ticket body], [ticket comment #3], [linked
+   spec], [attachment] instead.
+3. Write the brief in the same language as the ticket. Technical terms
+   (function names, type names, error codes, API paths, etc.) remain
+   in their original language.
+4. Do not paraphrase technical specifications. Copy exact interface
+   definitions, variable names, types, data structures, processing
+   steps, API contracts, and error codes verbatim into the brief.
+   Summarize prose explanations, but preserve technical details as-is.
+5. If two sources contradict each other, include both verbatim and
+   mark the contradiction in Section 7. Do not pick one side.
 
-1. Ticket identity
-- Ticket key:
-- Title:
-- Relevant links inspected:
+Return a structured implementation brief using the exact headings and
+format shown below.
 
-2. Source extraction
-- All links and sources inspected:
-- Which source appears authoritative, if multiple sources overlap:
-- Relevant sections, comments, examples, notes, or linked issue details:
-- Important statuses, flags, constraints, or implementation hints:
+## 1. Ticket Identity
+| Field | Value |
+|-------|-------|
+| Key   | <key or "N/A"> |
+| Title | <title> |
 
-3. Requirement summary
-- Current behavior:
-- Desired behavior:
-- User-visible/system behavior that must change:
+## 2. Source Extraction
+- Authoritative source: <which source is authoritative if multiple
+  overlap, described by name not URL>
+- Extracted content:
+  <Paste all relevant text, specs, tables, API responses, error
+  messages, code snippets, etc. Tag each extract with a short source
+  label such as [ticket body], [ticket comment #3], [linked spec],
+  [attachment].>
+
+## 3. Requirement Summary
+- Current behavior: <1-3 sentences>
+- Desired behavior: <1-3 sentences>
 - Acceptance criteria:
-- Explicit non-goals:
+  1. <criterion>
+  2. <criterion>
+- Non-goals: <explicit list>
 
-4. Implementation constraints
-- Compatibility/API/UI contract constraints:
-- Permissions/security/privacy concerns:
-- Data migration or existing-data behavior:
-- Rollout/feature flag concerns:
-- Performance or reliability concerns:
+## 4. Implementation Constraints
+| Category | Constraint |
+|----------|-----------|
+| Compatibility | <value or "none identified"> |
+| Security/Privacy | <value or "none identified"> |
+| Data migration | <value or "none identified"> |
+| Rollout/feature flag | <value or "none identified"> |
+| Performance | <value or "none identified"> |
+| API/UI contract | <value or "none identified"> |
 
-5. Ambiguities and decisions needed
-- List anything unclear, conflicting, or inferred.
-- Do not invent requirements. Mark uncertain items as questions.
+## 5. Affected Components & Data Flow
+- Components: <list affected modules, files, functions, tables, or
+  services known from the ticket or linked sources>
+- Processing flow: <numbered steps describing the internal logic for
+  this change, copied from sources verbatim — do not paraphrase
+  technical logic. If not described in sources, state so.>
+- Data flow: <how data moves through the system for this change,
+  or "not described in sources">
+- State transitions: <if applicable, describe state changes; otherwise
+  "N/A">
 
-6. Coding-agent prompt draft
-- Write a self-contained coding-agent prompt.
-- Include what to inspect in the repository.
-- Include the smallest reasonable implementation scope.
-- Include validation expectations.
-- Include when the coding agent should stop and ask for clarification.
+## 6. Test Strategy
+- Test approach: <unit/integration/e2e/mock requirements>
+- Hard-to-test areas: <list areas where testing is difficult and why>
+- Existing test coverage for affected area: <if known from sources;
+  otherwise "unknown — verify in repository">
+
+## 7. Ambiguities & Decisions Needed
+- If none, state "No ambiguities identified."
+- Otherwise list each as:
+  - <ambiguity>: <why it matters> (decision needed before implementation)
+- If sources contradict each other, list each contradiction with both
+  sides cited verbatim and marked as [CONTRADICTION]:
+  - [CONTRADICTION] <source A says X> vs <source B says Y>
+- Do not invent requirements. Mark inferred items as questions.
+
+## 8. Coding-Agent Prompt Draft (optional)
+- If sections 1-7 provide enough information for a coding agent, omit
+  this section.
+- If there are implementation hints that do not fit above, write a
+  self-contained draft prompt here. Include what to inspect in the
+  repository, the smallest reasonable scope, validation expectations,
+  and when the coding agent should stop and ask for clarification.
 ```
 
 # Conversation Plan and Handoff Template
@@ -51,13 +102,40 @@ Return a structured implementation brief with these sections:
 Use this after the source assistant returns the structured implementation brief. First present the implementation plan in the conversation for human approval, then include a concise handoff summary that makes the final coding-agent prompt reviewable without printing the whole prompt by default. Do not write a plan file unless the human explicitly asks for one.
 
 ```markdown
-Conversation implementation plan for approval:
-- Objective:
-- Acceptance criteria:
-- Intended changes:
-- Validation plan:
-- Risks and non-goals:
-- Assumptions:
+## Implementation Plan
+
+### Objective
+<1-2 sentences: what user-visible or system behavior changes>
+
+### Acceptance Criteria
+1. <criterion>
+2. <criterion>
+
+### Intended Changes
+| Target | File / Module | Change |
+|--------|-------------|--------|
+| <area> | <path>      | <what> |
+
+### Interview Decisions Reflected
+- <ambiguity from Step 3>: <adopted decision and how it shapes the plan>
+- (if none: "No interview decisions -- 0 ambiguities in Step 3")
+
+### Validation Plan
+| Check    | Command | Baseline |
+|----------|---------|----------|
+| Tests    | <cmd>   | <pass/fail count> |
+| Coverage | <cmd>   | <percentage> |
+| Lint     | <cmd>   | <warnings count> |
+| Build    | <cmd>   | <pass/fail> |
+
+### Risks & Non-goals
+- Risks: <list>
+- Non-goals: <explicit list>
+
+### Assumptions
+- <assumption that would materially change the plan if wrong>
+
+---
 
 Handoff summary for approval:
 - Implementation-agent objective:
@@ -76,16 +154,17 @@ After the human approves, hand off a complete prompt in this shape:
 You are implementing ticket <TICKET_KEY>: <TITLE>.
 
 Ticket context:
-- Link: <URL>
-- Summary: <one-paragraph summary>
-- Sources inspected: <ticket body, comments, attachments, linked issues, URLs, docs, or other linked sources>
+- Key: <key or "N/A">
+- Summary: <one-paragraph summary, self-contained — no URLs>
+- Sources consulted: <brief list of source labels, e.g. [ticket body],
+  [ticket comment #3], [linked spec] — no URLs>
 - Current behavior: <what happens now>
 - Desired behavior: <what should happen after this change>
 
 Source extraction:
-- Authoritative source: <source, if one is clearly authoritative>
-- Relevant sections: <sections, comments, examples, notes, links, or issue details>
-- Interpretation rules: <how statuses, flags, examples, and notes should be read>
+- Authoritative source: <source name, if one is clearly authoritative>
+- Extracted content: <all relevant specs, tables, snippets, etc. copied
+  here — the coding agent cannot access URLs>
 - Ambiguities resolved before implementation: <Step 3 interview decisions>
 
 Acceptance criteria:
@@ -101,15 +180,22 @@ Important constraints:
 
 Repository instructions:
 - First inspect the relevant code paths before editing.
+- Discover and follow existing conventions for:
+  - Error handling (try/catch, Result, panic/recover, etc.)
+  - Naming (variables, functions, types, files)
+  - File organization and module structure
+  - Test style (test framework, naming, fixtures, mocking)
+  - Logging and debug output
 - Prefer the smallest coherent change that satisfies the acceptance criteria.
 - Preserve existing patterns unless there is a clear reason to diverge.
 - Do not introduce unrelated refactors.
+- Follow the existing comment style and language in each file.
 - If the ticket is ambiguous or requires a product decision, stop and ask before changing direction.
 
 Implementation notes:
 - <known design decision from Step 3 interview>
 - <edge case handling>
-- <linked docs or examples>
+- <implementation hints from source extraction>
 
 Validation:
 - Run the project's test suite. Compare against the baseline (which tests were passing before).
