@@ -27,6 +27,10 @@ in
       fd
       ripgrep
       jq
+      tree                    # directory structure visualization
+      yq-go                   # YAML processor
+      shellcheck              # shell script linter
+      shfmt                   # shell script formatter
       poppler-utils
       ffmpegthumbnailer
       unar
