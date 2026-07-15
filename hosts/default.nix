@@ -3,19 +3,13 @@ let
   repo = "${config.home.homeDirectory}/src/github.com/azzz9/dotfiles";
   skillNames = [
     "conventional-commit"
-    "difit-review"
     "domain-modeling"
     "grill-me"
     "grill-with-docs"
     "grilling"
     "agent-dev-workflow"
-    "solidity-agent-dev-workflow"
     "herdr"
     "hunk-review"
-    "tmux"
-    "ascii-art-diagrams"
-    "dotfiles-context"
-    "nix-home-manager"
   ];
   skillBases = [ ".codex" ".copilot" ];
   # Build a flat attrset of out-of-store symlinks for every skill x base

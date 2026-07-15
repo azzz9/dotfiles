@@ -46,7 +46,7 @@
     [[keys.command]]
     key = "prefix+shift+c"
     type = "pane"
-    command = "codex --no-alt-screen"
+    command = "codex -p dotfiles --no-alt-screen"
 
     [[keys.command]]
     key = "prefix+shift+g"

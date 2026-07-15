@@ -1,4 +1,4 @@
-model = "gpt-5.5"
+model = "gpt-5.6-terra"
 model_reasoning_effort = "medium"
 personality = "pragmatic"
 approval_policy = "on-request"
@@ -19,27 +19,16 @@ guardian_approval = true
 [sandbox_workspace_write]
 network_access = true
 
-[notice]
-"hide_gpt-5.1-codex-max_migration_prompt" = true
-
-[notice.model_migrations]
-"gpt-5.1-codex-max" = "gpt-5.2-codex"
-"gpt-5.2-codex" = "gpt-5.4"
-"gpt-5.3-codex" = "gpt-5.4"
-
 [plugins."google-calendar@openai-curated"]
 enabled = true
 
-[tui.model_availability_nux]
-"gpt-5.5" = 4
-
 # Ollama provider: declares the provider so `codex -p dotfiles` can use it
 # via `-c model_provider="ollama-launch"`. Inert unless explicitly selected;
-# does not affect the default (gpt-5.5 / OpenAI) model used by `cdx`.
+# does not affect the default (gpt-5.6-terra / OpenAI) model used by `cdx`.
 [model_providers.ollama-launch]
 name = "Ollama"
 base_url = "http://127.0.0.1:11434/v1/"
 wire_api = "responses"
 
-[projects."/home/azzz/src/github.com/azzz9/atcoder"]
-trust_level = "trusted"
+[tui.model_availability_nux]
+"gpt-5.6-terra" = 2
