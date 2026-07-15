@@ -4,11 +4,26 @@ Once the agent finds no blockers, launch Hunk for the human to review the diff i
 
 ```bash
 herdr status                                       # verify Herdr is available
-herdr pane split --current --direction right --cwd . --focus
-herdr pane run <pane_id> "hunk diff"
+WORKSPACE_ID="$(herdr pane current | python3 -c '
+import json, sys
+print(json.load(sys.stdin)["result"]["pane"]["workspace_id"])
+')"
+REVIEW_TAB="$(herdr tab create --workspace "$WORKSPACE_ID" --label review)"
+HUNK_PANE="$(printf '%s' "$REVIEW_TAB" | python3 -c '
+import json, sys
+print(json.load(sys.stdin)["result"]["root_pane"]["pane_id"])
+')"
+herdr pane run "$HUNK_PANE" "hunk diff"
+herdr tab focus "$(printf '%s' "$REVIEW_TAB" | python3 -c '
+import json, sys
+print(json.load(sys.stdin)["result"]["tab"]["tab_id"])
+')"
 ```
 
-If Herdr is not running, ask the user to launch `hunk diff` in their terminal.
+`dev` / `deva` レイアウトでは、Hunk は同じ workspace に新設する `review` タブの
+ルートペインで起動する。これにより、開発用ペインの配置や実行中のプロセスを変更しない。
+この手順はそれ以外のレイアウトを対象にしない。Herdr が動作していない場合は、ユーザーに
+ターミナルで `hunk diff` を起動してもらう。
 
 After the Hunk session is live, add summary comments explaining what was checked and why, so the human can verify efficiently. Write detailed comments with full context — the user should be able to understand the reasoning without asking follow-up questions.
 

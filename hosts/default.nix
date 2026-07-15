@@ -7,7 +7,7 @@ let
     "grill-me"
     "grill-with-docs"
     "grilling"
-    "agent-dev-workflow"
+    "agent-dev"
     "herdr"
     "hunk-review"
   ];

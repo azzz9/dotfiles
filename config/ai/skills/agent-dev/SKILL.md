@@ -1,5 +1,5 @@
 ---
-name: agent-dev-workflow
+name: agent-dev
 description: "Orchestrate a source-assistant to coding-agent development workflow: draft prompts for an upstream AI chat that can read tickets, comments, attachments, and linked sources; convert that output into implementation-ready coding-agent prompts; investigate the repository to close Material Ambiguity before implementation; review completed diffs with separate agents and hunk-review; and turn review findings into follow-up prompts. Use when the user creates coding-agent prompts from an issue tracker or other source system, passes them to a coding agent, and iterates with review feedback."
 ---
 
@@ -37,20 +37,20 @@ The ticket key and title are required at PR creation (Step 11). If the source as
 
 ## Working Files
 
-Some artifacts are written to `.agent-dev-workflow/` to survive context loss during long sessions. Use the ticket key as the file ID (or `YYYYMMDD` if no ticket exists):
+Some artifacts are written to `.agent-dev/` to survive context loss during long sessions. Use the ticket key as the file ID (or `YYYYMMDD` if no ticket exists):
 
 | File | Written at | Purpose |
 |-----|-----------|---------|
-| `.agent-dev-workflow/<key>_brief.md` | Step 1 (after source assistant returns) | Preserves the full brief for re-reading if context grows long |
-| `.agent-dev-workflow/<key>_baseline.md` | Step 3 (after baseline recording) | Preserves test/coverage/lint/build numbers for Step 7 comparison |
+| `.agent-dev/<key>_brief.md` | Step 1 (after source assistant returns) | Preserves the full brief for re-reading if context grows long |
+| `.agent-dev/<key>_baseline.md` | Step 3 (after baseline recording) | Preserves test/coverage/lint/build numbers for Step 7 comparison |
 
-Add `.agent-dev-workflow/` to `.git/info/exclude` (not `.gitignore` — this keeps the repo clean without committing). If `.git` is read-only (e.g. sandboxed environments), skip this step and avoid staging the directory manually. Do not commit these files.
+Add `.agent-dev/` to `.git/info/exclude` (not `.gitignore` — this keeps the repo clean without committing). If `.git` is read-only (e.g. sandboxed environments), skip this step and avoid staging the directory manually. Do not commit these files.
 
 ## Workflow
 
 ### 1. Draft the Source-Assistant Prompt
 
-Create a prompt for the upstream AI chat that can access the ticket and linked sources. Ask it to return structured output following the template in [prompt-template.md](./references/prompt-template.md). Save the returned brief to `.agent-dev-workflow/<key>_brief.md`.
+Create a prompt for the upstream AI chat that can access the ticket and linked sources. Ask it to return structured output following the template in [prompt-template.md](./references/prompt-template.md). Save the returned brief to `.agent-dev/<key>_brief.md`.
 
 ### 2. Normalize the Source-Assistant Output
 

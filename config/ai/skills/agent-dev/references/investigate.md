@@ -16,7 +16,7 @@ Run the existing test suite and record the baseline:
 - Format violations (if any pre-existing).
 - Build status (does it currently build successfully?).
 
-This baseline is used in Step 7 to distinguish pre-existing issues from regressions caused by the implementation. Save it to `.agent-dev-workflow/<key>_baseline.md` (see Working Files above).
+This baseline is used in Step 7 to distinguish pre-existing issues from regressions caused by the implementation. Save it to `.agent-dev/<key>_baseline.md` (see Working Files above).
 
 Cross-reference with source-assistant output:
 

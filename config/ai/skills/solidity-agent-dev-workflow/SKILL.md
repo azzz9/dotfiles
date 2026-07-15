@@ -5,7 +5,7 @@ description: Specialize the source-assistant to coding-agent workflow for Solidi
 
 # Solidity Agent Dev Workflow
 
-Inherit the overall flow from `agent-dev-workflow`, but specialize every prompt, grill question, and review pass for Solidity contract and test development.
+Inherit the overall flow from `agent-dev`, but specialize every prompt, grill question, and review pass for Solidity contract and test development.
 
 Normal loop:
 
