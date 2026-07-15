@@ -95,7 +95,7 @@ Prefer explanations that maximize user understanding.
 
 When a visual representation would improve clarity, use terminal-friendly diagrams such as:
 
-- Unicode box-drawing diagrams
+- ASCII box-drawing diagrams (`+`, `-`, `|`, `<`, `>`, `^`, `v`)
 - Trees
 - Tables
 - Timelines
@@ -132,42 +132,8 @@ Maximum diagram width: 100 characters.
 - Place Japanese or explanatory text **outside** the diagram (in surrounding prose or a separate table) instead of embedding it inside boxes.
 - If a label must contain non-ASCII text, keep it in a separate table or code comment below the diagram.
 
-#### Why
-
 Terminals render full-width characters (e.g. 日本語, 全角) as 2 cells, but half-width characters as 1 cell. Mixing them in the same line causes misalignment that cannot be fixed by padding alone.
 
-#### Example (good)
-
-```
-+-------------+   +------+
-| __dirname   | + | '..' |
-| (this dir)  |   |parent|
-+------+------+   +--+---+
-       |             |
-       +------+------+
-              |
-              v
-     +----------------+
-     | path.resolve() |
-     +-------+--------+
-             |
-             v
-       workerRoot
-```
-
-#### Example (bad — breaks alignment)
-
-```
-+---------------+   +----------+
-|  __dirname    | + |  '..'    |
-| (現在のdir)   |   |(親を示す) |  <- full-width chars misalign
-+------+--------+   +----+-----+
-       |                 |
-       +-------+---------+
-               |
-               v
-       workerRoot
-```
 
 ## On-demand Skills
 
@@ -189,5 +155,4 @@ Read the skill when the situation applies — not at startup.
 | Turning a ticket into a coding-agent prompt | `agent-dev-workflow` |
 | Solidity-specific agent dev workflow | `solidity-agent-dev-workflow` |
 | Remote-controlling tmux sessions for interactive CLIs | `tmux` |
-| Creating ASCII art or text-based diagrams | `ascii-art-diagrams` |
 | Building or sharpening a domain model | `domain-modeling` |
