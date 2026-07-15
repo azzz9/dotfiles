@@ -29,6 +29,14 @@ If the intent is ambiguous, ask before making changes.
 ## Language Rule
 
 - Always respond in Japanese.
+- Use だ/である style consistently.
+
+## Conciseness Rule
+
+- Start with the direct answer. Put context and caveats after.
+- Do not add preamble such as "Sure!" or "了解しました".
+- When a longer explanation is needed, lead with a one-line summary
+  (TL;DR) before diving into details.
 
 ## Sandbox Awareness
 
