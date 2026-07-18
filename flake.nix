@@ -30,7 +30,16 @@
     };
     hunk = {
       url = "github:modem-dev/hunk";
-      inputs.nixpkgs.follows = "nixpkgs";
+      # bun2nix (hunk's input) uses flake-parts + treefmt-nix, which
+      # evaluates `flake.formatter` for every system in its `systems`
+      # list (github:nix-systems/default = all systems), including
+      # x86_64-darwin. nixpkgs unstable (26.11+) dropped x86_64-darwin
+      # support, so that transitive evaluation throws -- even when
+      # building for x86_64-linux -- and breaks `dotfiles upgrade`.
+      # Do NOT follow our unstable nixpkgs here; pin hunk/bun2nix's
+      # nixpkgs to the 26.05 stable branch (the last to support
+      # x86_64-darwin) so the transitive eval only warns, not errors.
+      inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     };
   };
 
