@@ -4,6 +4,8 @@ let
   skillNames = [
     "conventional-commit"
     "domain-modeling"
+    "grill-me"
+    "grill-with-docs"
     "grilling"
     "agent-dev"
     "herdr"
