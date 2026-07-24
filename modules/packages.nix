@@ -33,7 +33,6 @@ in
       shfmt                   # shell script formatter
       poppler-utils
       ffmpegthumbnailer
-      unar
       p7zip
       imagemagick
       resvg
@@ -84,6 +83,10 @@ in
       solidity.prettierPluginSolidity              # formatter plugin
     ])
     ++ lib.optionals pkgs.stdenv.isLinux (with pkgs; [
+      # Temporary: unar fails to link on Darwin because ld64 crashes with
+      # `Trace/BPT trap: 5`. Move it back to the common package list once
+      # nixos-unstable includes NixOS/nixpkgs#536365.
+      unar
       xclip
       wl-clipboard
     ])
