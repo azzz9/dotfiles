@@ -19,6 +19,22 @@
       vim.keymap.set("i", "jk", "<Esc>", { noremap = true })
       vim.keymap.set("n", "<leader>sv", ":vsplit<CR>", { desc = "Vertical split" })
       vim.keymap.set("n", "<leader>sh", ":split<CR>", { desc = "Horizontal split" })
+      vim.keymap.set("x", "<leader>ar", function()
+        local path = vim.api.nvim_buf_get_name(0)
+        if path == "" then
+          vim.notify("Save the buffer before copying an agent reference.", vim.log.levels.WARN)
+          return
+        end
+
+        local start_line = vim.fn.line("v")
+        local end_line = vim.fn.line(".")
+        start_line, end_line = math.min(start_line, end_line), math.max(start_line, end_line)
+
+        local reference = ("%s:%d-%d"):format(vim.fn.fnamemodify(path, ":p"), start_line, end_line)
+        vim.fn.setreg("+", reference)
+        vim.fn.setreg('"', reference)
+        vim.notify("Copied agent reference: " .. reference)
+      end, { desc = "Copy selected range for agent" })
       vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })
       vim.keymap.set("n", "]d", vim.diagnostic.goto_next, { desc = "Next diagnostic" })
       vim.keymap.set("n", "<leader>k", vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })

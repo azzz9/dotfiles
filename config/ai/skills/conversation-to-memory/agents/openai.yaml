@@ -1,0 +1,4 @@
+interface:
+  display_name: "Conversation to Memory"
+  short_description: "Turn agent conversations into durable knowledge memos"
+  default_prompt: "Use $conversation-to-memory to distill these agent conversations into a durable knowledge memo."

@@ -2,6 +2,7 @@
 let
   repo = "${config.home.homeDirectory}/src/github.com/azzz9/dotfiles";
   skillNames = [
+    "conversation-to-memory"
     "conventional-commit"
     "domain-modeling"
     "grill-me"
