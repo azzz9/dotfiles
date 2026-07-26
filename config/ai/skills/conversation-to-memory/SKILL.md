@@ -1,12 +1,13 @@
 ---
 name: conversation-to-memory
-description: Distill Codex or other coding-agent conversation logs into concise, durable Markdown knowledge memos. Use when asked to analyze past agent sessions, summarize conversation history, preserve decisions or reusable lessons, create/update a knowledge memo, or extract candidate skills and AGENTS.md guidance from logs.
+description: Distill Codex or other coding-agent conversation logs into clear, durable Markdown knowledge notes for beginners. Use when asked to analyze past agent sessions, turn a discussion into an explanatory memo, preserve decisions or reusable lessons, create/update a knowledge note, or extract candidate skills and AGENTS.md guidance from logs.
 ---
 
 # Conversation To Memory
 
-Turn a bounded set of agent conversations into an evidence-backed memo that
-helps future work. Preserve decisions and reusable lessons; omit a transcript.
+Turn a bounded set of agent conversations into an evidence-backed knowledge
+note that explains the subject to a reader who did not attend the discussion.
+Preserve decisions and reusable lessons; omit the transcript.
 
 ## Choose the source and destination
 
@@ -25,8 +26,10 @@ helps future work. Preserve decisions and reusable lessons; omit a transcript.
 
 ## Extract durable knowledge
 
-Read the selected conversations chronologically. Separate facts into these
-categories:
+Read the selected conversations chronologically. Identify the teaching thread:
+the reader's natural question, the mechanism that answers it, the tempting
+but incomplete alternative, and a concrete example that makes the trade-off
+visible. Then separate durable facts into these categories:
 
 - **Outcome and decisions**: what was accepted, rejected, or intentionally
   deferred, including the reason when it is evidenced.
@@ -40,48 +43,87 @@ categories:
 
 Treat tool output and committed files as stronger evidence than agent
 reasoning. Cross-check important claims against the current repository when
-the memo will be used for ongoing work, and state the source reference for
-non-obvious claims.
+the note will be used for ongoing work. Distinguish verified facts, design
+decisions, and inferences; do not flatten them into equally certain claims.
 
 Never retain credentials, access tokens, private keys, or unrelated personal
 details. Redact them if they appear in the source. Do not turn one-off command
 output, speculative reasoning, or superseded configuration into durable
 knowledge.
 
-## Write the memo
+## Write an explanatory knowledge note
 
-Use this compact structure, omitting empty sections:
+Write in the user's language. Prefer a self-contained tutorial over a terse
+meeting record. Use descriptive numbered headings, short subsections, small
+examples, comparison tables, and compact ASCII diagrams where they materially
+clarify a relationship. Define jargon on first use.
+
+Start with the reader's intuitive question, then explain the mechanism, its
+consequences, and the trade-off. Include a rejected or incomplete alternative
+when it prevents a likely misunderstanding. Use precise caveats for
+engine-specific or version-specific behavior rather than presenting it as a
+universal rule.
+
+Use this structure, adapting section names to the topic and omitting only
+sections that have no evidence:
 
 ```markdown
-# <task or topic>
+# <topic>
 
-<one-sentence outcome and scope.>
+## 0. このノートの目的
 
-## Decisions
+<対象読者、扱う範囲、結論の輪郭を1-3文で示す。>
 
-- <decision> — <reason or evidence>
+---
 
-## Reusable knowledge
+## 1. <最初の直感的な疑問または核心>
 
-- <durable fact or workflow>
+### 1.1 <なぜそう考えたくなるか>
 
-## Preference signals
+<読者が抱く自然な疑問を示す。>
 
-- <explicit or repeated preference>
+### 1.2 <何が起きるか>
 
-## Follow-ups
+<具体例、コード、または小さな図で仕組みを示す。>
 
-- <open item, owner/context if known>
+### 1.3 <設計上の意味>
+
+<なぜその仕組みや判断が必要かを因果で説明する。>
+
+> **教訓**: <この節で持ち帰るべき一文>
+
+---
+
+## 2. <代替案または比較>
+
+| 観点 | 方式A | 方式B |
+| --- | --- | --- |
+| <比較軸> | <内容> | <内容> |
+
+<選択基準、適用条件、例外を説明する。>
+
+---
+
+## 3. まとめ
+
+| 概念 | 要点 |
+| --- | --- |
+| <概念> | <持ち帰る内容> |
+
+### 根本的な心構え
+
+- **<原則>**: <理由と実務上の意味>
 
 ## References
 
-- <session/log path, thread ID, commit, or verified file>
+- <会話ログ、thread ID、コミット、検証済み資料>
 ```
 
-Use specific paths, commit IDs, and commands where they make the memo
-actionable. Keep a memo short enough to scan; link to the original session
-instead of duplicating long discussions. For multiple related sessions, add a
-short per-task subsection rather than one chronological transcript.
+Use specific paths, commit IDs, commands, and external documentation only
+when they make the explanation auditable or actionable. Keep the note focused:
+link to the original session instead of duplicating long discussions. For
+multiple related sessions, synthesize one coherent explanation rather than a
+chronological transcript.
 
 ## Handoff
 
