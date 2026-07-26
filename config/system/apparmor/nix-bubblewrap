@@ -1,0 +1,10 @@
+# Allow Nix-installed bubblewrap binaries to create the user namespaces used
+# by application sandboxes. Ubuntu 24.04 restricts unprivileged user namespaces
+# to applications with an AppArmor profile.
+
+abi <abi/4.0>,
+include <tunables/global>
+
+profile nix-bubblewrap /nix/store/*-bubblewrap-*/bin/bwrap flags=(unconfined) {
+  userns,
+}

@@ -93,4 +93,33 @@ in
     ++ [ roots ]
     ++ lib.optional (codexPackage != null) codexPackage
     ++ lib.optional (copilotPackage != null) copilotPackage;
+
+  # Remote Control's daemon commands resolve Codex from this installer-owned
+  # path. Point it at the Nix-managed package so pairing remains available
+  # without installing a second, self-updating Codex distribution.
+  home.file.".codex/packages/standalone/current/codex" = lib.mkIf (codexPackage != null) {
+    source = "${codexPackage}/bin/codex";
+    force = true;
+  };
+
+  # Keep Remote Control in the foreground so systemd, rather than Codex's
+  # self-updating daemon, owns its lifecycle.
+  systemd.user.services.codex-remote-control = lib.mkIf (
+    pkgs.stdenv.isLinux && codexPackage != null
+  ) {
+    Unit = {
+      Description = "Codex Remote Control";
+      Wants = [ "network-online.target" ];
+      After = [ "network-online.target" ];
+    };
+
+    Service = {
+      Type = "simple";
+      ExecStart = "${codexPackage}/bin/codex remote-control";
+      Restart = "on-failure";
+      RestartSec = 5;
+    };
+
+    Install.WantedBy = [ "default.target" ];
+  };
 }
