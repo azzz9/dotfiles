@@ -1,5 +1,5 @@
-model = "gpt-5.6-terra"
-model_reasoning_effort = "medium"
+model = "gpt-5.6-sol"
+model_reasoning_effort = "low"
 personality = "pragmatic"
 approval_policy = "on-request"
 approvals_reviewer = "auto_review"
@@ -32,3 +32,9 @@ wire_api = "responses"
 
 [tui.model_availability_nux]
 "gpt-5.6-terra" = 2
+
+[projects."/home/azzz/src/github.com/azzz9/atcoder"]
+trust_level = "trusted"
+
+[projects."/home/azzz/src/github.com/GOMazk/OpenLR2"]
+trust_level = "trusted"
