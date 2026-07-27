@@ -1,6 +1,6 @@
 # Source-Assistant Prompt Template
 
-Use this in an upstream AI chat when it can access the ticket, comments, attachments, linked issues, and linked sources better than Codex can.
+Use this in an upstream AI chat when it can access the ticket, comments, attachments, linked issues, and linked sources better than the repository agents can.
 
 ```markdown
 I need to create an implementation brief for a coding agent from this ticket.

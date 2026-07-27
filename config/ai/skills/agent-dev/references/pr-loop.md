@@ -78,8 +78,8 @@ gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews   # review summaries
 If actionable comments exist:
 
 1. Create a follow-up fix prompt (same structure as the Fix-and-Reinspect Loop). Run validation (Step 7) after each fix.
-2. Execute the fix by spawning a new implementation agent (same mechanism as Step 6).
-3. Re-review with a separate review agent (same mechanism as Step 8).
+2. Execute the fix by spawning a new implementation agent with `--model claude-sonnet-5` (same mechanism as Step 6).
+3. Re-review with a separate review agent using `--model claude-opus-4.8` (same mechanism as Step 8).
 4. Commit with Conventional Commits and capture the commit hash.
 5. Reply to each addressed review comment via the GitHub API using the templates in [pr-reply-template.md](./references/pr-reply-template.md):
 

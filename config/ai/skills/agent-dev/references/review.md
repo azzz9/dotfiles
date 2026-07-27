@@ -19,14 +19,13 @@ If any check fails, re-enter the Fix-and-Reinspect Loop with the failure output 
 
 Spawn a separate agent for review to avoid confirmation bias. The review agent must not carry the investigation or implementation context.
 
-Use whichever mechanism is available in your environment:
+Use a fresh Copilot CLI session with a self-contained review prompt:
 
-- **Codex built-in review**: `codex exec review --uncommitted --ephemeral -o review.txt`
-- **Codex prompt-driven review**: `codex exec --ephemeral --sandbox read-only -o review.txt "Review the uncommitted changes. Focus on acceptance criteria coverage and behavioral regressions. Classify findings as Blocker, Warning, or Info."`
-- **Copilot CLI**: `copilot -p '/review the changes on this branch. Focus on bugs and security issues.' -s --allow-tool='shell(git:*)' --no-ask-user`
-- **Manual**: output a review prompt for the user to paste into a fresh agent session.
+```bash
+copilot -p '/review the changes on this branch. Focus on acceptance criteria coverage and behavioral regressions. Classify findings as Blocker, Warning, or Info.' -s --allow-tool='shell(git:*)' --no-ask-user --model claude-opus-4.8
+```
 
-Use the prompt-driven Codex form when you need custom classification instructions. Some Codex CLI versions do not accept a custom prompt together with `codex exec review --uncommitted`.
+Always use `claude-opus-4.8` for review and re-review. The review agent must remain read-only and must not fix its own findings.
 
 The review agent should classify findings as:
 
@@ -47,9 +46,9 @@ Turn review findings into a focused repair prompt. The prompt should:
 - Require rerunning relevant validation.
 - Forbid unrelated refactors unless the user explicitly asks for them.
 
-Execute the fix by spawning a new implementation agent (same mechanism as Step 6). Do not fix in the Main Agent context -- it carries investigation bias. The fix prompt is self-contained and includes the current diff context, so the implementation agent does not need prior session history.
+Execute the fix by spawning a new implementation agent with `--model claude-sonnet-5` (same mechanism as Step 6). Do not fix in the Main Agent context -- it carries investigation bias. The fix prompt is self-contained and includes the current diff context, so the implementation agent does not need prior session history.
 
-After the fix, re-review with a separate review agent (same mechanism as Step 8). Do not fall back to `git diff` in the Main Agent -- every iteration must use a separate review agent to maintain context separation.
+After the fix, re-review with a separate review agent using `--model claude-opus-4.8` (same mechanism as Step 8). Do not fall back to `git diff` in the Main Agent -- every iteration must use a separate review agent to maintain context separation.
 
 The fix loop only addresses blockers. Warnings and info findings are acknowledged but do not block progression. When no blockers remain, proceed to Final Human Review.
 

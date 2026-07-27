@@ -1,6 +1,6 @@
 ---
 name: agent-dev
-description: "Orchestrate a source-assistant to coding-agent development workflow: draft prompts for an upstream AI chat that can read tickets, comments, attachments, and linked sources; convert that output into implementation-ready coding-agent prompts; investigate the repository to close Material Ambiguity before implementation; review completed diffs with separate agents and hunk-review; and turn review findings into follow-up prompts. Use when the user creates coding-agent prompts from an issue tracker or other source system, passes them to a coding agent, and iterates with review feedback."
+description: "Orchestrate a Copilot CLI development workflow: draft prompts for an upstream AI chat that can read tickets, comments, attachments, and linked sources; delegate repository investigation, implementation, and review to separate Copilot agents; close Material Ambiguity before implementation; review completed diffs with hunk-review; and turn review findings into follow-up prompts. Use when the user creates Copilot coding-agent prompts from an issue tracker or other source system and iterates with review feedback."
 ---
 
 # Agent Dev Workflow
@@ -9,7 +9,7 @@ Coordinate the user's normal development loop:
 
 1. Create a prompt for the source assistant to inspect the ticket and all pasted/linked sources.
 2. Use the source assistant output as the source for a coding-agent implementation prompt.
-3. Investigate the repository and interview the user to close Material Ambiguity before implementation.
+3. Hand off repository investigation to a separate Copilot agent, then interview the user to close Material Ambiguity before implementation.
 4. Produce the implementation plan and coding-agent prompt.
 5. Ask the human to approve the plan before starting implementation.
 6. Hand off to a separate implementation agent only after approval.
@@ -18,6 +18,19 @@ Coordinate the user's normal development loop:
 9. Launch Hunk via Herdr for the human's final review of the diff.
 10. Commit with Conventional Commits, then ask the human to confirm before pushing.
 11. Ask the human to approve PR creation, then poll for review comments and fix until approved (every push requires human permission).
+
+This workflow uses Copilot CLI for every repository agent handoff. The normal path uses three fresh agents: investigation, implementation, and review. Each blocker-repair iteration adds a fresh fix agent and a fresh re-review agent.
+
+Use this fixed model routing for every handoff:
+
+| Agent role | Copilot model |
+|---|---|
+| Investigation | `claude-opus-4.8` |
+| Implementation | `claude-sonnet-5` |
+| Blocker repair | `claude-sonnet-5` |
+| Review and re-review | `claude-opus-4.8` |
+
+Always pass the model with `--model`; do not depend on the Copilot default. If the requested model is unavailable, stop and report it instead of silently substituting another model.
 
 Human involvement is limited to: answering interview questions, approving the plan, and verifying behavior. Everything else (investigation, design, implementation, review, follow-up) is driven by the agent.
 
@@ -42,6 +55,7 @@ Some artifacts are written to `.agent-dev/` to survive context loss during long 
 | File | Written at | Purpose |
 |-----|-----------|---------|
 | `.agent-dev/<key>_brief.md` | Step 1 (after source assistant returns) | Preserves the full brief for re-reading if context grows long |
+| `.agent-dev/<key>_investigation.md` | Step 3 (after investigation agent returns) | Preserves repository evidence, ambiguity candidates, and baseline results |
 | `.agent-dev/<key>_baseline.md` | Step 3 (after baseline recording) | Preserves test/coverage/lint/build numbers for Step 7 comparison |
 
 Add `.agent-dev/` to `.git/info/exclude` (not `.gitignore` — this keeps the repo clean without committing). If `.git` is read-only (e.g. sandboxed environments), skip this step and avoid staging the directory manually. Do not commit these files.
@@ -56,9 +70,11 @@ Create a prompt for the upstream AI chat that can access the ticket and linked s
 
 Treat source-assistant output as an extracted design draft, not as unquestionable truth. Extract and restate: goal, scope, acceptance criteria, constraints, and unknowns. If the ticket mixes multiple independent changes, split them into separate implementation units. If output is too vague, write a tighter follow-up prompt rather than guessing.
 
-### 3. Investigate and Interview
+### 3. Delegate Investigation and Interview
 
-Investigate the repository directly, run the existing test suite to record a baseline, and cross-reference with source-assistant output. Identify Material Ambiguity and interview the user one question at a time.
+Spawn a fresh Copilot investigation agent to inspect the repository, run the existing test suite to record a baseline, and cross-reference repository evidence with the source-assistant output. The investigation agent is read-only: it must not edit project files, apply fixes, or make implementation decisions. Save its full response to `.agent-dev/<key>_investigation.md` and the verified baseline to `.agent-dev/<key>_baseline.md`.
+
+After the handoff returns, the main agent verifies the cited evidence and turns unresolved Material Ambiguity into user questions, one at a time. Do not reuse the investigation agent for implementation.
 
 **Read [investigate.md](./references/investigate.md) for the full investigation checklist, Material Ambiguity format, and interview question template.**
 
@@ -72,7 +88,7 @@ Stop after presenting the plan. Do not spawn an implementation agent, edit files
 
 ### 6. Hand Off to a Separate Implementation Agent
 
-Spawn a separate agent for implementation to avoid carrying investigation context. Use whichever mechanism is available: `codex exec --ephemeral --sandbox workspace-write -o output.txt "<prompt>"`, Copilot CLI, or a manual copy-paste block. The handoff prompt must be self-contained — include only the final prompt, not intermediate discussion.
+Spawn a fresh Copilot agent for implementation to avoid carrying investigation context. Invoke Copilot CLI non-interactively with the approved self-contained prompt and `--model claude-sonnet-5`, for example `copilot -p "<prompt>" -s --no-ask-user --model claude-sonnet-5`. Include only the final prompt, not intermediate discussion.
 
 ### 7-8. Validate, Review, and Fix-and-Reinspect Loop
 
@@ -98,7 +114,7 @@ Choose the output that matches the user's current stage:
 
 - **Source-assistant prompt**: produce the prompt the user should run in the source system.
 - **Source output to coding prompt**: convert source-assistant output into a coding-agent prompt.
-- **Investigate and interview**: explore the repository and return Material Ambiguity questions.
+- **Investigate and interview**: delegate repository exploration to a fresh Copilot agent, verify its evidence, and return Material Ambiguity questions.
 - **Plan approval**: present the implementation plan and handoff summary, then stop until approved.
 - **Validate**: run tests, lint, build, and coverage checks before review.
 - **Diff review**: spawn a separate review agent or `hunk-review` (human final review).

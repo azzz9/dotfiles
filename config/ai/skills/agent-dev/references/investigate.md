@@ -1,6 +1,22 @@
-# Step 3: Investigate and Interview
+# Step 3: Delegate Investigation and Interview
 
-Investigate the repository directly to complement the source-assistant output (or to work without it when no ticket exists). The source assistant covers the ticket's outside (body, comments, links); this step covers the repository's inside (code, docs, tests, past plans).
+Delegate repository investigation to a fresh Copilot agent to complement the source-assistant output (or to work without it when no ticket exists). The source assistant covers the ticket's outside (body, comments, links); the investigation agent covers the repository's inside (code, docs, tests, past plans).
+
+Run the investigation agent non-interactively with a self-contained prompt and Claude Opus 4.8:
+
+```bash
+copilot -p "<investigation prompt>" -s --no-ask-user --model claude-opus-4.8
+```
+
+The prompt must include the ticket summary or brief, repository root, investigation categories below, baseline commands to discover and run, required response structure, and these constraints:
+
+- Read and run diagnostics only; do not edit project files or apply fixes.
+- Distinguish observed repository facts from inference.
+- Cite file paths, symbols, and command results for every material conclusion.
+- Surface contradictions and ambiguity; do not choose product or implementation policy.
+- Return the complete Material Ambiguity Checklist and baseline results.
+
+Save the complete response to `.agent-dev/<key>_investigation.md`. The main agent must verify material citations and command results before relying on them. Save the verified baseline separately to `.agent-dev/<key>_baseline.md`. Do not reuse this agent for implementation.
 
 Explore the codebase:
 
@@ -37,7 +53,7 @@ Only these qualify as interview questions. Do not ask about things that are esse
 
 **Prohibition on guessing**: When the ticket and linked sources do not provide enough information to determine an implementation detail, do not fill the gap with assumptions. Surface the gap as a Material Ambiguity question to the user instead. The same applies when the source-assistant brief contradicts repository reality -- the contradiction must be resolved by the user, not silently resolved by the agent.
 
-After investigating each category, complete the Material Ambiguity Checklist:
+The investigation agent completes the Material Ambiguity Checklist after investigating each category:
 
 ```text
 Material Ambiguity Checklist:
@@ -53,7 +69,7 @@ Interview status: <N> questions asked.
 Interview status: 0 ambiguities found (checklist verified).
 ```
 
-If ambiguities were found, return questions one at a time in this format:
+After verifying the investigation response, the main agent returns ambiguities to the user one at a time in this format:
 
 ```text
 Q1. <question>
