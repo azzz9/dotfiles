@@ -16,6 +16,11 @@
       require("conform").setup({
         formatters_by_ft = formatters_by_ft,
         formatters = {
+          biome = {
+            condition = function(_, ctx)
+              return uses_biome(ctx.buf)
+            end,
+          },
           prettierd = { prepend_args = prettier_args },
           prettier = { prepend_args = prettier_args },
         },

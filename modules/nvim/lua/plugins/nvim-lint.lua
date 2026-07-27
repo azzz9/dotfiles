@@ -21,19 +21,8 @@
         lint.linters_by_ft.objcpp = { "clangtidy" }
       end
 
-      local function has_config(names)
-        local bufname = vim.api.nvim_buf_get_name(0)
-        if bufname == "" then
-          return false
-        end
-        return vim.fs.find(names, {
-          path = bufname,
-          upward = true,
-        })[1] ~= nil
-      end
-
       local function has_solhint_config()
-        return has_config({ ".solhint.json", ".solhint.yaml", ".solhint.yml" })
+        return has_project_config(0, { ".solhint.json", ".solhint.yaml", ".solhint.yml" })
       end
 
       vim.api.nvim_create_autocmd({ "BufWritePost", "InsertLeave" }, {
@@ -46,6 +35,10 @@
             if #linters > 0 then
               lint.try_lint(linters)
             end
+            return
+          end
+          if uses_biome(0) then
+            lint.try_lint("biomejs")
             return
           end
           lint.try_lint()

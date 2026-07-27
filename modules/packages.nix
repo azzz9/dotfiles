@@ -59,6 +59,7 @@ in
       # --- TypeScript / JavaScript ---
       typescript-language-server  # LSP
       typescript                  # tsserver binary for ts_ls
+      biome                       # formatter + linter (biome.json projects)
       prettier                    # formatter
       prettierd                   # formatter (daemon)
       eslint                      # linter
