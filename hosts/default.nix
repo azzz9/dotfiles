@@ -6,6 +6,7 @@ let
     "conversation-to-memory"
     "conventional-commit"
     "domain-modeling"
+    "graphify"
     "grill-me"
     "grill-with-docs"
     "grilling"

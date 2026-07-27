@@ -13,6 +13,13 @@ let
     vendorHash = "sha256-uxcT5VzlTCxxnx09p13mot0wVbbas/otoHdg7QSDt4E=";
     ldflags = [ "-s" "-w" ];
   };
+  graphify = pkgs.writeShellApplication {
+    name = "graphify";
+    runtimeInputs = [ pkgs.uv ];
+    text = ''
+      exec uvx --from graphifyy==0.9.28 graphify "$@"
+    '';
+  };
 in
 {
   home.packages =
@@ -90,7 +97,7 @@ in
       xclip
       wl-clipboard
     ])
-    ++ [ roots ]
+    ++ [ graphify roots ]
     ++ lib.optional (codexPackage != null) codexPackage
     ++ lib.optional (copilotPackage != null) copilotPackage;
 
