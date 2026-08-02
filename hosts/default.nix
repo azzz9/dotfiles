@@ -10,7 +10,6 @@ let
     "grill-me"
     "grill-with-docs"
     "grilling"
-    "agent-dev"
     "herdr"
     "hunk-review"
   ];

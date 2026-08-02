@@ -1,5 +1,5 @@
-model = "gpt-5.6-sol"
-model_reasoning_effort = "low"
+model = "gpt-5.6-luna"
+model_reasoning_effort = "max"
 personality = "pragmatic"
 approval_policy = "on-request"
 approvals_reviewer = "auto_review"
@@ -29,6 +29,10 @@ enabled = true
 name = "Ollama"
 base_url = "http://127.0.0.1:11434/v1/"
 wire_api = "responses"
+
+[tui]
+status_line = ["model-with-reasoning", "current-dir", "git-branch", "five-hour-limit", "weekly-limit"]
+status_line_use_colors = true
 
 [tui.model_availability_nux]
 "gpt-5.6-terra" = 2
