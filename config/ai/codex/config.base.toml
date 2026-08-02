@@ -6,6 +6,7 @@ approvals_reviewer = "auto_review"
 sandbox_mode = "workspace-write"
 allow_login_shell = false
 web_search = "live"
+service_tier = "fast"
 
 [features]
 guardian_approval = true

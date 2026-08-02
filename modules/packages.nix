@@ -26,6 +26,7 @@ in
     (with pkgs; [
       # --- General tools ---
       openssh
+      less
       lazygit
       ghq
       git-wt
