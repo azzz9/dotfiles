@@ -1,4 +1,4 @@
-{ lib, pkgs, codexPackage, copilotPackage, ... }:
+{ lib, pkgs, codexPackage, copilotPackage, ompPackage, ... }:
 let
   solidity = import ./solidity.nix { inherit pkgs; };
   roots = pkgs.buildGoModule rec {
@@ -20,6 +20,25 @@ let
       exec uvx --from graphifyy==0.9.28 graphify "$@"
     '';
   };
+  ompExecutable =
+    if ompPackage == null then null
+    else if pkgs.stdenv.hostPlatform.system == "x86_64-linux" then pkgs.writeShellScriptBin "omp" ''
+      # WSL2 can crash in Nix glibc's default hwcaps loader path before Bun
+      # starts. Limit glibc's optimized loader selection on that platform.
+      if [ -r /proc/sys/kernel/osrelease ] && ${pkgs.gnugrep}/bin/grep -qi microsoft /proc/sys/kernel/osrelease; then
+        exec ${pkgs.glibc}/lib/ld-linux-x86-64.so.2 \
+          --glibc-hwcaps-mask x86-64-v2 \
+          --library-path ${lib.makeLibraryPath [
+            pkgs.glibc
+            pkgs.libpulseaudio
+            pkgs.stdenv.cc.cc.lib
+            pkgs.zlib
+          ]} \
+          ${ompPackage}/lib/omp/omp "$@"
+      fi
+      exec ${ompPackage}/bin/omp "$@"
+    ''
+    else ompPackage;
 in
 {
   home.packages =
@@ -101,7 +120,8 @@ in
     ])
     ++ [ graphify roots ]
     ++ lib.optional (codexPackage != null) codexPackage
-    ++ lib.optional (copilotPackage != null) copilotPackage;
+    ++ lib.optional (copilotPackage != null) copilotPackage
+    ++ lib.optional (ompExecutable != null) ompExecutable;
 
   # Remote Control's daemon commands resolve Codex from this installer-owned
   # path. Point it at the Nix-managed package so pairing remains available

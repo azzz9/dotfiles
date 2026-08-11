@@ -77,6 +77,7 @@
             # skips null entries.
             codexPackage = (llm-agents.packages.${system} or { }).codex or null;
             copilotPackage = (llm-agents.packages.${system} or { })."copilot-cli" or null;
+            ompPackage = (llm-agents.packages.${system} or { }).omp or null;
           };
           modules = [
             ./hosts/default.nix
