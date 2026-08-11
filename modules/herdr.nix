@@ -1,4 +1,49 @@
 { lib, pkgs, ... }:
+let
+  isWsl =
+    pkgs.stdenv.isLinux
+    && (builtins.getEnv "WSL_DISTRO_NAME" != "" || builtins.pathExists /run/WSL);
+
+  windowsNotifySend = pkgs.writeShellScriptBin "notify-send" ''
+    set -euo pipefail
+
+    if [ "$#" -gt 0 ] && [ "$1" = "--" ]; then
+      shift
+    fi
+
+    title="''${1-}"
+    body="''${2-}"
+    if [ -z "$title" ]; then
+      exit 2
+    fi
+
+    title_b64="$(${pkgs.coreutils}/bin/printf '%s' "$title" | ${pkgs.coreutils}/bin/base64 -w0)"
+    body_b64="$(${pkgs.coreutils}/bin/printf '%s' "$body" | ${pkgs.coreutils}/bin/base64 -w0)"
+    ps_script=$(cat <<'POWERSHELL'
+$ErrorActionPreference = "Stop"
+[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
+[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
+
+$title = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('__TITLE_B64__'))
+$body = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('__BODY_B64__'))
+$escapedTitle = [System.Security.SecurityElement]::Escape($title)
+$escapedBody = [System.Security.SecurityElement]::Escape($body)
+$bodyMarkup = if ([string]::IsNullOrEmpty($body)) { "" } else { "<text>$escapedBody</text>" }
+$xmlText = "<toast><visual><binding template=""ToastGeneric""><text>$escapedTitle</text>$bodyMarkup</binding></visual></toast>"
+
+$xml = New-Object Windows.Data.Xml.Dom.XmlDocument
+$xml.LoadXml($xmlText)
+$toast = New-Object Windows.UI.Notifications.ToastNotification $xml
+[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe").Show($toast)
+POWERSHELL
+)
+    ps_script="''${ps_script//__TITLE_B64__/$title_b64}"
+    ps_script="''${ps_script//__BODY_B64__/$body_b64}"
+    encoded="$(${pkgs.coreutils}/bin/printf '%s' "$ps_script" | ${pkgs.glibc.bin}/bin/iconv -f UTF-8 -t UTF-16LE | ${pkgs.coreutils}/bin/base64 -w0)"
+
+    exec powershell.exe -NoLogo -NoProfile -NonInteractive -OutputFormat Text -EncodedCommand "$encoded"
+  '';
+in
 {
   # herdr — agent multiplexer that lives in your terminal
   # https://github.com/ogulcancelik/herdr
@@ -8,7 +53,14 @@
     # control via send-keys / capture-pane). herdr replaces tmux as
     # the daily-driver multiplexer, but the skill still needs the binary.
     tmux
-  ];
+  ] ++ lib.optional isWsl windowsNotifySend;
+
+  # Herdr's system notification backend skips notify-send when both display
+  # variables are absent. WSLg normally supplies DISPLAY, but keeping this
+  # fallback makes the Windows toast bridge work in plain WSL sessions too.
+  home.sessionVariables = lib.mkIf isWsl {
+    DISPLAY = ":0";
+  };
 
   xdg.configFile."herdr/config.toml".text = ''
     # herdr configuration — managed by Home Manager
@@ -82,6 +134,12 @@
     [ui]
     # Show agent labels in split pane borders
     show_agent_labels_on_pane_borders = true
+
+    [ui.toast]
+    # Windows Terminal does not implement OSC desktop notifications. Use
+    # Herdr's system path, which is bridged to Windows Toast from WSL.
+    delivery = "system"
+    delay_seconds = 1
   '';
   xdg.configFile."herdr/config.toml".force = true;
 
