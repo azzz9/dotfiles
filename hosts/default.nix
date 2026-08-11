@@ -31,6 +31,12 @@ in
   home.sessionPath = [ "${config.home.homeDirectory}/.local/bin" ];
 
   programs.home-manager.enable = true;
+  # Periodically reclaim unreferenced store paths while retaining recent generations.
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 30d";
+  };
   manual = {
     html.enable = false;
     json.enable = false;
