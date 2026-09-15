@@ -29,11 +29,11 @@ dotfiles/
 +-- config/ai/
 |   +-- AGENTS.md           # Core rules + inline rules (read-only gate, language, etc.)
 |   +-- codex/              # Codex-specific config + default.rules
-|   +-- skills/             # AI skills (symlinked to ~/.codex and ~/.copilot)
+|   +-- skills/             # Local AI skills
+|   +-- pstack/             # Vendored pstack skills and license
 +-- scripts/setup-system.sh # Bootstrap script
 +-- .githooks/pre-push       # Pre-push checks
 +-- .github/workflows/ci.yml # CI
-```
 
 ## Neovim config structure
 
@@ -66,7 +66,11 @@ edits in this repo are immediately reflected at the target path:
 ```
 config/ai/AGENTS.md                  -> ~/.codex/AGENTS.md
                                     -> ~/.copilot/copilot-instructions.md
-config/ai/skills/<name>              -> ~/.codex/skills/<name>
+config/ai/skills/<name>              -> ~/.agents/skills/<name>
+                                    -> ~/.codex/skills/<name>
+                                    -> ~/.copilot/skills/<name>
+config/ai/pstack/skills/<name>       -> ~/.agents/skills/<name>
+                                    -> ~/.codex/skills/<name>
                                     -> ~/.copilot/skills/<name>
 config/ai/codex/config.base.toml     -> ~/.codex/dotfiles.config.toml
 config/ai/codex/rules/default.rules  -> ~/.codex/rules/default.rules
@@ -75,10 +79,14 @@ config/ai/codex/rules/default.rules  -> ~/.codex/rules/default.rules
 All rules (file-change-reporting, git-commit-push, diagrams) are inline
 in `config/ai/AGENTS.md`. Both Codex and Copilot CLI read them via the
 AGENTS.md symlink — no separate rule files or `.instructions.md`
-generation needed.
+generation needed. The `.agents/skills` path is the shared user scope
+consumed by Codex, OMP, and Copilot; the runtime-specific links remain
+for compatibility.
 
-To add a new skill: create `config/ai/skills/<name>/SKILL.md` and add
-the name to `skillNames` in `hosts/default.nix`.
+To add a local skill: create `config/ai/skills/<name>/SKILL.md` and add
+the name to `localSkillNames` in `hosts/default.nix`. Keep pstack's nested
+resources under `config/ai/pstack/skills` and update `pstackSkillNames`
+when adding or removing a vendored skill.
 
 ## dotfiles CLI commands
 

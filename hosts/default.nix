@@ -1,7 +1,7 @@
 { config, lib, pkgs, ... }:
 let
   repo = "${config.home.homeDirectory}/src/github.com/azzz9/dotfiles";
-  skillNames = [
+  localSkillNames = [
     "archify"
     "conversation-to-memory"
     "conventional-commit"
@@ -15,15 +15,76 @@ let
     "hunk-review"
     "show-me"
   ];
-  skillBases = [ ".codex" ".copilot" ];
-  # Build a flat attrset of out-of-store symlinks for every skill x base
-  # combination, e.g. ".codex/skills/show-me" -> symlink to repo.
+  # Vendored from cursor/plugins pstack at c1c0a32802223f4be824112dd83d33ad29a8b26c.
+  pstackSkillNames = [
+    "architect"
+    "arena"
+    "automate-me"
+    "blast-radius"
+    "bro"
+    "create-verification-skill"
+    "figure-it-out"
+    "how"
+    "interrogate"
+    "maintain-verification-skill"
+    "make-bot-ui"
+    "no-comments"
+    "poteto-mode"
+    "principle-attack-the-premise"
+    "principle-boundary-discipline"
+    "principle-build-the-lever"
+    "principle-encode-lessons-in-structure"
+    "principle-exhaust-the-design-space"
+    "principle-experience-first"
+    "principle-fix-root-causes"
+    "principle-foundational-thinking"
+    "principle-guard-the-context-window"
+    "principle-laziness-protocol"
+    "principle-make-operations-idempotent"
+    "principle-migrate-callers-then-delete-legacy-apis"
+    "principle-minimize-reader-load"
+    "principle-model-the-domain"
+    "principle-never-block-on-the-human"
+    "principle-outcome-oriented-execution"
+    "principle-prove-it-works"
+    "principle-redesign-from-first-principles"
+    "principle-separate-before-serializing-shared-state"
+    "principle-sequence-verifiable-units"
+    "principle-subtract-before-you-add"
+    "principle-test-behavior-not-implementation"
+    "principle-type-system-discipline"
+    "recall"
+    "reflect"
+    "setup-pstack"
+    "show-me-your-work"
+    "swarm"
+    "tdd"
+    "teach"
+    "technical-writing"
+    "typescript-best-practices"
+    "unslop"
+    "why"
+  ];
+  skillSources = [
+    {
+      root = "${repo}/config/ai/skills";
+      names = localSkillNames;
+    }
+    {
+      root = "${repo}/config/ai/pstack/skills";
+      names = pstackSkillNames;
+    }
+  ];
+  skillBases = [ ".agents" ".codex" ".copilot" ];
+  # Build out-of-store symlinks for every skill x runtime combination.
   skillLinks = builtins.listToAttrs (
-    lib.concatMap (base: map (name: {
-      name = "${base}/skills/${name}";
-      value.source =
-        config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/${name}";
-    }) skillNames) skillBases
+    lib.concatMap ({ root, names }:
+      lib.concatMap (base: map (name: {
+        name = "${base}/skills/${name}";
+        value.source =
+          config.lib.file.mkOutOfStoreSymlink "${root}/${name}";
+      }) names) skillBases
+    ) skillSources
   );
 in
 {
@@ -59,7 +120,7 @@ in
     manpages.enable = false;
   };
 
-  # Codex / Copilot shared AI context and skills (out-of-store symlinks
+  # Codex / OMP / Copilot shared AI skills (out-of-store symlinks
   # so edits in this repo are immediately reflected at the target path).
   home.file = skillLinks // {
     ".codex/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/AGENTS.md";
