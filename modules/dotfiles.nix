@@ -1,6 +1,5 @@
 { config, pkgs, ... }:
 let
-  numtideCache = import ../config/numtide-cache.nix;
   repo = "${config.home.homeDirectory}/src/github.com/azzz9/dotfiles";
   dotfiles = pkgs.writeShellScriptBin "dotfiles" ''
     set -euo pipefail
@@ -33,45 +32,28 @@ EOF
     host="''${1:-$arch-$os}"
     tmp_dir="''${XDG_RUNTIME_DIR:-''${TMPDIR:-/tmp}}"
     lock_dir="$tmp_dir/dotfiles.lockdir"
-    nix_conf_dir="$(mktemp -d "$tmp_dir/dotfiles-nix-conf.XXXXXX")"
     lock_backup=""
     patched_activate=""
     have_lock=0
-    trap 'rm -rf "$nix_conf_dir"; if [ -n "$patched_activate" ]; then rm -f "$patched_activate"; fi; if [ -n "$lock_backup" ]; then rm -f "$lock_backup"; fi; if [ "$have_lock" = 1 ]; then rmdir "$lock_dir" 2>/dev/null || true; fi' EXIT
+    trap 'if [ -n "$patched_activate" ]; then rm -f "$patched_activate"; fi; if [ -n "$lock_backup" ]; then rm -f "$lock_backup"; fi; if [ "$have_lock" = 1 ]; then rmdir "$lock_dir" 2>/dev/null || true; fi' EXIT
     if ! mkdir "$lock_dir" 2>/dev/null; then
       echo "dotfiles: already running; skipping"
       exit 0
     fi
     have_lock=1
 
-    # Services often start with a minimal PATH.
-    # Ensure Home Manager can find `nix` when it re-invokes it internally.
-    # Use nix from nixpkgs and an isolated config to avoid host-specific
-    # unknown/deprecation warnings from Determinate Nix defaults.
+    # Services often start with a minimal PATH. Ensure Home Manager can find
+    # `nix` when it re-invokes it internally.
     export PATH="${pkgs.nix}/bin:${pkgs.git}/bin:${pkgs.coreutils}/bin:${pkgs.gnugrep}/bin:${pkgs.gnused}/bin:/run/current-system/sw/bin:/usr/bin:/bin:$PATH"
+
+    nix_cmd() {
+      ${pkgs.nix}/bin/nix --extra-experimental-features "nix-command flakes" "$@"
+    }
 
     if [ ! -d "${repo}/.git" ]; then
       echo "dotfiles: ${repo} not found" >&2
       exit 1
     fi
-
-    # The daemon must trust a substituter before an unprivileged client can
-    # use it. Configure the Numtide cache once per machine so llm-agents.nix
-    # packages such as Codex are downloaded instead of built locally.
-    ${pkgs.bash}/bin/bash "${repo}/scripts/configure-nix-cache.sh"
-
-    cat > "$nix_conf_dir/nix.conf" <<'EOF'
-experimental-features = nix-command flakes
-accept-flake-config = true
-
-# Numtide binary cache for llm-agents.nix packages (e.g. codex).
-# Written here directly because NIX_CONF_DIR replaces the system
-# nix.conf; values are sourced from config/numtide-cache.nix (shared
-# with flake.nix nixConfig) so the key only lives in one place.
-extra-substituters = ${numtideCache.url}
-extra-trusted-public-keys = ${numtideCache.key}
-EOF
-    export NIX_CONF_DIR="$nix_conf_dir"
 
     cd "${repo}"
 
@@ -86,7 +68,7 @@ EOF
     }
 
     build_home() {
-      activation_path="$(${pkgs.nix}/bin/nix build --no-link --print-out-paths "${repo}#homeConfigurations.$host.activationPackage" --impure)"
+      activation_path="$(nix_cmd build --no-link --print-out-paths "${repo}#homeConfigurations.$host.activationPackage" --impure)"
       patched_activate="$(mktemp "$tmp_dir/dotfiles-activate.XXXXXX")"
       ${pkgs.coreutils}/bin/cp "$activation_path/activate" "$patched_activate"
     }
@@ -136,7 +118,7 @@ EOF
         require_clean_repo
         lock_backup="$(mktemp "$tmp_dir/dotfiles-flake-lock.XXXXXX")"
         ${pkgs.coreutils}/bin/cp flake.lock "$lock_backup"
-        if ! ${pkgs.nix}/bin/nix flake update; then
+        if ! nix_cmd flake update; then
           restore_lock
           exit 1
         fi

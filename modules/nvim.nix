@@ -25,6 +25,7 @@ let
     "core.lua"
     "plugins/kanagawa.lua"
     "plugins/telescope.lua"
+    "plugins/fff.lua"
     "plugins/flash.lua"
     "plugins/lazygit.lua"
     "plugins/barbar.lua"
@@ -34,7 +35,7 @@ let
     "plugins/smear-cursor.lua"
     "plugins/gitsigns.lua"
     "plugins/gitblame.lua"
-    "plugins/diffview.lua"
+    "plugins/codediff.lua"
     "plugins/mini.lua"
     "plugins/oil.lua"
     "plugins/nvim-autopairs.lua"
@@ -119,6 +120,8 @@ in
         nvim-web-devicons
         blink-cmp
         telescope-nvim
+        codediff-nvim
+        fff-nvim
         plenary-nvim
         telescope-ui-select-nvim
         nvim-lspconfig
@@ -131,7 +134,6 @@ in
         lazygit-nvim
         gitsigns-nvim
         git-blame-nvim
-        diffview-nvim
         oil-nvim
         mini-nvim
         barbar-nvim

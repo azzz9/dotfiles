@@ -3,6 +3,18 @@ let
   zshCacheDir = "${config.xdg.cacheHome}/zsh";
   fzfCache = "${zshCacheDir}/fzf-integration.zsh";
   fastSyntaxHighlighting = pkgs.zsh-fast-syntax-highlighting;
+  zshAsync = pkgs.fetchFromGitHub {
+    owner = "marlonrichert";
+    repo = "z-async";
+    rev = "5370537de80670b4a97e49cd253d15067709c0a6";
+    hash = "sha256-tPosFoZSaUShaRpv7ca9BdOMREfmhnzjd/VKHSshhXo=";
+  };
+  zshAutocomplete = pkgs.zsh-autocomplete.overrideAttrs (old: {
+    postInstall = (old.postInstall or "") + ''
+      install -Dm644 ${zshAsync}/z-async \
+        "$out/share/zsh-autocomplete/z-async/z-async"
+    '';
+  });
 
   initDir = ./shell/init;
   readZsh = file: builtins.readFile (initDir + "/${file}");
@@ -37,7 +49,7 @@ in
     plugins = [
       {
         name = "zsh-autocomplete";
-        src = pkgs.zsh-autocomplete;
+        src = zshAutocomplete;
         file = "share/zsh-autocomplete/zsh-autocomplete.plugin.zsh";
       }
     ];
@@ -47,7 +59,7 @@ in
     #   500  preamble        build-time path variables
     #   550  01-setup.zsh     BEFORE plugins (ZSH_COMPDUMP, zstyle, appearance)
     #   910  02-main.zsh      AFTER plugins (fzf, prompt, functions, title, fsh)
-    #  1100  03-tail.zsh      AFTER shellInit (nvm lazy-load, tmux auto-start)
+    #  1100  03-tail.zsh      AFTER shellInit (nvm lazy-load, terminal auto-start)
     initContent = lib.mkMerge [
       (lib.mkOrder 500 initPreamble)
       (lib.mkOrder 550 (readZsh "01-setup.zsh"))

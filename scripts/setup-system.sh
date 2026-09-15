@@ -127,8 +127,8 @@ install_macos_packages() {
 
   brew update
   brew list git >/dev/null 2>&1 || brew install git
-  brew list tmux >/dev/null 2>&1 || brew install tmux
   brew list zsh >/dev/null 2>&1 || brew install zsh
+  brew list --cask font-udev-gothic-nf >/dev/null 2>&1 || brew install --cask font-udev-gothic-nf
 
   if ! brew list --cask docker >/dev/null 2>&1 && [[ ! -d /Applications/Docker.app ]]; then
     brew install --cask docker
@@ -158,12 +158,12 @@ install_linux_packages() {
       sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
       sudo systemctl enable --now docker
       sudo usermod -aG docker "$USER"
-      sudo apt-get install -y git tmux zsh
+      sudo apt-get install -y git zsh
       should_reboot=1
       ;;
     arch)
       sudo pacman -Syu --noconfirm
-      sudo pacman -S --noconfirm curl docker docker-compose-plugin git tmux zsh
+      sudo pacman -S --noconfirm curl docker docker-compose-plugin git zsh
       sudo systemctl enable --now docker
       sudo usermod -aG docker "$USER"
       should_reboot=1
@@ -223,12 +223,6 @@ apply_home_manager() {
   nix_cmd run nixpkgs#home-manager -- switch --flake "$repo_dir#$host" --impure -b backup
 }
 
-configure_nix_cache() {
-  local repo_dir="$1"
-
-  bash "$repo_dir/scripts/configure-nix-cache.sh"
-}
-
 configure_linux_apparmor() {
   local repo_dir="$1"
   local profile_source="$repo_dir/config/system/apparmor/nix-bubblewrap"
@@ -277,7 +271,6 @@ main() {
   ensure_dotfiles_repo "$repo_dir"
   install_nix
   configure_linux_apparmor "$repo_dir"
-  configure_nix_cache "$repo_dir"
   apply_home_manager "$repo_dir" "$host"
 
   if [[ "$should_reboot" == 1 && "${REBOOT:-0}" == 1 ]]; then

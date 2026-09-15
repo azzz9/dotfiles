@@ -19,12 +19,13 @@ dotfiles/
 |   +-- git.nix             # Git config + ghq + git-wt defaults
 |   +-- gh.nix              # GitHub CLI aliases
 |   +-- shell.nix           # Zsh + fzf + autocomplete + dev()
-|   +-- herdr.nix           # herdr agent multiplexer (tokyo-night theme, agent launchers)
+|   +-- herdr.nix           # herdr agent multiplexer (kanagawa theme, agent launchers)
+|   +-- ghostty.nix         # macOS Ghostty configuration (Ghostty external)
 |   +-- nvim.nix            # Neovim via nixvim
 |   +-- nvim/lua/           # Lua configs loaded by nixvim extraConfigLua
 |   +-- packages.nix        # Additional system packages
 |   +-- solidity.nix        # Solidity toolchain
-|   +-- lazygit.nix          # lazygit config (delta side-by-side)
+|   +-- lazygit.nix          # lazygit config (delta stdin filter)
 +-- config/ai/
 |   +-- AGENTS.md           # Core rules + inline rules (read-only gate, language, etc.)
 |   +-- codex/              # Codex-specific config + default.rules
@@ -49,13 +50,13 @@ Key Lua files:
 
 ## herdr config
 
-`modules/herdr.nix` installs herdr + tmux (for the tmux skill) and
-generates `~/.config/herdr/config.toml` via HM.
-Theme: tokyo-night (built-in). Key bindings match the previous tmux
-layout (prefix ctrl+b, / and - for splits, h/j/k/l for pane nav).
+`modules/herdr.nix` installs herdr and generates
+`~/.config/herdr/config.toml` via HM.
+Theme: kanagawa (built-in). Key bindings retain the former pane layout
+(prefix ctrl+b, / and - for splits, h/j/k/l for pane nav).
 Agent launchers: prefix+shift+c (codex), prefix+shift+g (gh copilot).
-tmux is kept as a package for the tmux skill (programmatic terminal
-control via send-keys / capture-pane).
+Completion notifications use herdr's system delivery backend with a
+15-second delay; the WSL Windows toast bridge remains enabled.
 
 ## AI config deployment model
 
@@ -97,7 +98,6 @@ All commands auto-detect host (`uname -m` + `uname -s`).
   download packages, but may be slow on first run.
 - `~/.cache/nix` is **read-only**. Prefix nix commands with
   `XDG_CACHE_HOME=/tmp/nix-cache` to use a writable temp cache directory.
-- tmux sockets are **inaccessible**. Cannot verify the tmux skill (send-keys control) at runtime.
 
 ## Supported platforms
 

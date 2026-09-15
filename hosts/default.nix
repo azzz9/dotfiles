@@ -1,4 +1,4 @@
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 let
   repo = "${config.home.homeDirectory}/src/github.com/azzz9/dotfiles";
   skillNames = [
@@ -6,16 +6,18 @@ let
     "conversation-to-memory"
     "conventional-commit"
     "domain-modeling"
+    "explain"
     "graphify"
     "grill-me"
     "grill-with-docs"
     "grilling"
     "herdr"
     "hunk-review"
+    "show-me"
   ];
   skillBases = [ ".codex" ".copilot" ];
   # Build a flat attrset of out-of-store symlinks for every skill x base
-  # combination, e.g. ".codex/skills/tmux" -> symlink to repo.
+  # combination, e.g. ".codex/skills/show-me" -> symlink to repo.
   skillLinks = builtins.listToAttrs (
     lib.concatMap (base: map (name: {
       name = "${base}/skills/${name}";
@@ -28,7 +30,12 @@ in
   home.username = builtins.getEnv "USER";
   home.homeDirectory = builtins.getEnv "HOME";
   home.stateVersion = "24.05";
-  home.sessionPath = [ "${config.home.homeDirectory}/.local/bin" ];
+  home.sessionPath =
+    [ "${config.home.homeDirectory}/.local/bin" ]
+    ++ lib.optionals pkgs.stdenv.isDarwin [
+      "${config.home.homeDirectory}/.nix-profile/bin"
+      "/nix/var/nix/profiles/default/bin"
+    ];
 
   programs.home-manager.enable = true;
   # Periodically reclaim unreferenced store paths while retaining recent generations.
@@ -37,6 +44,15 @@ in
     dates = "weekly";
     options = "--delete-older-than 30d";
   };
+  # Home Manager's nix.gc.options is a string and launchd receives it as one
+  # ProgramArguments element. Split the Darwin arguments at the launchd layer.
+  launchd.agents.nix-gc.config.ProgramArguments = lib.mkIf pkgs.stdenv.isDarwin (
+    lib.mkForce [
+      "${pkgs.nix}/bin/nix-collect-garbage"
+      "--delete-older-than"
+      "30d"
+    ]
+  );
   manual = {
     html.enable = false;
     json.enable = false;
@@ -70,6 +86,7 @@ in
     ../modules/lazygit.nix
     ../modules/shell.nix
     ../modules/herdr.nix
+    ../modules/ghostty.nix
     ../modules/nvim.nix
     ../modules/packages.nix
   ];

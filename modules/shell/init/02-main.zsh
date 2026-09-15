@@ -47,6 +47,8 @@ olc() {
 
 gcp() {
   copilot \
+    --model gpt-6-astra \
+    --effort low \
     --allow-all-tools \
     --allow-url github.com \
     --allow-url api.github.com \

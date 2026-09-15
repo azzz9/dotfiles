@@ -40,14 +40,12 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#a
 
 | Command | Description |
 |---------|-------------|
-| `dotfiles apply` | Configure the Numtide cache if needed, then build and apply the current checkout |
+| `dotfiles apply` | Build and apply the current checkout |
 | `dotfiles sync` | Pull latest, then apply (requires clean repo) |
 | `dotfiles upgrade` | Refresh `flake.lock` inputs, then apply (requires clean repo; restores `flake.lock` on failure) |
 
-The first apply on a machine may prompt for `sudo` to register
-`cache.numtide.com` as a trusted Nix substituter. Later applies reuse that
-system-wide setting, so packages from `llm-agents.nix` such as Codex are
-downloaded from the binary cache instead of built locally.
+Codex, Copilot CLI, and omp are not installed by this flake; install them
+separately when using the related shell functions or herdr launchers.
 
 ## Repository layout
 
@@ -60,7 +58,8 @@ dotfiles/
 |   +-- git.nix                # Git config + ghq + git-wt defaults
 |   +-- gh.nix                 # GitHub CLI aliases
 |   +-- shell.nix              # Zsh + helpers (gqcd, rcd, wtcd, dev)
-|   +-- tmux.nix               # tmux plugins (managed by HM, not TPM)
+|   +-- herdr.nix              # herdr multiplexer and system notifications
+|   +-- ghostty.nix            # macOS Ghostty configuration (Ghostty external)
 |   +-- nvim.nix               # Neovim (via nixvim)
 |   +-- packages.nix           # Additional system packages
 |   +-- solidity.nix           # Solidity toolchain
@@ -106,6 +105,9 @@ for build caching. Without it, only the public nixpkgs cache is used.
 
 - If you add new files to the flake, they must be `git add`'d before running
   `home-manager switch`, otherwise Nix will not see them.
-- tmux plugins are managed by Home Manager, not TPM.
-- AI agent rules are split: `config/ai/AGENTS.md` holds core rules only;
-  detailed rules in `config/ai/rules/` are read on demand.
+- Ghostty is configured by Home Manager only on macOS; the application itself
+  is installed outside Nix and the UDEV Gothic NF font is installed by the
+  macOS bootstrap.
+- AI agent rules are shared by Codex and Copilot through out-of-store links;
+  `show-me` is used for implementation-first explanations and `explain` for
+  structured technical explanations.

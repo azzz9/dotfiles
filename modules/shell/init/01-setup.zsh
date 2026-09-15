@@ -1,3 +1,7 @@
+# Keep completion widgets in Emacs mode even when EDITOR or VISUAL points
+# to a vi-like editor.
+bindkey -e
+
 # Completion cache: writable location, skip security audit.
 ZSH_COMPDUMP="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/.zcompdump-$HOST-${ZSH_VERSION}"
 ZSH_DISABLE_COMPFIX=true
