@@ -19,33 +19,35 @@ When in doubt, take the simple path.
 
 ## Step 2a. Explore (complex questions only)
 
-Decompose the question into 2 to 4 exploration angles, each a distinct slice of the subsystem. Spawn all explorers in a single message:
+Decompose the question into 2 to 4 exploration angles, each a distinct slice
+of the subsystem. Use the current runtime's native delegation operation from
+the pstack runtime contract. Give each explorer a separate read-only scope
+when the runtime supports it. Otherwise run the same scopes serially and keep
+the read-only rule in the prompt.
+If no delegation operation is available, perform the same angle-separated
+exploration in the parent session.
 
-- `subagent_type`: `generalPurpose`
-- `model`: your configured how-explorer model (default `grok-4.6-fast-xhigh`)
-- `readonly`: `true`
-
-Each explorer gets the prompt in `references/explorer-prompt.md` with its angle filled in. Then go to Step 3.
+Each explorer gets the prompt in `references/explorer-prompt.md` with its angle
+filled in. Then go to Step 3.
 
 ## Step 2b. Direct Explain (simple questions)
 
-Spawn one Task subagent that explores and explains in one pass:
+Use one native worker that explores and explains in one pass. Read
+the pstack runtime contract for the delegation and model mapping. Give the
+worker a read-only scope when the runtime supports it. Otherwise state the
+read-only constraint in its prompt and inspect its artifact before using it.
+If no worker is available, perform the pass in the parent session.
 
-- `subagent_type`: `generalPurpose`
-- `model`: your configured how-explainer model (default `claude-fable-5-1-thinking-max`)
-- `readonly`: `true`
-
-Build its prompt from `references/explainer-prompt.md` without the explorer-findings section. Go to Step 4.
+Build its prompt from `references/explainer-prompt.md` without the
+explorer-findings section. Go to Step 4.
 
 ## Step 3. Synthesize (complex questions only)
 
-Once all explorers have returned, spawn one Task subagent to synthesize their findings into one explanation:
-
-- `subagent_type`: `generalPurpose`
-- `model`: your configured how-explainer model (default `claude-fable-5-1-thinking-max`)
-- `readonly`: `true`
-
-Build its prompt from `references/explainer-prompt.md` with every explorer's findings filled in.
+Once all explorers have returned, use one native worker to synthesize their
+findings into one explanation. Use the runtime's model mapping and preserve
+the read-only scope. Build its prompt from `references/explainer-prompt.md`
+with every explorer's findings filled in.
+If no worker is available, synthesize the findings in the parent session.
 
 ## Step 4. Present
 

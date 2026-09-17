@@ -1,6 +1,10 @@
 { config, pkgs, ... }:
 let
-  repo = "${config.home.homeDirectory}/src/github.com/azzz9/dotfiles";
+  configuredRepo = builtins.getEnv "DOTFILES_DIR";
+  repo =
+    if configuredRepo != ""
+    then configuredRepo
+    else "${config.home.homeDirectory}/src/github.com/azzz9/dotfiles";
   dotfiles = pkgs.writeShellScriptBin "dotfiles" ''
     set -euo pipefail
 

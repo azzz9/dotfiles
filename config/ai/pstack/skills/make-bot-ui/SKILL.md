@@ -8,6 +8,12 @@ disable-model-invocation: true
 ---
 # How to make a bot UI
 
+This workflow requires the hosted routine and secret-request tools. Before
+starting, check that the current runtime exposes `update_state` and the
+secret-request operation. If either is missing, report that this workflow is
+unavailable in the current runtime. Do not replace those operations with
+guesses or ask the user to paste a secret into chat.
+
 Build a page the user clicks. A server on this computer POSTs JSON to a webhook routine. The bot wakes with that JSON. Keep the sender key on the server. Do not put the sender key in the browser, in chat, or in this skill.
 
 ## Create the webhook routine

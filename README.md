@@ -80,13 +80,14 @@ dotfiles/
 git config core.hooksPath .githooks
 ```
 
-Runs `nix flake check`, `shellcheck`, `actionlint`, and a Home Manager
-build before push.
+Runs `nix flake check`, `shellcheck`, the pstack runtime compatibility
+check, `actionlint`, and a Home Manager build before push.
 
 ## CI
 
-CI runs static checks (shellcheck, actionlint, `nix flake check`, HM eval)
-and builds for `x86_64-linux` and `aarch64-darwin`.
+CI runs static checks (shellcheck, pstack runtime compatibility, actionlint,
+`nix flake check`, HM eval) and builds for `x86_64-linux` and
+`aarch64-darwin`.
 
 ### Binary cache (optional)
 

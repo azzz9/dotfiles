@@ -1,11 +1,16 @@
 { config, lib, pkgs, ... }:
 let
-  repo = "${config.home.homeDirectory}/src/github.com/azzz9/dotfiles";
+  configuredRepo = builtins.getEnv "DOTFILES_DIR";
+  repo =
+    if configuredRepo != ""
+    then configuredRepo
+    else "${config.home.homeDirectory}/src/github.com/azzz9/dotfiles";
   localSkillNames = [
     "archify"
     "conversation-to-memory"
     "conventional-commit"
     "domain-modeling"
+    "dotfiles-context"
     "explain"
     "graphify"
     "grill-me"
@@ -13,6 +18,7 @@ let
     "grilling"
     "herdr"
     "hunk-review"
+    "nix-home-manager"
     "show-me"
   ];
   # Vendored from cursor/plugins pstack at c1c0a32802223f4be824112dd83d33ad29a8b26c.
@@ -69,21 +75,44 @@ let
     {
       root = "${repo}/config/ai/skills";
       names = localSkillNames;
+      bases = [ ".agents" ".codex" ".copilot" ];
     }
     {
       root = "${repo}/config/ai/pstack/skills";
       names = pstackSkillNames;
+      # Copilot CLI currently rejects explicitly invoked skills that carry
+      # disable-model-invocation. Keep the shared source and Codex copy intact.
+      bases = [ ".codex" ".copilot" ];
+      copilotCompat = true;
     }
   ];
-  skillBases = [ ".agents" ".codex" ".copilot" ];
-  # Build out-of-store symlinks for every skill x runtime combination.
+  pstackSourceRoot = ../config/ai/pstack/skills;
+  pstackSkillSource = name: builtins.path {
+    path = "${pstackSourceRoot}/${name}";
+    name = "pstack-${name}";
+  };
+  # Temporary workaround for github/copilot-cli#4438 and #4451. Copy the
+  # complete skill tree so playbooks and scripts remain available to Copilot.
+  copilotPstackSkillSources = builtins.listToAttrs (
+    map (name: {
+      inherit name;
+      value = pkgs.runCommand "copilot-pstack-${name}" {} ''
+        cp -R ${pstackSkillSource name} "$out"
+        chmod -R u+w "$out"
+        sed -i '/^disable-model-invocation: true$/d' "$out/SKILL.md"
+      '';
+    }) pstackSkillNames
+  );
+  # Build runtime-specific skill links.
   skillLinks = builtins.listToAttrs (
-    lib.concatMap ({ root, names }:
+    lib.concatMap ({ root, names, bases, copilotCompat ? false }:
       lib.concatMap (base: map (name: {
         name = "${base}/skills/${name}";
         value.source =
-          config.lib.file.mkOutOfStoreSymlink "${root}/${name}";
-      }) names) skillBases
+          if copilotCompat && base == ".copilot"
+          then builtins.getAttr name copilotPstackSkillSources
+          else config.lib.file.mkOutOfStoreSymlink "${root}/${name}";
+      }) names) bases
     ) skillSources
   );
 in
@@ -120,8 +149,9 @@ in
     manpages.enable = false;
   };
 
-  # Codex / OMP / Copilot shared AI skills (out-of-store symlinks
-  # so edits in this repo are immediately reflected at the target path).
+  # Local Codex / OMP / Copilot skills use out-of-store symlinks so edits in
+  # this repo are immediately reflected at the target path. Pstack skills use
+  # runtime-specific roots because Copilot needs a sanitized copy.
   home.file = skillLinks // {
     ".codex/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/AGENTS.md";
     ".codex/rules/default.rules" = {
@@ -136,6 +166,9 @@ in
       source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/codex/config.base.toml";
       force = true;
     };
+    # Shared pstack policy is runtime-neutral. Keep its contract in the
+    # common .agents root so Codex and Copilot can read the same file.
+    ".agents/pstack/runtime.md".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/pstack/runtime.md";
     ".copilot/copilot-instructions.md".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/AGENTS.md";
   };
 

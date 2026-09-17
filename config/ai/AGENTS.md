@@ -13,6 +13,14 @@
 - Always respond in Japanese using consistent だ/である style.
 - Start with the direct answer. Omit conversational preambles. For longer answers, lead with a one-line summary.
 
+## Runtime compatibility
+
+- This repository shares pstack skills between Codex and GitHub Copilot CLI.
+- Before executing a pstack operation that involves delegation, model selection, session history, recurring work, or skill generation, read `config/ai/pstack/runtime.md` in this repository or `~/.agents/pstack/runtime.md` after installation.
+- Treat tool names, agent names, command names, model names, and storage paths as runtime-specific. Use only the form exposed by the current agent.
+- If the current runtime lacks an operation, use the smallest serial or parent-agent fallback and report the limitation. Do not invent another runtime's fields or paths.
+- After changing pstack compatibility or runtime adapters, run `node config/ai/pstack/scripts/check-runtime-compat.mjs` from the repository root.
+
 ## Answering Questions
 
 - Before answering a question, load the installed `show-me` skill from the active skills directory (for example, `~/.codex/skills/show-me/SKILL.md` or `~/.copilot/skills/show-me/SKILL.md`); reuse it if it is already loaded.

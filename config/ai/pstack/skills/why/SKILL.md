@@ -59,7 +59,9 @@ Capture this as seed context (file paths, symbols, commits, PR numbers, linked t
 
 ### Discovery
 
-Before spawning investigators, list the available MCPs from the Cursor environment. Use the available-tools map when present. Otherwise inspect the `mcps/` directory Cursor exposes for enabled MCP servers.
+Before spawning investigators, list the MCPs and external sources exposed by
+the current runtime. Use its status or environment command when available.
+Do not inspect an editor-specific directory or assume that one exists.
 
 Map each available MCP to one evidence category:
 
@@ -75,12 +77,12 @@ Source control is always available through git and `gh`. For the other six, clas
 
 Aim for a complete **coverage map**, not a minimal one. Document the null, don't skip the search.
 
-Launch all matching investigators in a single message so they run concurrently. Don't ask one agent to cover multiple MCPs.
-
-Subagent config (each):
-- `subagent_type`: `generalPurpose`
-- `model`: your configured why-investigators model (default `grok-4.6-fast-xhigh`)
-- `readonly`: `false` (agent mode). **Do not use readonly/Ask mode.** It strips MCP access, which disables MCP-backed investigators entirely. Investigators still shouldn't write anything.
+Launch all matching investigators with the current runtime's native
+delegation operation when it supports concurrency. Do not ask one worker to
+cover multiple independent sources. Give every worker the smallest access
+needed for its source. If a runtime cannot expose MCP access to a worker,
+perform that source lookup in the parent session instead of pretending that a
+worker searched it.
 
 Each investigator gets:
 1. The base prompt from `references/investigator-prompt.md`
@@ -91,7 +93,9 @@ Each investigator gets:
 
 ### Investigator roster. One per available evidence category
 
-Spawn one investigator per category that has a matching MCP. Each owns exactly one tool or MCP.
+Use one investigator per category that has a matching source. Each owns one
+source or MCP. Use the model preference from the portable pstack configuration
+when the current runtime accepts it.
 
 Each entry names the category and the kind of "why" it uniquely surfaces. Use it to know what to expect back, how to name a gap when a category returns empty, and (only in the rare provably-irrelevant case) to justify a skip.
 
@@ -120,11 +124,9 @@ If your scope assessment suggests a single-commit trivial target where the PR de
 
 ## Step 4. Synthesize
 
-Spawn one synthesizer subagent:
-
-- `subagent_type`: `generalPurpose`
-- `model`: your configured why-synthesizer model (default `claude-fable-5-1-thinking-max`)
-- `readonly`: `false` (agent mode). The synthesizer's quality check spot-verifies citations, which can require MCP access. Readonly/Ask mode strips MCPs and defeats that.
+Use one native synthesizer worker when available. Give it access to the
+sources needed to spot-check citations. If the runtime cannot provide such a
+worker, synthesize in the parent session and keep the same confidence rules.
 
 The synthesizer gets:
 1. The investigator findings, including any null results and any categories skipped with justification

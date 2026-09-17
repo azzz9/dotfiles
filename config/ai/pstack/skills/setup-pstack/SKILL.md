@@ -1,74 +1,132 @@
 ---
 name: setup-pstack
-description: Configure which models pstack uses per role and at what reasoning budget. Detects your available models and writes an always-applied rule that overrides the skill defaults. Use for /setup-pstack, "configure pstack models", "pstack budget", or changing pstack's model choices.
+description: Configure pstack role models and reasoning budget in a runtime-neutral user configuration. Use for /setup-pstack, "configure pstack models", "pstack budget", or changing pstack's model choices.
+disable-model-invocation: true
 ---
 
 # Setup pstack
 
-Write `~/.cursor/rules/pstack-models.mdc`, an always-applied rule that sets pstack's model per role.
+Read the pstack runtime contract from `config/ai/pstack/runtime.md` in this
+repository or `~/.agents/pstack/runtime.md` after installation. Write the
+portable pstack model configuration at
+`${XDG_CONFIG_HOME:-$HOME/.config}/pstack/models.toml`.
+Do not write editor-specific rules.
 
-## Steps
+## 1. Detect capabilities
 
-### 1. Detect available models
+Inspect the current runtime for the model IDs and reasoning levels that it
+actually accepts for delegated work. Use the current agent's exposed model
+list or delegation interface. Do not copy model IDs from another runtime.
+The aliases `inherit-parent` and `auto` are always valid. They mean that the
+role uses the parent session model.
 
-Enumerate the model slugs you can pass to a `Task` subagent in this session. That is the dependable source. If Cursor also exposes a models API or CLI that lists the user's entitled models, prefer it for completeness. If you cannot detect any, ask the user to paste the slugs they have access to. Never write a real slug you have not confirmed is available. The aliases `inherit-parent` and `auto` are always valid even though they are not detected slugs.
+If the runtime cannot select a different model for a delegated role, record
+`inherit-parent` for that role and report the limitation.
 
-### 2. Load current state
+## 2. Load current state
 
-The default role-to-model mapping is the rule shape shown in step 5 below. If `~/.cursor/rules/pstack-models.mdc` already exists, read it and treat its `# budget` line and its role values as the current choices. Otherwise start from those defaults.
+Read the portable configuration if it exists. Keep existing role choices that
+remain valid. Drop entries for unavailable models and report them as needing a
+choice.
 
-### 3. Budget, map, and confirm
+The configuration has one default budget value, optional per-role effort
+overrides, scalar role choices, and list-valued panel choices. A panel list
+controls the requested number of independent reviewers only when the runtime
+can provide that many workers.
 
-**(a) Ask for a budget.** Prefer AskQuestion over free text. Offer these four options with these exact labels, and name the current budget when the rule records one.
+A scalar role entry is either a model alias or a table with `model` and
+optional `effort`. A panel entry is either a list of model aliases or a table
+with `models` and optional `effort`.
 
-- `unlimited — keep max`
-- `large — xhigh reasoning`
-- `medium — high reasoning`
-- `small — medium reasoning`
+```toml
+budget = "unlimited"
 
-**(b) Apply it.** Build the working table from the skill defaults, and on a re-run keep any role you changed by family, list, or alias (`inherit-parent`, `auto`). `unlimited` leaves every effort as in that table. `large`, `medium`, and `small` set the effort token of every real slug, panel entries included, to `xhigh`, `high`, or `medium`. The effort token is the last token, or the one before a trailing `fast`, on the ladder `max` > `xhigh` > `high` > `medium` > `low`. If the result is not a detected slug, use the same family's detected slug with the highest effort at or below the target, else mark the role as needing a choice. `inherit-parent` and `auto` do not change. So `small` turns `claude-fable-5-1-thinking-max` into `claude-fable-5-1-thinking-medium`, and `grok-4.6-fast-xhigh` into `cursor-grok-4.6-medium-fast` when only that form is detected.
+[roles]
+feature = "inherit-parent"
+refactoring = "inherit-parent"
+"bug-fix" = "inherit-parent"
+"perf-issue" = "inherit-parent"
+hillclimb = "inherit-parent"
+"judgment and prose" = "inherit-parent"
+"how explorer" = "inherit-parent"
+"how explainer" = "inherit-parent"
+"why investigators" = "inherit-parent"
+"why synthesizer" = "inherit-parent"
+"reflect tooling" = "inherit-parent"
+"reflect judgment" = "inherit-parent"
+"reflect divergent" = "inherit-parent"
+"reflect synthesizer" = "inherit-parent"
+"swarm workers" = "inherit-parent"
 
-**(c) Show the roles and confirm.** Show every role with its model, marking any real slug not in the detected set as needing a choice. Ask whether to accept as-is or change specific roles, offering the detected models plus `inherit-parent` and `auto` (both mean: this role runs on the parent chat model, which is how Auto users stay on Auto) as the options. Prefer AskQuestion over free text. For panel roles (arena runners, architect runners, interrogate reviewers) the value is a list, and one subagent runs per entry, alias entries included, so the list length sets the count. `arena cross-judge pool` is also a list, but Arena selects one value from it whose model family differs from the parent's when possible. `swarm workers` is the default model for every worker unless a race or comparison assigns another model per arm.
+# Per-role effort override: hardest tasks use max effort while other roles
+# follow the default budget label.
+[roles."hardest tasks"]
+model = "inherit-parent"
+effort = "max"
 
-### 4. Validate
+[panels]
+"arena runners" = ["inherit-parent"]
+"arena cross-judge pool" = ["inherit-parent"]
+"interrogate reviewers" = ["inherit-parent"]
 
-Every real slug written must be in the detected set. `inherit-parent` and `auto` always pass. If a chosen real slug is not available, stop and ask again.
-
-### 5. Write the rule
-
-Write `~/.cursor/rules/pstack-models.mdc` with `alwaysApply: true`, a `# budget` line with the chosen label and its target effort, and one line per role, using the same labels poteto-mode uses. Overwrite the whole file so re-runs stay idempotent. Shape:
-
+# Panel effort override: apply the same effort to every worker in the panel.
+[panels."architect runners"]
+models = ["inherit-parent", "inherit-parent"]
+effort = "high"
 ```
----
-description: pstack per-role model choices (overrides skill defaults)
-alwaysApply: true
----
-# pstack model configuration. One line per role. Delete a line to fall back to the skill default.
-# `inherit-parent` or `auto` as a value: the role runs on the parent chat model (omit Task `model`). Alias entries in a panel list still count toward its fan-out.
-# budget: unlimited (max)
-feature, refactoring: grok-4.6-fast-xhigh
-bug-fix: grok-4.6-fast-xhigh
-perf-issue: grok-4.6-fast-xhigh
-hillclimb: grok-4.6-fast-xhigh
-judgment and prose: claude-fable-5-1-thinking-max
-hardest tasks: claude-fable-5-1-thinking-max
-how explorer: grok-4.6-fast-xhigh
-how explainer: claude-fable-5-1-thinking-max
-why investigators: grok-4.6-fast-xhigh
-why synthesizer: claude-fable-5-1-thinking-max
-reflect tooling: gpt-5.6-sol-max
-reflect judgment, divergent, synthesizer: claude-fable-5-1-thinking-max
-arena runners: claude-fable-5-1-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-arena cross-judge pool: claude-fable-5-1-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-swarm workers: grok-4.6-fast-xhigh
-architect runners: claude-fable-5-1-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-interrogate reviewers: claude-fable-5-1-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
+
+Valid effort levels are `min`, `low`, `medium`, `high`, and `max`.
+The default `budget` keeps its existing labels and meaning.
+
+An optional `[runtime.<name>]` section overrides the defaults for one
+runtime. `<name>` is the runtime adapter name (for example `codex` or
+`copilot`). It may set `budget`, `effort`, `[runtime.<name>.roles]`, and
+`[runtime.<name>.panels]`. Entries inside a runtime section use the same
+scalar-or-table shape as the top-level `[roles]` and `[panels]` sections.
+A missing role or panel inside a runtime section falls back to the
+top-level entry. Use this when two runtimes expose different model IDs
+for the same logical role.
+
+```toml
+[runtime.codex]
+budget = "unlimited"
+
+[runtime.codex.roles]
+feature = { model = "inherit-parent", effort = "max" }
+
+[runtime.copilot.roles]
+feature = { model = "inherit-parent", effort = "medium" }
 ```
 
-### 6. Confirm
+## 3. Choose the budget
 
-Tell the user the rule was written and that it applies to new sessions. Re-running this skill updates it.
+Offer these labels and preserve the current value when one exists.
 
-### 7. Offer a verification skill (optional)
+- `unlimited` keeps the runtime's maximum available effort.
+- `large` requests the highest available effort.
+- `medium` requests high effort when available.
+- `small` requests medium effort when available.
 
-Check whether the project has a way to drive the real app for proof (a `verify-*` skill, or an existing harness). If not, offer once: "want a project-local verification skill, so agents can drive the app the way a user does and prove changes work? I can generate one with /create-verification-skill." On yes, invoke `/create-verification-skill` (resolves wherever pstack is installed: workspace, user, or plugin). On no, move on without pushing.
+Do not invent a lower-effort model ID. Select the closest detected model in
+the same family, or use `inherit-parent` when no valid choice exists.
+
+## 4. Confirm and validate
+
+Show every scalar role and every panel entry. Ask the user to accept the
+table or change named entries. Validate every real model ID against the list
+detected in step 1. `inherit-parent` and `auto` always pass. Validate every
+`effort` value against the list `min`, `low`, `medium`, `high`, `max`.
+
+## 5. Write idempotently
+
+Write the complete TOML document to a temporary file in the same directory,
+then replace the target atomically. Re-running this skill must converge on the
+same file for the same choices. Do not modify a runtime's own configuration
+from this skill.
+
+## 6. Report runtime limits
+
+Tell the user the path written, the default budget, the per-role and panel
+effort overrides, and which choices the current runtime can or cannot apply
+natively. The pstack skills read this file as preferences. A runtime-specific
+adapter remains the authority for the actual delegation call.

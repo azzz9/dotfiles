@@ -30,7 +30,11 @@ Skip Phase A only when the work is genuinely greenfield with no surrounding syst
 
 Run the **arena** skill with the design-sketch task and the Phase A grounding artifacts. Pass `references/runner-prompt.md` as each runner's prompt. Each candidate produces a design package shaped per `references/rationale-template.md`.
 
-Use your configured architect runners (defaults `claude-fable-5-1-thinking-max`, `gpt-5.6-sol-max`, `grok-4.6-fast-xhigh`, `claude-opus-5-thinking-xhigh`).
+Use the configured `architect runners` panel from the pstack runtime contract
+(`config/ai/pstack/runtime.md` in this repository or
+`~/.agents/pstack/runtime.md` after installation). Do not assume a model ID.
+If the current runtime cannot select different models, use its parent-model or
+serial fallback and report the reduced diversity.
 
 Design it twice. Require at least two structurally distinct candidates before synthesis, even when the first looks sufficient. This is the **exhaust-the-design-space** principle skill made concrete. Whole-shape alternatives, not point fixes inside one shape.
 
