@@ -65,7 +65,8 @@ in
       prettierd                   # formatter (daemon)
       eslint                      # linter
       eslint_d                    # linter (daemon)
-      nodejs                      # fallback runtime when NVM is unavailable
+      mise                        # tool version manager; versions belong to each environment
+      codex                       # OpenAI Codex CLI
       vscode-js-debug             # DAP debugger (Node.js / Chrome)
 
       # --- C / C++ ---

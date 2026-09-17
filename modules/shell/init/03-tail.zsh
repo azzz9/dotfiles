@@ -1,25 +1,10 @@
-export NVM_DIR="$HOME/.nvm"
-
-_lazy_load_nvm() {
-  unset -f nvm node npm npx corepack _lazy_load_nvm
-  if [ -s "$NVM_DIR/nvm.sh" ]; then
-    . "$NVM_DIR/nvm.sh"
-    [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
-  else
-    echo "nvm: NVM not found at $NVM_DIR/nvm.sh; using system node" >&2
-  fi
-}
-
-nvm() { _lazy_load_nvm; nvm "$@"; }
-node() { _lazy_load_nvm; command node "$@"; }
-npm() { _lazy_load_nvm; command npm "$@"; }
-npx() { _lazy_load_nvm; command npx "$@"; }
-corepack() { _lazy_load_nvm; command corepack "$@"; }
-
+# Keep Herdr opt-in: Orca/SSH provides its own agent UI, so auto-starting
+# Herdr here would create a second agent manager. Set HERDR_AUTO_START=1 to
+# restore the previous behavior for a shell that should run inside Herdr.
 if [[ -o interactive \
   && -z "${HERDR_ENV:-}" \
   && -z "${TMUX:-}" \
-  && "${HERDR_AUTO_START:-1}" != 0 \
+  && "${HERDR_AUTO_START:-0}" != 0 \
   && "${TERM:-}" != dumb ]] && command -v herdr >/dev/null 2>&1; then
   exec herdr
 fi

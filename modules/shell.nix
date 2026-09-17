@@ -59,13 +59,23 @@ in
     #   500  preamble        build-time path variables
     #   550  01-setup.zsh     BEFORE plugins (ZSH_COMPDUMP, zstyle, appearance)
     #   910  02-main.zsh      AFTER plugins (fzf, prompt, functions, title, fsh)
-    #  1100  03-tail.zsh      AFTER shellInit (nvm lazy-load, terminal auto-start)
+    #  1090  mise activation  AFTER shellInit (interactive tool context)
+    #  1100  03-tail.zsh      AFTER shellInit (terminal auto-start)
     initContent = lib.mkMerge [
       (lib.mkOrder 500 initPreamble)
       (lib.mkOrder 550 (readZsh "01-setup.zsh"))
       (lib.mkOrder 910 (readZsh "02-main.zsh"))
+      (lib.mkOrder 1090 ''
+        eval "$(${pkgs.mise}/bin/mise activate zsh)"
+      '')
       (lib.mkOrder 1100 (readZsh "03-tail.zsh"))
     ];
+    # Use shims in .zshenv so SSH and other non-interactive zsh processes can
+    # resolve environment-owned mise tools without relying on prompt hooks.
+    envExtra = ''
+      export PATH="${config.home.homeDirectory}/.nix-profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
+      eval "$(${pkgs.mise}/bin/mise activate zsh --shims)"
+    '';
   };
 
   programs.fzf = {
