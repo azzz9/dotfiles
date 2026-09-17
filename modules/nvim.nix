@@ -1,6 +1,43 @@
 { lib, pkgs, ... }:
 let
   solidity = import ./solidity.nix { inherit pkgs; };
+  # Keep this release aligned with codediff.nvim's watcher VERSION.
+  codediffWatcherVersion = "0.23.2";
+  codediffWatcherTarget = {
+    "x86_64-linux" = {
+      os = "linux";
+      arch = "x64";
+      hash = "sha256-acXsKVZCUZ952p57kIkK0TLw/YDiiD9v9pZxBqAF27w=";
+    };
+    "aarch64-darwin" = {
+      os = "macos";
+      arch = "arm64";
+      hash = "sha256-LOudhXiteUsNAYkwbwTQdf7GEdLAYfeL24q4SBri0t4=";
+    };
+  }.${pkgs.stdenv.hostPlatform.system};
+  codediffWatcher = pkgs.stdenvNoCC.mkDerivation {
+    pname = "codediff-watcher";
+    version = codediffWatcherVersion;
+    src = pkgs.fetchurl {
+      url = "https://github.com/esmuellert/codediff/releases/download/v${codediffWatcherVersion}/codediff-watcher-${codediffWatcherVersion}-${codediffWatcherTarget.os}-${codediffWatcherTarget.arch}.tar.gz";
+      hash = codediffWatcherTarget.hash;
+    };
+    sourceRoot = ".";
+    nativeBuildInputs = lib.optional pkgs.stdenv.hostPlatform.isLinux pkgs.autoPatchelfHook;
+    buildInputs = lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+      pkgs.glibc
+      pkgs.stdenv.cc.cc.lib
+    ];
+    installPhase = ''
+      install -Dm755 codediff-watcher "$out/bin/codediff-watcher"
+    '';
+    meta = {
+      description = "Native file watcher for codediff.nvim";
+      homepage = "https://github.com/esmuellert/codediff";
+      license = lib.licenses.mit;
+      mainProgram = "codediff-watcher";
+    };
+  };
   treesitterWithGrammars = pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
     p.tree-sitter-bash
     p.tree-sitter-c
@@ -80,6 +117,8 @@ let
   );
 in
 {
+  home.sessionVariables.CODEDIFF_WATCHER_PATH = "${codediffWatcher}/bin/codediff-watcher";
+
   programs.nixvim = {
     enable = true;
     enableMan = false;
@@ -111,6 +150,7 @@ in
       preserveindent = true;
       breakindent = true;
     };
+    extraPackages = [ codediffWatcher ];
     extraPlugins =
       with pkgs.vimPlugins;
       [
