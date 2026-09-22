@@ -43,7 +43,7 @@ let
       # pstack for pi, from the personal fork. It carries the upstream port plus
       # the local harness fixes (pi session paths, subagent parameters, no cloud
       # agents, review-automation naming). See the fork's FORK.md.
-      "git:github.com/azzz9/pi-pstack@ab2382bf1e5077406b972a3536043f670d9fa8f6"
+      "git:github.com/azzz9/pi-pstack@bac8e2a43fb92bb2f871c6cfda5a5e8f6fdc587f"
       # Plugins the port expects: the `todo` tool that the playbooks open, and
       # the structured `ask_user_question` tool that poteto-mode asks through.
       "npm:@juicesharp/rpiv-todo@2.11.0"
