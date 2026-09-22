@@ -8,20 +8,22 @@ let
   # segfaults, so on Linux we launch the real binary through the matching
   # ld-linux. That makes process.execPath point at ld-linux, which breaks the
   # session daemon auto-spawn (`hunk session` relaunches itself) and the bundled
-  # `hunk skill path` lookup; the wrapper restores both. Darwin has no ld-linux
-  # and uses the upstream package directly.
+  # `hunk skill path` lookup; the wrapper restores both. Upstream ships
+  # `bin/hunk` as a shim that re-execs `bin/.hunk-wrapped`, so the wrapper loads
+  # the binary itself: ld-linux cannot load a shell script. Darwin has no
+  # ld-linux and uses the upstream package directly.
   hunkPackage =
     if pkgs.stdenv.hostPlatform.isLinux then
       pkgs.runCommand "hunk-wrapped" { } ''
         mkdir -p $out
         cp -r ${upstreamHunk}/. $out/
         chmod -R u+w $out
-        mv $out/bin/hunk $out/bin/.hunk-real
         cat > $out/bin/hunk <<EOF
         #!${pkgs.bash}/bin/bash
         set -euo pipefail
 
-        real="$out/bin/.hunk-real"
+        export HUNK_INSTALL_SOURCE='nix'
+        real="$out/bin/.hunk-wrapped"
         ld="${lib.getLib pkgs.glibc}/lib/ld-linux-x86-64.so.2"
         lib_path="${lib.getLib pkgs.glibc}/lib"
         curl="${pkgs.curl}/bin/curl"
