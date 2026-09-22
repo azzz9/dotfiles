@@ -44,8 +44,8 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#a
 | `dotfiles sync` | Pull latest, then apply (requires clean repo) |
 | `dotfiles upgrade` | Refresh `flake.lock` inputs, then apply (requires clean repo; restores `flake.lock` on failure) |
 
-Copilot CLI and omp are not installed by this flake; install them
-separately when using the related shell functions or herdr launchers.
+Copilot CLI is not installed by this flake; install it separately when
+using the related shell functions or herdr launchers.
 
 ## Repository layout
 

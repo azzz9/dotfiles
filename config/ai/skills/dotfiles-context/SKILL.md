@@ -82,8 +82,8 @@ deliberately not Nix-managed.
 All rules (file-change-reporting, git-commit-push, diagrams) are inline
 in `config/ai/AGENTS.md`. Copilot CLI reads them via the AGENTS.md symlink, so
 no separate rule files or `.instructions.md` generation are needed. The
-`.agents/skills` path is the shared user scope for local skills consumed by pi,
-OMP, and Copilot; the copilot-specific links remain for compatibility.
+`.agents/skills` path is the shared user scope for local skills consumed by pi
+and Copilot; the copilot-specific links remain for compatibility.
 
 To add a local skill: create `config/ai/skills/<name>/SKILL.md` and add
 the name to `localSkillNames` in `hosts/default.nix`.
