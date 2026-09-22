@@ -23,18 +23,6 @@ cdx() {
   codex -p dotfiles --no-alt-screen "$@"
 }
 
-# olc: like cdx but uses the glm-5.2:cloud model via the Ollama
-# provider. Loads the dotfiles profile (config.base.toml) for all
-# base settings (personality, sandbox, approvals, etc.), then
-# overrides model and provider on the command line. The ollama
-# provider is declared in config.base.toml so it is available
-# without a separate ollama-launch profile.
-olc() {
-  codex -p dotfiles -m glm-5.2:cloud \
-  -c 'model_provider="ollama-launch"' \
-  -c "model_catalog_json=\"$HOME/.codex/model.json\"" \
-  --no-alt-screen "$@"
-}
 
 # SECURITY: Running an AI coding agent as root is dangerous.
 # The agent can execute arbitrary shell commands with elevated
@@ -69,15 +57,14 @@ gcp() {
 # Rearranges the current tab in place: all other panes are killed (with a
 # confirmation prompt when any has a running process) and the tab is renamed
 # after the current directory.
-# Usage: dev [cdx|olc|gcp]  (default: cdx)
+# Usage: dev [cdx|gcp]  (default: cdx)
 dev() {
   local agent="${1:-cdx}"
   local cmd
   case "$agent" in
     cdx)   cmd="cdx" ;;
-    olc)   cmd="olc" ;;
     gcp)   cmd="gcp" ;;
-    *)     echo "usage: dev [cdx|olc|gcp]" >&2; return 1 ;;
+    *)     echo "usage: dev [cdx|gcp]" >&2; return 1 ;;
   esac
 
   if [[ "${HERDR_ENV:-}" != 1 ]]; then
@@ -245,7 +232,7 @@ if abs(delta) >= 0.01:
 }
 
 _dev() {
-  _arguments '1:agent:(cdx olc gcp)'
+  _arguments '1:agent:(cdx gcp)'
 }
 compdef _dev dev
 
@@ -253,12 +240,11 @@ compdef _dev dev
 # New panes are always inserted to the LEFT of existing agents (i.e. to
 # the right of the nvim pane) and rebalanced to equal width.
 #
-# Usage: deva [fork [PANE_ID]] [--down] [cdx|olc|gcp]
+# Usage: deva [fork [PANE_ID]] [--down] [cdx|gcp]
 #   fork      Fork an existing codex session (inherit conversation context).
 #   PANE_ID   Fork from this pane's session (skip picker).
 #   --down    Split downward instead of right (default: right).
 #   cdx       codex with dotfiles profile (default)
-#   olc       ollama with dotfiles profile
 #   gcp       copilot (not compatible with fork)
 #
 # Examples:
@@ -266,8 +252,6 @@ compdef _dev dev
 #   deva fork             fork session (auto-pick or fzf), new pane
 #   deva fork wJ:p3       fork wJ:p3's session
 #   deva fork --down      fork session, split down
-#   deva olc              fresh olc
-#   deva fork olc         fork session with olc model
 deva() {
   local fork=0 fork_pane="" direction="right" agent="cdx" arg
 
@@ -276,7 +260,6 @@ deva() {
       fork)    fork=1 ;;
       --down)  direction="down" ;;
       cdx)     agent="cdx" ;;
-      olc)     agent="olc" ;;
       gcp)     agent="gcp" ;;
       *)
         # Treat as pane ID if it contains a colon (e.g. wJ:p3).
@@ -285,7 +268,7 @@ deva() {
           fork=1
         else
           echo "deva: unknown argument '$arg'" >&2
-          echo "usage: deva [fork [PANE_ID]] [--down] [cdx|olc|gcp]" >&2
+          echo "usage: deva [fork [PANE_ID]] [--down] [cdx|gcp]" >&2
           return 1
         fi ;;
     esac
@@ -431,9 +414,8 @@ for p in json.load(sys.stdin)["result"]["panes"]:
     fi
 
     # cdx fork <id> expands to: codex -p dotfiles --no-alt-screen fork <id>
-    # olc fork <id> expands to: codex -p dotfiles -m glm-5.2:cloud ... fork <id>
-    # Both work because -p / -m / -c are global options accepted before
-    # the "fork" subcommand.
+    # This works because -p is a global option accepted before the "fork"
+    # subcommand.
     cmd="$agent fork $session_id"
   else
     cmd="$agent"
@@ -544,7 +526,7 @@ for s in top_rs:
 }
 
 _deva() {
-  _arguments '*:option:(fork --down cdx olc gcp)'
+  _arguments '*:option:(fork --down cdx gcp)'
 }
 compdef _deva deva
 
