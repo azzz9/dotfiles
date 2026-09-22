@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, llmAgents, ... }:
 let
   configuredRepo = builtins.getEnv "DOTFILES_DIR";
   repo =
@@ -128,6 +128,28 @@ in
     ];
 
   programs.home-manager.enable = true;
+  programs.pi-coding-agent = {
+    enable = true;
+    package = llmAgents.packages.${pkgs.system}.pi;
+    extraPackages = with pkgs; [
+      nodejs
+      bun
+    ];
+    settings = {
+      packages = [
+        "npm:pi-mcp-adapter"
+        "npm:pi-web-access"
+        # Harness-neutral pstack mirror, kept separate from config/ai/pstack.
+        # Pinned so a Home Manager generation always reconciles to this ref.
+        "git:github.com/backnotprop/pstack@157aae39a733135e93d8b5b19ff62c6a84b0ad56"
+        "npm:pi-subagents@0.70.1"
+        # Ollama Cloud account surface: model discovery, web tools, quota
+        # bars, and per-model spend. Registers provider id "ollama-cloud";
+        # do not add pi-ollama-cloud or pi-free alongside it (same id).
+        "npm:pi-ollama-cloud-link@1.1.0"
+      ];
+    };
+  };
   # Periodically reclaim unreferenced store paths while retaining recent generations.
   nix.gc = {
     automatic = true;

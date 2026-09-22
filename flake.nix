@@ -29,9 +29,12 @@
       # x86_64-darwin) so the transitive eval only warns, not errors.
       inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     };
+    # Pi is packaged and updated by numtide/llm-agents.nix. Keep its own
+    # nixpkgs pin so its binary cache remains usable.
+    llm-agents.url = "github:numtide/llm-agents.nix";
   };
 
-  outputs = { nixpkgs, nixpkgs-master, home-manager, nixvim, hunk, ... }:
+  outputs = { nixpkgs, nixpkgs-master, home-manager, nixvim, hunk, llm-agents, ... }:
     let
       supportedSystems = [
         "x86_64-linux"
@@ -59,6 +62,7 @@
           };
           extraSpecialArgs = {
             hunk = hunk;
+            llmAgents = llm-agents;
           };
           modules = [
             ./hosts/default.nix
