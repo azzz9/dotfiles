@@ -223,29 +223,6 @@ apply_home_manager() {
   nix_cmd run nixpkgs#home-manager -- switch --flake "$repo_dir#$host" --impure -b backup
 }
 
-configure_linux_apparmor() {
-  local repo_dir="$1"
-  local profile_source="$repo_dir/config/system/apparmor/nix-bubblewrap"
-  local profile_target="/etc/apparmor.d/nix-bubblewrap"
-
-  if [[ "$os_name" != "Linux" || ! -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]]; then
-    return
-  fi
-
-  if [[ "$(< /proc/sys/kernel/apparmor_restrict_unprivileged_userns)" != "1" ]]; then
-    return
-  fi
-
-  if ! command_exists apparmor_parser; then
-    echo "AppArmor restricts unprivileged user namespaces, but apparmor_parser is unavailable." >&2
-    exit 1
-  fi
-
-  echo "Allowing Nix-installed bubblewrap to create sandbox user namespaces..."
-  sudo install -m 0644 "$profile_source" "$profile_target"
-  sudo apparmor_parser -r "$profile_target"
-}
-
 main() {
   local repo_dir
   local host
@@ -270,7 +247,6 @@ main() {
   configure_git
   ensure_dotfiles_repo "$repo_dir"
   install_nix
-  configure_linux_apparmor "$repo_dir"
   apply_home_manager "$repo_dir" "$host"
 
   if [[ "$should_reboot" == 1 && "${REBOOT:-0}" == 1 ]]; then
