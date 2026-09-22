@@ -70,17 +70,20 @@ config/ai/skills/<name>              -> ~/.agents/skills/<name>
                                     -> ~/.codex/skills/<name>
                                     -> ~/.copilot/skills/<name>
 config/ai/pstack/skills/<name>       -> ~/.codex/skills/<name>
-                                    -> ~/.copilot/skills/<name>
+                                    -> ~/.copilot/skills/<name> (sanitized copy)
+                                    -> ~/.omp/agent/skills/<name>
 config/ai/pstack/runtime.md          -> ~/.agents/pstack/runtime.md
 config/ai/codex/config.base.toml     -> ~/.codex/dotfiles.config.toml
 config/ai/codex/rules/default.rules  -> ~/.codex/rules/default.rules
 ```
 
-Pstack skills are linked to `~/.codex/skills` and copied to
-`~/.copilot/skills`. Copilot receives a sanitized copy because it currently
-rejects explicitly invoked skills that carry `disable-model-invocation`.
-They are not placed in `~/.agents/skills`, which remains the shared user
-scope for local skills consumed by Codex, OMP, and Copilot.
+Pstack skills are linked to `~/.codex/skills` and `~/.omp/agent/skills`
+(out-of-store symlinks; OMP normalizes `disable-model-invocation` to
+`hide`, so the shared source works there) and copied to `~/.copilot/skills`.
+Copilot receives a sanitized copy because it currently rejects explicitly
+invoked skills that carry `disable-model-invocation`. They are not placed
+in `~/.agents/skills`, which remains the shared user scope for local
+skills consumed by Codex, OMP, and Copilot.
 
 All rules (file-change-reporting, git-commit-push, diagrams) are inline
 in `config/ai/AGENTS.md`. Both Codex and Copilot CLI read them via the

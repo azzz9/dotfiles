@@ -82,7 +82,9 @@ let
       names = pstackSkillNames;
       # Copilot CLI currently rejects explicitly invoked skills that carry
       # disable-model-invocation. Keep the shared source and Codex copy intact.
-      bases = [ ".codex" ".copilot" ];
+      # OMP normalizes disable-model-invocation to hide, so the shared source
+      # works there without a sanitized copy.
+      bases = [ ".codex" ".copilot" ".omp/agent" ];
       copilotCompat = true;
     }
   ];

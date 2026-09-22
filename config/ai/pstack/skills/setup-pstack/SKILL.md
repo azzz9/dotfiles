@@ -130,3 +130,46 @@ Tell the user the path written, the default budget, the per-role and panel
 effort overrides, and which choices the current runtime can or cannot apply
 natively. The pstack skills read this file as preferences. A runtime-specific
 adapter remains the authority for the actual delegation call.
+
+## OMP adapter
+
+When the `omp` CLI is present, `pstack-omp-adapter.py` (next to this skill's
+repository checkout, under `config/ai/pstack/scripts/`) translates the
+`[runtime.omp]` section into OMP configuration. It validates every model ID
+against `omp models --kind chat`, maps `min` effort to OMP `low` (other
+levels 1:1), clamps an effort to the model's ladder when the model does not
+support it, and writes:
+
+1. `~/.config/pstack/omp-modelRoles.yml`: a `modelRoles` overlay. Panel
+   entries emit one key per member at its original list position
+   (`pstack-<panel>-1..N`), so OMP can fan a panel across distinct models.
+2. One OMP task agent per workflow role in `~/.omp/agent/agents/psx-*.md`,
+   each with `model: ["@<modelRoles-key>"]`, a role-appropriate `tools`
+   set (read-only for review/exploration roles, full for implementers),
+   and `spawns: ""`. Panel members generate one agent per list entry at
+   the member's original position: `psx-<panel>-1..N`. An
+   `inherit-parent`/`auto` member generates an agent without a `model`
+   field: OMP runs it on the parent model. Every generated file carries
+   `metadata: generated-by: pstack-omp-adapter`; re-runs prune stale files
+   by that marker only and never touch hand-written agents.
+3. With `--install`: register the overlay for every future OMP launch by
+   exporting `PI_CONFIG_FILES` in the shell init (`--shell-init` path;
+   the adapter refuses Home Manager / nix-store-managed inits, which
+   `dotfiles apply` would overwrite). The export preserves an existing
+   `PI_CONFIG_FILES` as a path list and appends the overlay. OMP loads
+   `PI_CONFIG_FILES` overlays ahead of `--config`;
+   `~/.omp/agent/config.yml` is never modified. Idempotent: re-running
+   replaces the export block.
+
+- `python3 pstack-omp-adapter.py --check` validates and prints the resolved
+  table without writing.
+- Write mode refuses partial output when a model id does not resolve;
+  `--allow-missing` writes the resolvable subset and reports the dropped
+  entries.
+- To route a delegated worker by role, dispatch the generated agent name
+  (for example `psx-interrogate-reviewers-2` in a `tasks[]` batch). OMP
+  resolves the agent's `@<modelRoles-key>` at spawn time; an undefined
+  alias fails the spawn instead of falling back silently, so validate
+  before use. If the parent session itself falls back to another model,
+  an alias can resolve through the fallback chain: record the resolved
+  model the child reports.

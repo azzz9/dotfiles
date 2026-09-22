@@ -15,7 +15,7 @@
 
 ## Runtime compatibility
 
-- This repository shares pstack skills between Codex and GitHub Copilot CLI.
+- This repository shares pstack skills between Codex, Oh My Pi (omp), and GitHub Copilot CLI.
 - Before executing a pstack operation that involves delegation, model selection, session history, recurring work, or skill generation, read `config/ai/pstack/runtime.md` in this repository or `~/.agents/pstack/runtime.md` after installation.
 - Treat tool names, agent names, command names, model names, and storage paths as runtime-specific. Use only the form exposed by the current agent.
 - If the current runtime lacks an operation, use the smallest serial or parent-agent fallback and report the limitation. Do not invent another runtime's fields or paths.
