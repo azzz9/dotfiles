@@ -67,17 +67,32 @@ config/ai/skills/<name>              -> ~/.agents/skills/<name>
                                     -> ~/.copilot/skills/<name>
 ```
 
-pstack is not vendored as a tree. pi consumes it as a pinned package
-(`git:github.com/backnotprop/pstack@...` in `hosts/default.nix`). The package's
-poteto-mode skill is filtered out because the local copy at
-`config/ai/skills/poteto-mode` carries a valid skill name.
+pstack is not vendored as a tree. pi consumes the personal fork
+`git:github.com/azzz9/pi-pstack@<sha>` (pinned in `hosts/default.nix`) with
+`npm:pi-subagents` alongside it. The fork carries the pi-native port plus local
+harness fixes (pi session paths, pi subagent parameters, no Cursor cloud agents,
+review-automation naming, the `todo` tool). It ships the skills, the
+`comment-sicko` and `poteto-agent` subagents through its `pi.subagents.agents`
+manifest, and an extension that injects the role-model table, provides sticky
+`/poteto-mode`, and controls the skill catalog with `/pstack`. The plugins
+`npm:@juicesharp/rpiv-todo` and `npm:@juicesharp/rpiv-ask-user-question` supply
+the `todo` and `ask_user_question` tools the playbooks call.
+
+Moving that pin takes two steps. Edit the sha, run `dotfiles apply`, then run
+`pi update git:github.com/azzz9/pi-pstack`. Activation only reconciles
+`settings.json`. Without the update the checkout stays on the old ref.
+
+The fork's bundled scripts (`skills/poteto-mode/scripts`) install their own
+dependencies on first run through `bootstrap.ts`, so no manual `bun install` is
+needed. `bun` comes from `programs.pi-coding-agent.extraPackages`.
 
 Provider packages are deliberately absent from that list. Subscriptions, model
 catalogs, quotas, and API keys differ per machine, so a provider extension is
 installed locally into `~/.pi/agent/extensions/<name>/` where pi auto-discovers
 it, or with a local `pi install`. The same rule covers model choices. pstack
-role models live in `~/.agents/pstack-models.md`, which is machine-local and
-deliberately not Nix-managed.
+role models live in `~/.pi/agent/pstack/models.json`, which is machine-local
+and deliberately not Nix-managed. `~/.agents/pstack-models.md` is kept as the
+readable record of the same choices.
 
 All rules (file-change-reporting, git-commit-push, diagrams) are inline
 in `config/ai/AGENTS.md`. Copilot CLI reads them via the AGENTS.md symlink, so

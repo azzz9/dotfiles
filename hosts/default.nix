@@ -19,7 +19,6 @@ let
     "herdr"
     "hunk-review"
     "nix-home-manager"
-    "poteto-mode"
     "show-me"
   ];
   # Local skills are linked into every runtime that reads them. The links point
@@ -40,15 +39,15 @@ let
     packages = [
       "npm:pi-mcp-adapter"
       "npm:pi-web-access"
-      # Pinned so a Home Manager generation always reconciles to this ref.
-      # poteto-mode is vendored at config/ai/skills/poteto-mode with a valid
-      # skill name; skip the package copy so only the repo copy registers.
-      # make-bot-ui declares `name: Make Bot UI`, which pi rejects as an
-      # invalid skill name at startup, and the skill drives Cursor-only tools.
-      {
-        source = "git:github.com/backnotprop/pstack@157aae39a733135e93d8b5b19ff62c6a84b0ad56";
-        skills = [ "!poteto-mode" "!make-bot-ui" ];
-      }
+      # Pinned so a Home Manager generation always reconciles to this version.
+      # pstack for pi, from the personal fork. It carries the upstream port plus
+      # the local harness fixes (pi session paths, subagent parameters, no cloud
+      # agents, review-automation naming). See the fork's FORK.md.
+      "git:github.com/azzz9/pi-pstack@ab2382bf1e5077406b972a3536043f670d9fa8f6"
+      # Plugins the port expects: the `todo` tool that the playbooks open, and
+      # the structured `ask_user_question` tool that poteto-mode asks through.
+      "npm:@juicesharp/rpiv-todo@2.11.0"
+      "npm:@juicesharp/rpiv-ask-user-question@2.11.0"
       "npm:pi-subagents@0.70.1"
       # Provider packages are machine-local and must not be listed here.
       # Subscriptions, model catalogs, quotas, and API keys differ per host.
