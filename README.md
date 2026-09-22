@@ -44,7 +44,7 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#a
 | `dotfiles sync` | Pull latest, then apply (requires clean repo) |
 | `dotfiles upgrade` | Refresh `flake.lock` inputs, then apply (requires clean repo; restores `flake.lock` on failure) |
 
-Codex, Copilot CLI, and omp are not installed by this flake; install them
+Copilot CLI and omp are not installed by this flake; install them
 separately when using the related shell functions or herdr launchers.
 
 ## Repository layout
@@ -52,7 +52,7 @@ separately when using the related shell functions or herdr launchers.
 ```
 dotfiles/
 +-- flake.nix                  # homeConfigurations: x86_64-linux, aarch64-darwin
-+-- hosts/default.nix          # HM entry point, AI symlinks (codex + copilot)
++-- hosts/default.nix          # HM entry point, AI symlinks (copilot)
 +-- modules/
 |   +-- dotfiles.nix           # `dotfiles` CLI (apply / sync / upgrade)
 |   +-- git.nix                # Git config + ghq + git-wt defaults
@@ -64,10 +64,9 @@ dotfiles/
 |   +-- packages.nix           # Additional system packages
 |   +-- solidity.nix           # Solidity toolchain
 |   +-- lazygit.nix            # lazygit config
-+-- config/ai/                 # AI agent config (codex + copilot shared)
++-- config/ai/                 # AI agent config (copilot)
 |   +-- AGENTS.md              # Core rules (read-only gate, language, dispatch)
 |   +-- rules/                 # On-demand rule files (read when needed)
-|   +-- codex/                 # Codex-specific config + rules
 |   +-- skills/                # Reusable AI skills
 +-- scripts/setup-system.sh    # Bootstrap script
 +-- .githooks/pre-push         # Local pre-push checks
@@ -80,14 +79,13 @@ dotfiles/
 git config core.hooksPath .githooks
 ```
 
-Runs `nix flake check`, `shellcheck`, the pstack runtime compatibility
-check, `actionlint`, and a Home Manager build before push.
+Runs `nix flake check`, `shellcheck`, `actionlint`, and a Home Manager build
+before push.
 
 ## CI
 
-CI runs static checks (shellcheck, pstack runtime compatibility, actionlint,
-`nix flake check`, HM eval) and builds for `x86_64-linux` and
-`aarch64-darwin`.
+CI runs static checks (shellcheck, actionlint, `nix flake check`, HM eval) and
+builds for `x86_64-linux` and `aarch64-darwin`.
 
 ### Binary cache (optional)
 
@@ -109,6 +107,6 @@ for build caching. Without it, only the public nixpkgs cache is used.
 - Ghostty is configured by Home Manager only on macOS; the application itself
   is installed outside Nix and the UDEV Gothic NF font is installed by the
   macOS bootstrap.
-- AI agent rules are shared by Codex and Copilot through out-of-store links;
+- AI agent rules are shared with Copilot through out-of-store links;
   `show-me` is used for implementation-first explanations and `explain` for
   structured technical explanations.

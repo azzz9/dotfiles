@@ -38,9 +38,6 @@ jobs:
           bash -n scripts/*.sh
           nix run nixpkgs#shellcheck -- scripts/*.sh
 
-      - name: Check pstack runtime compatibility
-        run: node config/ai/pstack/scripts/check-runtime-compat.mjs
-
       - name: Check GitHub Actions workflows
         run: nix run nixpkgs#actionlint -- .github/workflows/ci.yml
 

@@ -66,7 +66,6 @@ in
       eslint                      # linter
       eslint_d                    # linter (daemon)
       mise                        # tool version manager; versions belong to each environment
-      codex                       # OpenAI Codex CLI
       vscode-js-debug             # DAP debugger (Node.js / Chrome)
 
       # --- C / C++ ---

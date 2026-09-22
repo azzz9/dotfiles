@@ -18,9 +18,6 @@ nix flake check
 echo "[pre-push] shellcheck"
 nix run nixpkgs#shellcheck -- scripts/setup-system.sh
 
-echo "[pre-push] pstack runtime compatibility"
-node config/ai/pstack/scripts/check-runtime-compat.mjs
-
 echo "[pre-push] actionlint"
 nix run nixpkgs#actionlint -- .github/workflows/ci.yml
 

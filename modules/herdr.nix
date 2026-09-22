@@ -93,12 +93,7 @@ in
     previous_workspace = "alt+shift+k"
     next_workspace = "alt+shift+j"
 
-    # AI agent launchers (replaces the former popup bindings)
-    [[keys.command]]
-    key = "prefix+shift+c"
-    type = "pane"
-    command = "codex -p dotfiles --no-alt-screen"
-
+    # AI agent launcher (replaces the former popup bindings)
     [[keys.command]]
     key = "prefix+shift+g"
     type = "pane"
@@ -146,7 +141,7 @@ in
   # The commands are idempotent and update the generated hook files/settings
   # when Herdr changes its integration assets.
   home.activation.herdrIntegrations = lib.hm.dag.entryAfter [ "writeBoundary" "installPackages" ] ''
-    for integration in codex copilot; do
+    for integration in copilot; do
       ${pkgs.herdr}/bin/herdr integration install "$integration" >/dev/null
     done
   '';

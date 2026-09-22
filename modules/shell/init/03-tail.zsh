@@ -1,5 +1,5 @@
-# Keep Herdr opt-in: Orca/SSH provides its own agent UI, so auto-starting
-# Herdr here would create a second agent manager. Set HERDR_AUTO_START=1 to
+# Keep Herdr opt-in: a shell that already belongs to another agent manager
+# should not auto-start a second one. Set HERDR_AUTO_START=1 to
 # restore the previous behavior for a shell that should run inside Herdr.
 if [[ -o interactive \
   && -z "${HERDR_ENV:-}" \

@@ -1,7 +1,7 @@
 # Dotfiles Repo — Project Instructions
 
-This file is read by Codex/Copilot **only when working inside this repo**.
-Global rules live in `~/.codex/AGENTS.md` (symlinked from `config/ai/AGENTS.md`).
+Coding agents that work inside this repo read this file. The global rules live
+in `config/ai/AGENTS.md`, deployed to `~/.copilot/copilot-instructions.md`.
 
 ## Repo-local skills
 

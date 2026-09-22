@@ -28,9 +28,7 @@ dotfiles/
 |   +-- lazygit.nix          # lazygit config (delta stdin filter)
 +-- config/ai/
 |   +-- AGENTS.md           # Core rules + inline rules (read-only gate, language, etc.)
-|   +-- codex/              # Codex-specific config + default.rules
 |   +-- skills/             # Local AI skills
-|   +-- pstack/             # Vendored pstack skills and license
 +-- scripts/setup-system.sh # Bootstrap script
 +-- .githooks/pre-push       # Pre-push checks
 +-- .github/workflows/ci.yml # CI
@@ -54,7 +52,7 @@ Key Lua files:
 `~/.config/herdr/config.toml` via HM.
 Theme: kanagawa (built-in). Key bindings retain the former pane layout
 (prefix ctrl+b, / and - for splits, h/j/k/l for pane nav).
-Agent launchers: prefix+shift+c (codex), prefix+shift+g (gh copilot).
+Agent launcher: prefix+shift+g (gh copilot).
 Completion notifications use herdr's system delivery backend with a
 15-second delay; the WSL Windows toast bridge remains enabled.
 
@@ -64,38 +62,31 @@ Completion notifications use herdr's system delivery backend with a
 edits in this repo are immediately reflected at the target path:
 
 ```
-config/ai/AGENTS.md                  -> ~/.codex/AGENTS.md
-                                    -> ~/.copilot/copilot-instructions.md
+config/ai/AGENTS.md                  -> ~/.copilot/copilot-instructions.md
 config/ai/skills/<name>              -> ~/.agents/skills/<name>
-                                    -> ~/.codex/skills/<name>
                                     -> ~/.copilot/skills/<name>
-config/ai/pstack/skills/<name>       -> ~/.codex/skills/<name>
-                                    -> ~/.copilot/skills/<name> (sanitized copy)
-                                    -> ~/.omp/agent/skills/<name>
-config/ai/pstack/runtime.md          -> ~/.agents/pstack/runtime.md
-config/ai/codex/config.base.toml     -> ~/.codex/dotfiles.config.toml
-config/ai/codex/rules/default.rules  -> ~/.codex/rules/default.rules
 ```
 
-Pstack skills are linked to `~/.codex/skills` and `~/.omp/agent/skills`
-(out-of-store symlinks; OMP normalizes `disable-model-invocation` to
-`hide`, so the shared source works there) and copied to `~/.copilot/skills`.
-Copilot receives a sanitized copy because it currently rejects explicitly
-invoked skills that carry `disable-model-invocation`. They are not placed
-in `~/.agents/skills`, which remains the shared user scope for local
-skills consumed by Codex, OMP, and Copilot.
+pstack is not vendored as a tree. pi consumes it as a pinned package
+(`git:github.com/backnotprop/pstack@...` in `hosts/default.nix`). The package's
+poteto-mode skill is filtered out because the local copy at
+`config/ai/skills/poteto-mode` carries a valid skill name.
+
+Provider packages are deliberately absent from that list. Subscriptions, model
+catalogs, quotas, and API keys differ per machine, so a provider extension is
+installed locally into `~/.pi/agent/extensions/<name>/` where pi auto-discovers
+it, or with a local `pi install`. The same rule covers model choices. pstack
+role models live in `~/.agents/pstack-models.md`, which is machine-local and
+deliberately not Nix-managed.
 
 All rules (file-change-reporting, git-commit-push, diagrams) are inline
-in `config/ai/AGENTS.md`. Both Codex and Copilot CLI read them via the
-AGENTS.md symlink — no separate rule files or `.instructions.md`
-generation needed. The `.agents/skills` path is the shared user scope for
-local skills consumed by Codex, OMP, and Copilot; the runtime-specific links
-remain for compatibility.
+in `config/ai/AGENTS.md`. Copilot CLI reads them via the AGENTS.md symlink, so
+no separate rule files or `.instructions.md` generation are needed. The
+`.agents/skills` path is the shared user scope for local skills consumed by pi,
+OMP, and Copilot; the copilot-specific links remain for compatibility.
 
 To add a local skill: create `config/ai/skills/<name>/SKILL.md` and add
-the name to `localSkillNames` in `hosts/default.nix`. Keep pstack's nested
-resources under `config/ai/pstack/skills` and update `pstackSkillNames`
-when adding or removing a vendored skill.
+the name to `localSkillNames` in `hosts/default.nix`.
 
 ## dotfiles CLI commands
 
@@ -106,15 +97,6 @@ when adding or removing a vendored skill.
 | `dotfiles upgrade` | Update flake.lock inputs + apply (requires clean repo) |
 
 All commands auto-detect host (`uname -m` + `uname -s`).
-
-## Known sandbox limitations (Codex)
-
-- `.git` directory is **read-only**. Commits require
-  `sandbox_permissions="require_escalated"` or manual user execution.
-- Network is **available** (`network_access = true`). `nix build` can
-  download packages, but may be slow on first run.
-- `~/.cache/nix` is **read-only**. Prefix nix commands with
-  `XDG_CACHE_HOME=/tmp/nix-cache` to use a writable temp cache directory.
 
 ## Supported platforms
 
