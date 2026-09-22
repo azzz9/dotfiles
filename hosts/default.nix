@@ -34,50 +34,56 @@ let
   # pi writes to ~/.pi/agent/settings.json: /model Ctrl+S persists the startup
   # model there, and `pi install` records packages. A Home Manager generated
   # settings.json is a read-only store symlink, so it cannot hold that state.
-  # The `programs.pi-coding-agent.settings` option is therefore unused and this
-  # package list is reconciled into the local file on every activation.
-  piPackages = [
-    "npm:pi-mcp-adapter"
-    "npm:pi-web-access"
-    # Pinned so a Home Manager generation always reconciles to this ref.
-    # poteto-mode is vendored at config/ai/skills/poteto-mode with a valid
-    # skill name; skip the package copy so only the repo copy registers.
-    # make-bot-ui declares `name: Make Bot UI`, which pi rejects as an
-    # invalid skill name at startup, and the skill drives Cursor-only tools.
-    {
-      source = "git:github.com/backnotprop/pstack@157aae39a733135e93d8b5b19ff62c6a84b0ad56";
-      skills = [ "!poteto-mode" "!make-bot-ui" ];
-    }
-    "npm:pi-subagents@0.70.1"
-    # Provider packages are machine-local and must not be listed here.
-    # Subscriptions, model catalogs, quotas, and API keys differ per host.
-    # Install them per machine instead: copy the package into
-    # ~/.pi/agent/extensions/<name>/ (pi auto-discovers it, no settings.json
-    # entry needed) or run a local `pi install`. Anything added to this
-    # list becomes read-only and cannot be installed or updated locally.
-  ];
-  # Only `packages` is Nix-owned. Every other key (default model, theme, and
-  # anything else set locally) is carried over untouched. The file is written
-  # as a regular file, never as a store symlink, so pi can keep writing it.
-  piPackagesJson = (pkgs.formats.json { }).generate "pi-packages.json" { packages = piPackages; };
-  piSettingsMerge = pkgs.writeShellScript "pi-settings-packages" ''
+  # The `programs.pi-coding-agent.settings` option is therefore unused and the
+  # keys below are reconciled into the local file on every activation.
+  piManagedSettings = {
+    packages = [
+      "npm:pi-mcp-adapter"
+      "npm:pi-web-access"
+      # Pinned so a Home Manager generation always reconciles to this ref.
+      # poteto-mode is vendored at config/ai/skills/poteto-mode with a valid
+      # skill name; skip the package copy so only the repo copy registers.
+      # make-bot-ui declares `name: Make Bot UI`, which pi rejects as an
+      # invalid skill name at startup, and the skill drives Cursor-only tools.
+      {
+        source = "git:github.com/backnotprop/pstack@157aae39a733135e93d8b5b19ff62c6a84b0ad56";
+        skills = [ "!poteto-mode" "!make-bot-ui" ];
+      }
+      "npm:pi-subagents@0.70.1"
+      # Provider packages are machine-local and must not be listed here.
+      # Subscriptions, model catalogs, quotas, and API keys differ per host.
+      # Install them per machine instead: copy the package into
+      # ~/.pi/agent/extensions/<name>/ (pi auto-discovers it, no settings.json
+      # entry needed) or run a local `pi install`. Anything added to this
+      # list becomes read-only and cannot be installed or updated locally.
+    ];
+    # Thinking blocks are noise in a transcript and the conclusion already
+    # appears in the answer, so hide them. Nix-owned, unlike the startup model.
+    hideThinkingBlock = true;
+  };
+  # Every other key (default model, theme, and anything else set locally) is
+  # carried over untouched: arrays and scalars are replaced, nested objects are
+  # merged. The file is written as a regular file, never as a store symlink, so
+  # pi can keep writing it.
+  piManagedSettingsJson = (pkgs.formats.json { }).generate "pi-managed-settings.json" piManagedSettings;
+  piSettingsMerge = pkgs.writeShellScript "pi-settings-managed" ''
     set -euo pipefail
 
     settings="''${HOME}/.pi/agent/settings.json"
     merged="''${settings}.hm-tmp"
 
     if [ -e "$settings" ] && ! ${pkgs.jq}/bin/jq -e . "$settings" >/dev/null 2>&1; then
-      echo "pi-settings-packages: $settings is not valid JSON; leaving it untouched" >&2
+      echo "pi-settings-managed: $settings is not valid JSON; leaving it untouched" >&2
       exit 0
     fi
 
     mkdir -p "$(dirname "$settings")"
 
     if [ -e "$settings" ]; then
-      ${pkgs.jq}/bin/jq --slurpfile declared ${piPackagesJson} \
-        '.packages = $declared[0].packages' "$settings" > "$merged"
+      ${pkgs.jq}/bin/jq --slurpfile declared ${piManagedSettingsJson} \
+        '. * $declared[0]' "$settings" > "$merged"
     else
-      cp ${piPackagesJson} "$merged"
+      cp ${piManagedSettingsJson} "$merged"
     fi
 
     chmod 644 "$merged"
@@ -108,7 +114,7 @@ in
   # read: the first switch carries the local keys (model, provider) over into
   # the regular file. Afterwards HM leaves the path alone, because it is no
   # longer a link into a Home Manager generation.
-  home.activation.piPackages = lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''
+  home.activation.piSettings = lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''
     run ${piSettingsMerge}
   '';
   # Periodically reclaim unreferenced store paths while retaining recent generations.
