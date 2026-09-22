@@ -12,7 +12,7 @@ let
       "npm:pi-web-access"
       # pstack for pi (personal fork): the upstream port plus local harness
       # fixes. Pinned so a generation always reconciles to this version.
-      "git:github.com/azzz9/pi-pstack@225d7212263ff78d6dc55dd5accde89078a6da0d"
+      "git:github.com/azzz9/pi-pstack@26e54468dfe3e9a5243934d441c73fcb56bda145"
       # Tools the pstack playbooks call; the /btw overlay rides with them.
       (rpiv "todo")
       (rpiv "ask-user-question")
