@@ -80,9 +80,6 @@ in
     split_vertical = "prefix+/"
     split_horizontal = "prefix+-"
 
-    # Free prefix+shift+g for the gh copilot launcher
-    new_worktree = ""
-
     # Tab switching — replaces the former M-Left / M-Right bindings
     # (overrides default prefix+p / prefix+n; use prefix+1..9 for direct access)
     previous_tab = "alt+shift+h"
@@ -92,12 +89,6 @@ in
     # (were unset by default, so no conflict)
     previous_workspace = "alt+shift+k"
     next_workspace = "alt+shift+j"
-
-    # AI agent launcher (replaces the former popup bindings)
-    [[keys.command]]
-    key = "prefix+shift+g"
-    type = "pane"
-    command = "gh copilot"
 
     # Direct (no-prefix) pane navigation — replaces the former M-h/j/k/l bindings
     # type = "shell" runs detached; herdr pane focus talks to the server socket
@@ -141,7 +132,7 @@ in
   # The commands are idempotent and update the generated hook files/settings
   # when Herdr changes its integration assets.
   home.activation.herdrIntegrations = lib.hm.dag.entryAfter [ "writeBoundary" "installPackages" ] ''
-    for integration in copilot; do
+    for integration in pi; do
       ${pkgs.herdr}/bin/herdr integration install "$integration" >/dev/null
     done
   '';

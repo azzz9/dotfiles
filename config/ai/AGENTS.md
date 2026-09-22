@@ -15,7 +15,7 @@
 
 ## Answering Questions
 
-- Before answering a question, load the installed `show-me` skill from the active skills directory (for example, `~/.copilot/skills/show-me/SKILL.md` or `~/.agents/skills/show-me/SKILL.md`); reuse it if it is already loaded.
+- Before answering a question, load the installed `show-me` skill from the active skills directory (for example, `~/.agents/skills/show-me/SKILL.md`); reuse it if it is already loaded.
 - Loading or using show-me alone is read-only and does not authorize creating or changing files.
 
 ## Worktree Handoff

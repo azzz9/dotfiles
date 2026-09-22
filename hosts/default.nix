@@ -27,7 +27,7 @@ let
     lib.concatMap (base: map (name: {
       name = "${base}/skills/${name}";
       value.source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/skills/${name}";
-    }) localSkillNames) [ ".agents" ".copilot" ]
+    }) localSkillNames) [ ".agents" ]
   );
 
   # pi writes to ~/.pi/agent/settings.json: /model Ctrl+S persists the startup
@@ -138,9 +138,9 @@ in
   };
 
   # Out-of-store symlinks keep edits in this repo immediately visible at the
-  # target path.
+  # target path. pi reads ~/.pi/agent/AGENTS.md as its global context file.
   home.file = skillLinks // {
-    ".copilot/copilot-instructions.md".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/AGENTS.md";
+    ".pi/agent/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${repo}/config/ai/AGENTS.md";
   };
 
   imports = [

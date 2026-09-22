@@ -33,19 +33,6 @@ cdx() {
 #  sudo "$HOME/.nix-profile/bin/codex" "$@"
 #}
 
-gcp() {
-  copilot \
-    --model gpt-6-astra \
-    --effort low \
-    --allow-all-tools \
-    --allow-url github.com \
-    --allow-url api.github.com \
-    --deny-tool 'shell(sudo:*)' \
-    --deny-tool 'shell(dd:*)' \
-    --deny-tool 'shell(mkfs:*)' \
-    "$@"
-}
-
 # dev: arrange the current tab into a dev layout (nvim + AI agent + free shell).
 # Layout B:
 #   +----------+--------+
@@ -57,14 +44,13 @@ gcp() {
 # Rearranges the current tab in place: all other panes are killed (with a
 # confirmation prompt when any has a running process) and the tab is renamed
 # after the current directory.
-# Usage: dev [cdx|gcp]  (default: cdx)
+# Usage: dev [cdx]  (default: cdx)
 dev() {
   local agent="${1:-cdx}"
   local cmd
   case "$agent" in
     cdx)   cmd="cdx" ;;
-    gcp)   cmd="gcp" ;;
-    *)     echo "usage: dev [cdx|gcp]" >&2; return 1 ;;
+    *)     echo "usage: dev [cdx]" >&2; return 1 ;;
   esac
 
   if [[ "${HERDR_ENV:-}" != 1 ]]; then
@@ -232,7 +218,7 @@ if abs(delta) >= 0.01:
 }
 
 _dev() {
-  _arguments '1:agent:(cdx gcp)'
+  _arguments '1:agent:(cdx)'
 }
 compdef _dev dev
 
@@ -240,12 +226,11 @@ compdef _dev dev
 # New panes are always inserted to the LEFT of existing agents (i.e. to
 # the right of the nvim pane) and rebalanced to equal width.
 #
-# Usage: deva [fork [PANE_ID]] [--down] [cdx|gcp]
+# Usage: deva [fork [PANE_ID]] [--down] [cdx]
 #   fork      Fork an existing codex session (inherit conversation context).
 #   PANE_ID   Fork from this pane's session (skip picker).
 #   --down    Split downward instead of right (default: right).
 #   cdx       codex with dotfiles profile (default)
-#   gcp       copilot (not compatible with fork)
 #
 # Examples:
 #   deva                  fresh cdx, new pane left of agents
@@ -260,7 +245,6 @@ deva() {
       fork)    fork=1 ;;
       --down)  direction="down" ;;
       cdx)     agent="cdx" ;;
-      gcp)     agent="gcp" ;;
       *)
         # Treat as pane ID if it contains a colon (e.g. wJ:p3).
         if [[ "$arg" == *:* ]]; then
@@ -268,16 +252,11 @@ deva() {
           fork=1
         else
           echo "deva: unknown argument '$arg'" >&2
-          echo "usage: deva [fork [PANE_ID]] [--down] [cdx|gcp]" >&2
+          echo "usage: deva [fork [PANE_ID]] [--down] [cdx]" >&2
           return 1
         fi ;;
     esac
   done
-
-  if (( fork )) && [[ "$agent" == "gcp" ]]; then
-    echo "deva: fork is not supported with gcp (copilot)" >&2
-    return 1
-  fi
 
   if [[ "${HERDR_ENV:-}" != 1 ]]; then
     echo "deva: not inside a herdr session (HERDR_ENV not set)" >&2
@@ -526,7 +505,7 @@ for s in top_rs:
 }
 
 _deva() {
-  _arguments '*:option:(fork --down cdx gcp)'
+  _arguments '*:option:(fork --down cdx)'
 }
 compdef _deva deva
 

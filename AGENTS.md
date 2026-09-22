@@ -1,7 +1,7 @@
 # Dotfiles Repo — Project Instructions
 
 Coding agents that work inside this repo read this file. The global rules live
-in `config/ai/AGENTS.md`, deployed to `~/.copilot/copilot-instructions.md`.
+in `config/ai/AGENTS.md`, deployed to `~/.pi/agent/AGENTS.md`.
 
 ## Repo-local skills
 

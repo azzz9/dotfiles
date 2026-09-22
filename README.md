@@ -44,15 +44,15 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#a
 | `dotfiles sync` | Pull latest, then apply (requires clean repo) |
 | `dotfiles upgrade` | Refresh `flake.lock` inputs, then apply (requires clean repo; restores `flake.lock` on failure) |
 
-Copilot CLI is not installed by this flake; install it separately when
-using the related shell functions or herdr launchers.
+pi and herdr are installed by this flake. Provider packages and model choices
+are machine-local; see the `dotfiles-context` skill.
 
 ## Repository layout
 
 ```
 dotfiles/
 +-- flake.nix                  # homeConfigurations: x86_64-linux, aarch64-darwin
-+-- hosts/default.nix          # HM entry point, AI symlinks (copilot)
++-- hosts/default.nix          # HM entry point, AI symlinks (pi)
 +-- modules/
 |   +-- dotfiles.nix           # `dotfiles` CLI (apply / sync / upgrade)
 |   +-- git.nix                # Git config + ghq + git-wt defaults
@@ -64,7 +64,7 @@ dotfiles/
 |   +-- packages.nix           # Additional system packages
 |   +-- solidity.nix           # Solidity toolchain
 |   +-- lazygit.nix            # lazygit config
-+-- config/ai/                 # AI agent config (copilot)
++-- config/ai/                 # AI agent config (pi)
 |   +-- AGENTS.md              # Core rules (read-only gate, language, dispatch)
 |   +-- rules/                 # On-demand rule files (read when needed)
 |   +-- skills/                # Reusable AI skills
@@ -107,6 +107,6 @@ for build caching. Without it, only the public nixpkgs cache is used.
 - Ghostty is configured by Home Manager only on macOS; the application itself
   is installed outside Nix and the UDEV Gothic NF font is installed by the
   macOS bootstrap.
-- AI agent rules are shared with Copilot through out-of-store links;
+- AI agent rules are linked into pi through out-of-store links;
   `show-me` is used for implementation-first explanations and `explain` for
   structured technical explanations.

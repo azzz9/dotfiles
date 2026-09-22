@@ -52,9 +52,11 @@ Key Lua files:
 `~/.config/herdr/config.toml` via HM.
 Theme: kanagawa (built-in). Key bindings retain the former pane layout
 (prefix ctrl+b, / and - for splits, h/j/k/l for pane nav).
-Agent launcher: prefix+shift+g (gh copilot).
+Agent launcher: none. The former `gh copilot` launcher on prefix+shift+g was
+removed with the copilot target.
 Completion notifications use herdr's system delivery backend with a
 15-second delay; the WSL Windows toast bridge remains enabled.
+Herdr's pi integration is installed on every activation.
 
 ## AI config deployment model
 
@@ -62,9 +64,8 @@ Completion notifications use herdr's system delivery backend with a
 edits in this repo are immediately reflected at the target path:
 
 ```
-config/ai/AGENTS.md                  -> ~/.copilot/copilot-instructions.md
+config/ai/AGENTS.md                  -> ~/.pi/agent/AGENTS.md
 config/ai/skills/<name>              -> ~/.agents/skills/<name>
-                                    -> ~/.copilot/skills/<name>
 ```
 
 pstack is not vendored as a tree. pi consumes the personal fork
@@ -84,7 +85,8 @@ Moving that pin takes two steps. Edit the sha, run `dotfiles apply`, then run
 
 The fork's bundled scripts (`skills/poteto-mode/scripts`) install their own
 dependencies on first run through `bootstrap.ts`, so no manual `bun install` is
-needed. `bun` comes from `programs.pi-coding-agent.extraPackages`.
+needed. `bun` also comes from `programs.pi-coding-agent.extraPackages`, which
+puts it on PATH for pi only, and from `modules/packages.nix` for plain shells.
 
 Provider packages are deliberately absent from that list. Subscriptions, model
 catalogs, quotas, and API keys differ per machine, so a provider extension is
@@ -95,10 +97,9 @@ and deliberately not Nix-managed. `~/.agents/pstack-models.md` is kept as the
 readable record of the same choices.
 
 All rules (file-change-reporting, git-commit-push, diagrams) are inline
-in `config/ai/AGENTS.md`. Copilot CLI reads them via the AGENTS.md symlink, so
-no separate rule files or `.instructions.md` generation are needed. The
-`.agents/skills` path is the shared user scope for local skills consumed by pi
-and Copilot; the copilot-specific links remain for compatibility.
+in `config/ai/AGENTS.md`. pi reads them through the symlink at
+`~/.pi/agent/AGENTS.md`, so no separate rule files are needed. The
+`.agents/skills` path is the shared user scope for local skills consumed by pi.
 
 To add a local skill: create `config/ai/skills/<name>/SKILL.md` and add
 the name to `localSkillNames` in `hosts/default.nix`.
