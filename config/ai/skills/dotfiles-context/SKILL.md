@@ -93,9 +93,10 @@ catalogs, quotas, and API keys differ per machine, so a provider extension is
 installed locally into `~/.pi/agent/extensions/<name>/` where pi auto-discovers
 it, or with a local `pi install`. The same rule covers model choices. pstack
 role models live in `~/.pi/agent/pstack/models.json`, which is machine-local
-and deliberately not Nix-managed. `~/.pi/agent/pstack-models.md` is kept as the
-readable record of the same choices, and the extension migrates it into the
-JSON whenever the JSON is missing, so the markdown doubles as a fallback.
+and deliberately not Nix-managed. `~/.pi/agent/pstack/models.md` is the readable
+record of the same choices, including the budget reasoning the JSON cannot
+carry. It sits inside the pstack directory, so the agent dir root matches a
+fresh `/setup-pstack` exactly.
 
 All rules (file-change-reporting, git-commit-push, diagrams) are inline
 in `config/ai/AGENTS.md`. pi reads them through the symlink at
