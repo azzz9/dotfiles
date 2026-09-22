@@ -1,8 +1,7 @@
-      -- DAP core: keymaps, shared helpers, UI, virtual-text.
-      -- Per-language adapters/configurations live in sibling files
-      -- (c.lua, python.lua, javascript.lua) and reuse the locals
-      -- declared here because all DAP files are concatenated into one
-      -- Lua chunk by modules/nvim.nix.
+      -- DAP core: keymaps, shared helpers, UI, virtual-text. The sibling
+      -- adapter files (c.lua, python.lua, javascript.lua) share the locals
+      -- declared here because modules/nvim.nix concatenates all DAP files into
+      -- one Lua chunk.
       vim.keymap.set("n", "<leader>dc", function()
         require("dap").continue()
       end, { desc = "DAP continue" })
@@ -143,10 +142,8 @@
         return typed
       end
 
-      -- Interactive args prompt shared by all language configs.
-      -- Mirrors the C/C++ behavior: prompt for a space-separated arg
-      -- string, split on whitespace, return nil when left empty so the
-      -- adapter receives no args.
+      -- Shared by all language configs: prompt for space-separated args, split
+      -- on whitespace, and return nil when empty so the adapter receives none.
       local function pick_args(prompt, default)
         local input = vim.fn.input(prompt or "Args: ", default or "")
         if input == nil or input == "" then

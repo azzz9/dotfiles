@@ -1,5 +1,4 @@
-# Shared Solidity derivations used by modules/nvim.nix and modules/packages.nix.
-# Import as: solidity = import ./solidity.nix { inherit pkgs; };
+# Shared Solidity derivations for modules/nvim.nix and modules/packages.nix.
 { pkgs }:
 let
   debugpyPython = pkgs.python3.withPackages (ps: [ ps.debugpy ]);

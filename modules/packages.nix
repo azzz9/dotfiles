@@ -92,7 +92,7 @@ in
       solidity.solhint                             # linter
       solidity.prettierPluginSolidity              # formatter plugin
     ])
-    ++ lib.optionals pkgs.stdenv.isLinux (with pkgs; [
+    ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux (with pkgs; [
       # Temporary: unar fails to link on Darwin because ld64 crashes with
       # `Trace/BPT trap: 5`. Move it back to the common package list once
       # nixos-unstable includes NixOS/nixpkgs#536365.
@@ -100,7 +100,7 @@ in
       xclip
       wl-clipboard
     ])
-    ++ lib.optionals pkgs.stdenv.isDarwin (with pkgs; [
+    ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin (with pkgs; [
       terminal-notifier
     ])
     ++ [ graphify roots ];

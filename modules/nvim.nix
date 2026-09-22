@@ -92,9 +92,23 @@ let
     "plugins/dap/javascript.lua"
   ];
   readLua = file: builtins.readFile (luaConfigDir + "/${file}");
-  # core.lua is always loaded (even inside VSCode). All other files are
-  # wrapped in `if not is_vscode then ... end` so Neovim-only plugins
-  # are skipped when Neovim runs as a VSCode extension.
+
+  # Order matters (dap/init.lua defines the helpers the adapters use), so
+  # luaFiles stays a list. This listing keeps it in sync with the directory.
+  listLuaFiles = prefix: dir:
+    lib.concatLists (lib.mapAttrsToList
+      (name: type:
+        let rel = if prefix == "" then name else "${prefix}/${name}";
+        in
+        if type == "directory" then listLuaFiles rel (dir + "/${name}")
+        else lib.optional (lib.hasSuffix ".lua" name) rel)
+      (builtins.readDir dir));
+  luaFilesOnDisk = listLuaFiles "" luaConfigDir;
+  luaFilesUnlisted = lib.subtractLists luaFiles luaFilesOnDisk;
+  luaFilesAbsent = lib.subtractLists luaFilesOnDisk luaFiles;
+
+  # core.lua loads unconditionally; every other file sits inside the
+  # `if not is_vscode` wrapper so Neovim-only plugins are skipped in VSCode.
   extraConfigLua = lib.concatStringsSep "\n\n" (
     [
       ''
@@ -116,6 +130,8 @@ let
     ]
   );
 in
+assert lib.assertMsg (luaFilesUnlisted == [ ] && luaFilesAbsent == [ ])
+  "modules/nvim.nix: luaFiles is out of sync with modules/nvim/lua/ (not listed: ${toString luaFilesUnlisted}; listed but absent: ${toString luaFilesAbsent})";
 {
   home.sessionVariables.CODEDIFF_WATCHER_PATH = "${codediffWatcher}/bin/codediff-watcher";
 

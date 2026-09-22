@@ -51,14 +51,17 @@ are machine-local; see the `dotfiles-context` skill.
 
 ```
 dotfiles/
-+-- flake.nix                  # homeConfigurations: x86_64-linux, aarch64-darwin
-+-- hosts/default.nix          # HM entry point, AI symlinks (pi)
++-- flake.nix                  # homeConfigurations + checks for both systems
++-- hosts/default.nix          # HM entry point, skill symlinks
 +-- modules/
-|   +-- dotfiles.nix           # `dotfiles` CLI (apply / sync / upgrade)
+|   +-- dotfiles.nix           # wraps scripts/dotfiles.sh as the `dotfiles` CLI
+|   +-- pi.nix                 # pi settings and the settings.json merge
 |   +-- git.nix                # Git config + ghq + git-wt defaults
 |   +-- gh.nix                 # GitHub CLI aliases
-|   +-- shell.nix              # Zsh + helpers (gqcd, rcd, wtcd, dev)
+|   +-- shell.nix              # Zsh: aliases, plugins, init ordering
+|   +-- shell/init/            # Sourced init scripts (dev/deva, prompt, fzf)
 |   +-- herdr.nix              # herdr multiplexer and system notifications
+|   +-- hunk.nix               # hunk diff review TUI
 |   +-- ghostty.nix            # macOS Ghostty configuration (Ghostty external)
 |   +-- nvim.nix               # Neovim (via nixvim)
 |   +-- packages.nix           # Additional system packages
@@ -66,8 +69,11 @@ dotfiles/
 |   +-- lazygit.nix            # lazygit config
 +-- config/ai/                 # AI agent config (pi)
 |   +-- AGENTS.md              # Core rules (turn gate, show-me gate, git rules)
-|   +-- skills/                # Reusable AI skills
+|   +-- skills/                # Global skills (linked to ~/.agents/skills)
++-- scripts/dotfiles.sh        # the `dotfiles` CLI
++-- scripts/check.sh           # the checks the pre-push hook and CI run
 +-- scripts/setup-system.sh    # Bootstrap script
++-- .agents/skills/            # Project-scoped skills (this repo only)
 +-- .githooks/pre-push         # Local pre-push checks
 +-- .github/workflows/ci.yml   # CI: static checks + builds
 ```
@@ -78,13 +84,15 @@ dotfiles/
 git config core.hooksPath .githooks
 ```
 
-Runs `nix flake check`, `shellcheck`, `actionlint`, and a Home Manager build
-before push.
+Runs `scripts/check.sh`, the same check set CI builds. The checks are defined
+once in `flake.nix` under `checks.<system>`.
 
 ## CI
 
-CI runs static checks (shellcheck, actionlint, `nix flake check`, HM eval) and
-builds for `x86_64-linux` and `aarch64-darwin`.
+CI evaluates the flake with `scripts/check.sh --no-build`, then builds the
+checks and the activation package for `x86_64-linux` and `aarch64-darwin`.
+Because the checks live in `flake.nix`, a local run, the pre-push hook, and CI
+cannot disagree.
 
 ### Binary cache (optional)
 
@@ -109,3 +117,5 @@ for build caching. Without it, only the public nixpkgs cache is used.
 - AI agent rules are linked into pi through out-of-store links;
   `show-me` is used for implementation-first explanations and `explain` for
   structured technical explanations.
+- `dotfiles-context` and `nix-home-manager` are project-scoped pi skills under
+  `.agents/skills/`, so they load only in this repo.

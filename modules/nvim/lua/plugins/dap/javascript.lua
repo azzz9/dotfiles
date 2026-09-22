@@ -1,12 +1,9 @@
-      -- JavaScript / TypeScript debugging via vscode-js-debug (js-debug).
-      -- vim.g.js_debug_path points to the js-debug DAP server binary,
-      -- set in modules/nvim.nix from pkgs.vscode-js-debug.
-      -- The same server backs both the Node ("pwa-node") and browser
-      -- ("pwa-chrome") adapters.
-      -- pick_args comes from dap/init.lua (same prompt as C/C++).
-      -- Note: vscode-js-debug does not support DAP stdio redirection,
-      -- so stdin is not available here (use Node's process.stdin in the
-      -- program, or pipe input in the integrated terminal).
+      -- JavaScript / TypeScript debugging via vscode-js-debug, whose binary
+      -- path modules/nvim.nix sets in vim.g.js_debug_path. One server backs both
+      -- the Node ("pwa-node") and browser ("pwa-chrome") adapters, and pick_args
+      -- comes from dap/init.lua.
+      -- js-debug does not support DAP stdio redirection, so stdin is only
+      -- available through Node's process.stdin or the integrated terminal.
       local js_debug = vim.g.js_debug_path
       local js_adapter = {
         type = "server",

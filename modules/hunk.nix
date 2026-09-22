@@ -1,33 +1,17 @@
-{ config, hunk, pkgs, lib, ... }:
+{ hunk, pkgs, lib, ... }:
 let
   upstreamHunk = hunk.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
-  # The upstream hunk package builds with `bun build --compile` and ships with
-  # `dontFixup = true`, so the single-file binary has no DT_RUNPATH. Its
-  # interpreter is Nix's ld-linux but it resolves libc from the host (e.g.
-  # glibc 2.43 on Arch/WSL2), mismatching Nix's glibc 2.42 ld-linux and
-  # segfaulting on startup.
-  #
-  # We cannot fix this with patchelf (it relocates ELF sections and corrupts
-  # Bun's embedded archive) nor with LD_LIBRARY_PATH alone: even with the
-  # matching Nix glibc loaded, the kernel-mapped direct launch segfaults in a
-  # BSS page (strace: SEGV_MAPERR @ 0x6510e40) because the kernel does not map
-  # the binary's last BSS page the way ld-linux does. The binary runs correctly
-  # only when ld-linux maps it explicitly.
-  #
-  # So on Linux we wrap `hunk` to launch the real binary through the matching
-  # ld-linux with --library-path. Trade-off: process.execPath then points at
-  # ld-linux, which breaks the TUI's auto-spawn of the session daemon
-  # (`hunk session` uses process.execPath to relaunch itself) and the bundled
-  # `hunk skill path` lookup. The wrapper below restores those two user-facing
-  # behaviors without patching Hunk's compiled Bun archive:
-  #
-  # - review commands start the daemon first, so `hunk diff` registers a live
-  #   session without a separate `hunk daemon serve` terminal;
-  # - `hunk skill path` returns the bundled skill path from this package.
-  # darwin is unaffected (no ld-linux) and uses the upstream package directly.
+  # Upstream hunk is a `bun build --compile` binary with no DT_RUNPATH: Nix's
+  # ld-linux loads, but libc resolves from the host, which segfaults on startup.
+  # patchelf corrupts Bun's embedded archive and LD_LIBRARY_PATH alone still
+  # segfaults, so on Linux we launch the real binary through the matching
+  # ld-linux. That makes process.execPath point at ld-linux, which breaks the
+  # session daemon auto-spawn (`hunk session` relaunches itself) and the bundled
+  # `hunk skill path` lookup; the wrapper restores both. Darwin has no ld-linux
+  # and uses the upstream package directly.
   hunkPackage =
-    if pkgs.stdenv.isLinux then
+    if pkgs.stdenv.hostPlatform.isLinux then
       pkgs.runCommand "hunk-wrapped" { } ''
         mkdir -p $out
         cp -r ${upstreamHunk}/. $out/
@@ -110,26 +94,20 @@ let
       upstreamHunk;
 in
 {
-  # Import the upstream Home Manager module, which provides the `programs.hunk`
-  # option (package + ~/.config/hunk/config.toml generation).
+  # Upstream HM module: provides the `programs.hunk` option.
   imports = [ hunk.homeManagerModules.default ];
 
   programs.hunk = {
     enable = true;
     package = hunkPackage;
 
-    # NOTE: We do NOT use the upstream `enableGitIntegration` option here.
-    # It writes to `programs.git.settings.core.pager`, which only takes
-    # effect when `programs.git.enable = true`. This repo manages git config
-    # via activation scripts in modules/git.nix instead, so the git pager is
-    # set there to stay consistent with the existing pattern.
+    # enableGitIntegration is deliberately unused: it writes
+    # programs.git.settings.core.pager, which only applies when
+    # programs.git.enable = true. modules/git.nix sets the pager instead.
     settings = {
       mode = "auto";
       line_numbers = true;
       wrap_lines = false;
     };
   };
-
-  # The repo owns the deployed hunk-review skill so local review policy can be
-  # adjusted without patching Hunk's bundled copy.
 }

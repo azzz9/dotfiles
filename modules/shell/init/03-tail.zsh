@@ -1,6 +1,5 @@
-# Keep Herdr opt-in: a shell that already belongs to another agent manager
-# should not auto-start a second one. Set HERDR_AUTO_START=1 to
-# restore the previous behavior for a shell that should run inside Herdr.
+# Herdr is opt-in: a shell that already belongs to another agent manager must
+# not auto-start a second one. Set HERDR_AUTO_START=1 to run inside Herdr.
 if [[ -o interactive \
   && -z "${HERDR_ENV:-}" \
   && -z "${TMUX:-}" \

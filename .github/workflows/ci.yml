@@ -33,18 +33,10 @@ jobs:
           name: ${{ vars.CACHIX_NAME }}
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      - name: Check shell scripts
-        run: |
-          bash -n scripts/*.sh
-          nix run nixpkgs#shellcheck -- scripts/*.sh
+      - name: Evaluate flake outputs and checks
+        run: scripts/check.sh --no-build
 
-      - name: Check GitHub Actions workflows
-        run: nix run nixpkgs#actionlint -- .github/workflows/ci.yml
-
-      - name: Check flake outputs
-        run: nix flake check --no-build
-
-      - name: Evaluate Home Manager configurations
+      - name: Evaluate both Home Manager configurations
         run: |
           nix eval --impure .#homeConfigurations.x86_64-linux.activationPackage.drvPath
           nix eval --impure .#homeConfigurations.aarch64-darwin.activationPackage.drvPath
@@ -72,8 +64,8 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           skipPush: false
 
-      - name: Build Home Manager activation package
-        run: nix build --no-link --impure .#homeConfigurations.x86_64-linux.activationPackage
+      - name: Build checks and the activation package
+        run: scripts/check.sh
 
   macos:
     name: Build aarch64-darwin
@@ -98,5 +90,5 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           skipPush: false
 
-      - name: Build Home Manager activation package
-        run: nix build --no-link --impure .#homeConfigurations.aarch64-darwin.activationPackage
+      - name: Build checks and the activation package
+        run: scripts/check.sh

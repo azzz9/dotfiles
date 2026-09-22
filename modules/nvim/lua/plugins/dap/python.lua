@@ -1,10 +1,8 @@
-      -- Python debugging via debugpy (nvim-dap-python).
-      -- vim.g.debugpy_python points to a python interpreter that ships
-      -- debugpy; it is set in modules/nvim.nix from solidity.debugpyPython.
-      -- pick_args comes from dap/init.lua (same prompt as C/C++).
-      -- Note: debugpy does not support DAP stdio redirection, so stdin
-      -- must be provided via the integrated terminal or read by the
-      -- program itself (e.g. from a path passed as an arg).
+      -- Python debugging via debugpy. modules/nvim.nix points
+      -- vim.g.debugpy_python at an interpreter that ships it, and pick_args
+      -- comes from dap/init.lua.
+      -- debugpy does not support DAP stdio redirection, so stdin must come from
+      -- the integrated terminal or from the program itself.
       require("dap-python").setup(vim.g.debugpy_python)
 
       dap.configurations.python = {

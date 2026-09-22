@@ -1,6 +1,6 @@
 { lib, pkgs, ... }:
 
-lib.mkIf pkgs.stdenv.isDarwin {
+lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
   # Ghostty itself is installed and updated outside Nix (Homebrew or the
   # official application). This module manages only its user configuration.
   xdg.configFile."ghostty/config" = {
