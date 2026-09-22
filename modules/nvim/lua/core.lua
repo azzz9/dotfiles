@@ -13,6 +13,17 @@
         end,
       })
 
+      -- FocusGained never fires while nvim keeps the terminal's focus, so an
+      -- edit from outside nvim (agent, script, another tool) produces no reload
+      -- event. Poll for on-disk changes so those edits still appear without :edit.
+      -- TODO(nvim-0.13): delete this timer once the nixpkgs pin is 0.13+. Its
+      -- 'autoread' watches each buffer's file itself (nvim PR #37971), so the
+      -- poll duplicates the built-in watcher.
+      local disk_poll = vim.uv.new_timer()
+      disk_poll:start(1000, 1000, vim.schedule_wrap(function()
+        vim.cmd("silent! checktime")
+      end))
+
       vim.keymap.set("n", "<Esc>", ":nohlsearch<CR>", { silent = true })
       vim.keymap.set("n", "Y", "y$", { desc = "Yank to end of line" })
       vim.keymap.set("i", "jj", "<Esc>", { noremap = true })
