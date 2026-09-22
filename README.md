@@ -66,7 +66,6 @@ dotfiles/
 |   +-- lazygit.nix            # lazygit config
 +-- config/ai/                 # AI agent config (pi)
 |   +-- AGENTS.md              # Core rules (turn gate, show-me gate, git rules)
-|   +-- rules/                 # On-demand rule files (read when needed)
 |   +-- skills/                # Reusable AI skills
 +-- scripts/setup-system.sh    # Bootstrap script
 +-- .githooks/pre-push         # Local pre-push checks
