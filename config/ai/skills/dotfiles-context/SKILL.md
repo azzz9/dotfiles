@@ -27,7 +27,7 @@ dotfiles/
 |   +-- solidity.nix        # Solidity toolchain
 |   +-- lazygit.nix          # lazygit config (delta stdin filter)
 +-- config/ai/
-|   +-- AGENTS.md           # Core rules + inline rules (read-only gate, language, etc.)
+|   +-- AGENTS.md           # Core rules (turn gate, show-me gate, git rules)
 |   +-- skills/             # Local AI skills
 +-- scripts/setup-system.sh # Bootstrap script
 +-- .githooks/pre-push       # Pre-push checks
@@ -98,8 +98,8 @@ record of the same choices, including the budget reasoning the JSON cannot
 carry. It sits inside the pstack directory, so the agent dir root matches a
 fresh `/setup-pstack` exactly.
 
-All rules (file-change-reporting, git-commit-push, diagrams) are inline
-in `config/ai/AGENTS.md`. pi reads them through the symlink at
+The inline rules that remain in `config/ai/AGENTS.md` are the turn gate, the
+show-me gate, and the git rules. pi reads them through the symlink at
 `~/.pi/agent/AGENTS.md`, so no separate rule files are needed. The
 `.agents/skills` path is the shared user scope for local skills consumed by pi.
 
