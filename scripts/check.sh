@@ -12,8 +12,15 @@ cd "$(dirname "$0")/.."
 nix_cmd() { nix --extra-experimental-features "nix-command flakes" "$@"; }
 
 if [ "${1:-full}" = "--no-build" ]; then
-  echo "[check] nix flake check --no-build"
-  nix_cmd flake check --no-build --impure
+  # `nix flake check --no-build` cannot serve as the fast path: deriving the
+  # checks forces bun2nix's cache-entry-creator, whose own dependencies have to
+  # be built, so it fails on a store that has not built hunk yet.
+  hosts="$(nix_cmd eval --impure --raw --expr \
+    'builtins.concatStringsSep " " (builtins.attrNames (builtins.getFlake (builtins.toString ./.)).homeConfigurations)')"
+  for host in $hosts; do
+    echo "[check] evaluate homeConfigurations.$host"
+    nix_cmd eval --impure --raw ".#homeConfigurations.$host.activationPackage.drvPath" > /dev/null
+  done
   echo "[check] ok (evaluation only)"
   exit 0
 fi

@@ -89,10 +89,10 @@ once in `flake.nix` under `checks.<system>`.
 
 ## CI
 
-CI evaluates the flake with `scripts/check.sh --no-build`, then builds the
-checks and the activation package for `x86_64-linux` and `aarch64-darwin`.
-Because the checks live in `flake.nix`, a local run, the pre-push hook, and CI
-cannot disagree.
+CI evaluates both Home Manager configurations with `scripts/check.sh
+--no-build`, then builds the checks and the activation package for
+`x86_64-linux` and `aarch64-darwin`. Because the checks live in `flake.nix`, a
+local run, the pre-push hook, and CI cannot disagree.
 
 ### Binary cache (optional)
 
