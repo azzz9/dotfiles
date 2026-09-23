@@ -26,10 +26,17 @@
     # Pi is packaged by numtide/llm-agents.nix. Keep its nixpkgs pin separate
     # so its binary cache stays usable.
     llm-agents.url = "github:numtide/llm-agents.nix";
+    # gwm (git worktree manager) is not in nixpkgs, so it comes from its own
+    # flake. Follow our nixpkgs so the Rust build uses one evaluation and this
+    # channel's rustc.
+    gwm = {
+      url = "github:kbrdn1/gwm-cli";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
-    { self, nixpkgs, nixpkgs-master, home-manager, nixvim, hunk, llm-agents, ... }:
+    { self, nixpkgs, nixpkgs-master, home-manager, nixvim, hunk, llm-agents, gwm, ... }:
     let
       supportedSystems = [
         "x86_64-linux"
@@ -63,6 +70,10 @@
             inherit repoDir supportedSystems;
             hunk = hunk;
             llmAgents = llm-agents;
+            # Not upstream's overlay: it reads `final.system`, which nixpkgs
+            # deprecates, and every other package from an external flake here
+            # reads the system through stdenv.hostPlatform instead.
+            gwm = gwm;
           };
           modules = [
             ./hosts/default.nix
