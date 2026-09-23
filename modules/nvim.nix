@@ -83,6 +83,7 @@ let
     "languages.lua"
     "plugins/conform.lua"
     "plugins/nvim-lint.lua"
+    "plugins/tiny-inline-diagnostic.lua"
     "ui.lua"
     "plugins/nvim-lspconfig.lua"
     "plugins/blink-cmp.lua"
@@ -183,6 +184,7 @@ assert lib.assertMsg (luaFilesUnlisted == [ ] && luaFilesAbsent == [ ])
         nvim-lspconfig
         nvim-autopairs
         trouble-nvim
+        tiny-inline-diagnostic-nvim
         conform-nvim
         nvim-lint
         nvim-surround
