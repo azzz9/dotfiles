@@ -25,6 +25,10 @@ let
       (rpiv "ask-user-question")
       (rpiv "btw")
       "npm:pi-subagents@0.70.1"
+      # Blocks destructive shell commands and secret-file access before the
+      # bash tool call runs. Pinned: the rule set is the point, so the pin moves
+      # only on a deliberate bump.
+      "npm:cc-safety-net@2.4.6"
       # Provider packages stay out of this list: subscriptions, catalogs, and API
       # keys differ per host. Install them per machine as files under
       # ~/.pi/agent/extensions/<name>/ (auto-discovered); a local `pi install`
