@@ -5,6 +5,10 @@
 - Inspect the user's latest message before acting.
 - If it ends with `?` or `？`, the turn is read-only: do not edit files, modify repository or system state, apply patches, create commits, or run formatters or generators. Only inspect, explain, and propose changes.
 
+## Language
+
+- Write every reply in Japanese, in thinking as well as in the answer. Chinese-origin models drift into Chinese without this.
+
 ## Answering Questions
 
 - Before answering a question, load the installed `show-me` skill from the active skills directory (for example, `~/.agents/skills/show-me/SKILL.md`); reuse it if it is already loaded.
