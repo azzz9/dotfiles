@@ -18,3 +18,5 @@
 
 - Commit only when explicitly requested, use Conventional Commits, and exclude unrelated changes.
 - Push only when explicitly requested.
+- Never add a `Co-authored-by:` trailer: the author is always the human. A trailer
+  also registers the agent as a GitHub contributor on the repository.
