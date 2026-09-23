@@ -12,7 +12,7 @@ let
       "npm:pi-web-access"
       # pstack for pi (personal fork): the upstream port plus local harness
       # fixes. Pinned so a generation always reconciles to this version.
-      "git:github.com/azzz9/pi-pstack@26e54468dfe3e9a5243934d441c73fcb56bda145"
+      "git:github.com/azzz9/pi-pstack@87251366b573e6064d88976233c153a83b2c5d63"
       # i-have-adhd supplies the session-wide ADHD output mode. The skill itself
       # is vendored in config/ai/skills, so load the extension only and skip the
       # package's duplicate copy of the same skill.
