@@ -104,6 +104,15 @@ in
     type = "shell"
     command = "herdr pane focus --direction right"
 
+    # Session-modal scratchpad over ~/memo.md. Exiting nvim closes the popup.
+    [[keys.command]]
+    key = "prefix+m"
+    type = "popup"
+    command = "nvim ~/memo.md"
+    description = "edit ~/memo.md"
+    width = "80%"
+    height = "80%"
+
     [session]
     # Resume AI-agent panes into their native sessions after a server restart
     resume_agents_on_restore = true
