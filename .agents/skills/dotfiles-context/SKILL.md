@@ -82,7 +82,7 @@ discovers them as project skills once the project is trusted. Neither is linked
 globally, so neither costs tokens in other projects.
 
 pstack is not vendored as a tree. pi consumes the personal fork
-`git:github.com/azzz9/pi-pstack@<sha>` (pinned in `hosts/default.nix`) with
+`git:github.com/azzz9/pi-pstack@<sha>` (pinned in `modules/pi.nix`) with
 `npm:pi-subagents` alongside it. The fork carries the pi-native port plus local
 harness fixes (pi session paths, pi subagent parameters, no Cursor cloud agents,
 review-automation naming, the `todo` tool). It ships the skills, the
@@ -97,6 +97,14 @@ pinned to one rpiv release train, so they move together.
 Moving that pin takes two steps. Edit the sha, run `dotfiles apply`, then run
 `pi update git:github.com/azzz9/pi-pstack`. Activation only reconciles
 `settings.json`. Without the update the checkout stays on the old ref.
+
+i-have-adhd is the second pinned package: `git:github.com/ayghri/i-have-adhd@<sha>`
+in `modules/pi.nix`, declared as an object with `skills = []` because the skill
+is vendored in `config/ai/skills/i-have-adhd` and the package copy would collide.
+The extension supplies `/i-have-adhd`, `--adhd`, and the always-on switch, which
+is the Home Manager-managed flag file `~/.pi/agent/.i-have-adhd-always`. The
+extension reads the rules from its own checkout, not from the vendored skill, so
+bump the pin with the same two steps as pstack when upstream changes the rules.
 
 The fork's bundled scripts (`skills/poteto-mode/scripts`) install their own
 dependencies on first run through `bootstrap.ts`, so no manual `bun install` is

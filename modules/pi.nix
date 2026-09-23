@@ -13,15 +13,23 @@ let
       # pstack for pi (personal fork): the upstream port plus local harness
       # fixes. Pinned so a generation always reconciles to this version.
       "git:github.com/azzz9/pi-pstack@26e54468dfe3e9a5243934d441c73fcb56bda145"
+      # i-have-adhd supplies the session-wide ADHD output mode. The skill itself
+      # is vendored in config/ai/skills, so load the extension only and skip the
+      # package's duplicate copy of the same skill.
+      {
+        source = "git:github.com/ayghri/i-have-adhd@839872f9d1cd634fed642b4589ce7226199cc15f";
+        skills = [ ];
+      }
       # Tools the pstack playbooks call; the /btw overlay rides with them.
       (rpiv "todo")
       (rpiv "ask-user-question")
       (rpiv "btw")
       "npm:pi-subagents@0.70.1"
       # Provider packages stay out of this list: subscriptions, catalogs, and API
-      # keys differ per host, and entries here become read-only. Install them per
-      # machine into ~/.pi/agent/extensions/<name>/ (auto-discovered) or with a
-      # local `pi install`.
+      # keys differ per host. Install them per machine as files under
+      # ~/.pi/agent/extensions/<name>/ (auto-discovered); a local `pi install`
+      # would be dropped again, because this merge replaces the `packages` array
+      # on every activation.
     ];
     # Hidden because the conclusion already appears in the answer.
     hideThinkingBlock = true;
@@ -62,6 +70,10 @@ in
       bun
     ];
   };
+  # The i-have-adhd extension turns the mode on at every new session when this
+  # flag exists; a saved choice for the current session still wins, so an
+  # explicit "stop adhd mode" survives.
+  home.file.".pi/agent/.i-have-adhd-always".text = "";
   # Runs before linkGeneration so the first switch can still read the old store
   # symlink and carry the local keys into the regular file.
   home.activation.piSettings = lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''
