@@ -119,6 +119,9 @@ in
 
     [ui]
     show_agent_labels_on_pane_borders = true
+    # "auto" resolves to drawn on WSL, which reverses the cursor cell instead of
+    # setting its shape, so nvim's insert-mode bar never renders.
+    host_cursor = "native"
 
     [ui.toast]
     # Ghostty suppresses OSC notifications while focused, so completion
