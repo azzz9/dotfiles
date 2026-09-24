@@ -1,4 +1,4 @@
-{ lib, pkgs, gwm, ... }:
+{ lib, pkgs, ... }:
 let
   solidity = import ./solidity.nix { inherit pkgs; };
   roots = pkgs.buildGoModule rec {
@@ -19,15 +19,6 @@ let
     text = ''
       exec uvx --from graphifyy==0.9.28 graphify "$@"
     '';
-  };
-  # Not in nixpkgs, so it comes from the gwm flake input (see flake.nix).
-  # Upstream lets its test suite run, but that suite assumes a developer
-  # checkout: fixture helpers shell out to `git`, suites exercise pre-commit
-  # hooks and per-user state, and one lists published files with `git ls-files`.
-  # None of that exists in a Nix build sandbox, so checks stay off and the
-  # built binary is what gets verified.
-  gwmPkg = gwm.packages.${pkgs.stdenv.hostPlatform.system}.gwm.overrideAttrs {
-    doCheck = false;
   };
 in
 {
@@ -112,5 +103,5 @@ in
     ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin (with pkgs; [
       terminal-notifier
     ])
-    ++ [ graphify roots gwmPkg ];
+    ++ [ graphify roots ];
 }
