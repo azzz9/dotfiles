@@ -4,7 +4,8 @@
 #   DOTFILES_DIR               the checkout to build and activate
 #   DOTFILES_SUPPORTED_HOSTS   the homeConfigurations attributes that exist
 # `apply` also runs pi_reconcile from scripts/pi-reconcile.sh after activation,
-# so a build that moved a pi package pin lands its checkout too.
+# so a build that moved a pi package pin lands its checkout, or installs the
+# pinned npm version, too.
 set -euo pipefail
 
 usage() {
@@ -12,7 +13,7 @@ usage() {
 usage: dotfiles <command> [host]
 
 commands:
-  apply      apply the current checkout, reconciling stale pi package checkouts
+  apply      apply the current checkout, reconciling pi packages to their pinned revision or version
   sync       pull latest changes, then apply
   upgrade    update flake.lock inputs, then apply
 EOF
@@ -49,16 +50,20 @@ esac
 
 tmp_dir="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
 lock_dir="$tmp_dir/dotfiles.lockdir"
-lock_backup=""
-pin_backup=""
+# Files a failed upgrade rewrites are restored from these; backup_file appends
+# one entry per file, as "<backup>|<target>".
+upgrade_backups=()
 pin_scratch=""
 patched_activate=""
 have_lock=0
 # modules/pinned-packages.nix holds every derivation that is not packaged by
 # nixpkgs and carries its own version; `nix-update` bumps the ones named here.
 pins_file="modules/pinned-packages.nix"
+# The @juicesharp/rpiv packages stay npm-installed; their shared version lives
+# in one line of modules/pi.nix, which the upgrade rewrites from the registry.
+pi_module="modules/pi.nix"
 pin_names=(solhint roots prettier-plugin-solidity prettier-plugin-solidity-dist)
-trap 'if [ -n "$patched_activate" ]; then rm -f "$patched_activate"; fi; if [ -n "$lock_backup" ]; then rm -f "$lock_backup"; fi; if [ -n "$pin_backup" ]; then rm -f "$pin_backup"; fi; if [ -n "$pin_scratch" ]; then rm -f "$pin_scratch"; fi; if [ "$have_lock" = 1 ]; then rmdir "$lock_dir" 2>/dev/null || true; fi' EXIT
+trap 'for backup in "${upgrade_backups[@]}"; do rm -f "${backup%%|*}"; done; if [ -n "$pin_scratch" ]; then rm -f "$pin_scratch"; fi; if [ -n "$patched_activate" ]; then rm -f "$patched_activate"; fi; if [ "$have_lock" = 1 ]; then rmdir "$lock_dir" 2>/dev/null || true; fi' EXIT
 if ! mkdir "$lock_dir" 2>/dev/null; then
   echo "dotfiles: already running; skipping"
   exit 0
@@ -116,23 +121,25 @@ apply_home() {
   pi_reconcile
 }
 
-restore_lock() {
-  if [ -n "$lock_backup" ] && [ -f "$lock_backup" ]; then
-    cp "$lock_backup" flake.lock
-    echo "dotfiles upgrade: restored flake.lock after failure" >&2
-  fi
+backup_file() {
+  local backup
+  backup="$(mktemp "$tmp_dir/dotfiles-upgrade-backup.XXXXXX")"
+  cp "$1" "$backup"
+  upgrade_backups+=("$backup|$1")
 }
 
-restore_pins() {
-  if [ -n "$pin_backup" ] && [ -f "$pin_backup" ]; then
-    cp "$pin_backup" "$pins_file"
-    echo "dotfiles upgrade: restored $pins_file after failure" >&2
-  fi
-}
-
+# Restores every file the upgrade rewrote from its backup. Runs on the
+# upgrade's failure paths only.
 restore_upgrade() {
-  restore_lock
-  restore_pins
+  local entry backup target
+  for entry in "${upgrade_backups[@]}"; do
+    backup="${entry%%|*}"
+    target="${entry#*|}"
+    if [ -f "$backup" ]; then
+      cp "$backup" "$target"
+      echo "dotfiles upgrade: restored $target after failure" >&2
+    fi
+  done
 }
 
 # Bump each derivation pinned in $pins_file on its own. nix-update prints its
@@ -150,6 +157,58 @@ bump_pins() {
   done
 }
 
+# The latest version published for an npm package; empty on any doubt.
+registry_latest() {
+  local encoded
+  encoded="$(printf '%s' "$1" | sed 's|/|%2F|')"
+  curl -fsS --max-time 30 "https://registry.npmjs.org/${encoded}" | jq -r '."dist-tags".latest'
+}
+
+# npm rows cannot be git sources: the rpiv workspace has no pi manifest at its
+# root, and cc-safety-net's repository runs lefthook from a prepare script. They
+# are therefore pinned by a version string in $pi_module, which this moves to
+# the registry's latest, keeping the pin on any registry or ordering doubt.
+bump_npm_pins() {
+  local pinned latest ordering spec name current
+
+  # The three rpiv packages ship under one version, so one line covers them.
+  pinned="$(sed -n 's/^  rpivVersion = "\([0-9][0-9.]*\)";$/\1/p' "$pi_module")"
+  if [ -z "$pinned" ]; then
+    echo "dotfiles upgrade: no rpivVersion line found in $pi_module; kept the rpiv pin" >&2
+  else
+    latest="$(registry_latest "@juicesharp/rpiv-todo" || true)"
+    if [ -z "$latest" ] || [ "$latest" = "null" ]; then
+      echo "dotfiles upgrade: no registry latest for @juicesharp/rpiv-todo; kept the rpiv pin at $pinned" >&2
+    elif [ "$latest" != "$pinned" ]; then
+      ordering="$(printf '%s\n' "$pinned" "$latest" | sort -V | tail -n 1)"
+      if [ "$ordering" != "$latest" ]; then
+        echo "dotfiles upgrade: registry latest $latest is older than the rpiv pin $pinned; kept the pin" >&2
+      else
+        sed -i 's/^  rpivVersion = "[0-9][0-9.]*";$/  rpivVersion = "'"$latest"'";/' "$pi_module"
+        echo "dotfiles upgrade: bumped the rpiv npm pin $pinned -> $latest"
+      fi
+    fi
+  fi
+
+  # npm rows carry their own version, for example `npm:cc-safety-net@2.4.6`.
+  while read -r spec; do
+    name="${spec#npm:}"
+    name="${name%@*}"
+    current="${spec##*@}"
+    latest="$(registry_latest "$name" || true)"
+    if [ -z "$latest" ] || [ "$latest" = "null" ]; then
+      echo "dotfiles upgrade: no registry latest for $name; kept the pin at $current" >&2
+      continue
+    fi
+    ordering="$(printf '%s\n' "$current" "$latest" | sort -V | tail -n 1)"
+    if [ "$ordering" != "$latest" ] || [ "$latest" = "$current" ]; then
+      continue
+    fi
+    sed -i "s|\"$spec\"|\"npm:$name@$latest\"|" "$pi_module"
+    echo "dotfiles upgrade: bumped the $name npm pin $current -> $latest"
+  done < <(grep -o 'npm:[A-Za-z0-9@/._-]*@[0-9][0-9A-Za-z.+-]*' "$pi_module" | sort -u)
+}
+
 case "$command" in
   apply)
     apply_home
@@ -161,11 +220,10 @@ case "$command" in
     ;;
   upgrade)
     require_clean_repo
-    pin_backup="$(mktemp "$tmp_dir/dotfiles-pins.XXXXXX")"
     pin_scratch="$(mktemp "$tmp_dir/dotfiles-pin-bump.XXXXXX")"
-    cp "$pins_file" "$pin_backup"
-    lock_backup="$(mktemp "$tmp_dir/dotfiles-flake-lock.XXXXXX")"
-    cp flake.lock "$lock_backup"
+    backup_file "$pins_file"
+    backup_file "$pi_module"
+    backup_file flake.lock
     if ! nix_cmd flake update; then
       restore_upgrade
       exit 1
@@ -173,6 +231,7 @@ case "$command" in
     # After the flake update on purpose: a release that needs a newer toolchain
     # than the previous nixpkgs carried can still be bumped in the same run.
     bump_pins
+    bump_npm_pins
     if ! build_home; then
       restore_upgrade
       exit 1
@@ -182,7 +241,7 @@ case "$command" in
       exit 1
     fi
     moved_files=""
-    for moved_file in flake.lock "$pins_file"; do
+    for moved_file in flake.lock "$pins_file" "$pi_module"; do
       if ! git diff --quiet -- "$moved_file"; then
         moved_files="$moved_files $moved_file"
       fi

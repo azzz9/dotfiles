@@ -82,8 +82,8 @@ discovers them as project skills once the project is trusted. Neither is linked
 globally, so neither costs tokens in other projects.
 
 pstack is not vendored as a tree. pi consumes the personal fork
-`git:github.com/azzz9/pi-pstack@<sha>` (pinned by `flake.lock`) with
-`npm:pi-subagents` alongside it. The fork carries the pi-native port plus local
+`git:github.com/azzz9/pi-pstack@<sha>` (pinned by `flake.lock`). The fork
+carries the pi-native port plus local
 harness fixes (pi session paths, pi subagent parameters, no Cursor cloud agents,
 review-automation naming, the `todo` tool). It ships the skills, the
 `comment-sicko` and `poteto-agent` subagents through its `pi.subagents.agents`
@@ -92,21 +92,33 @@ manifest, and an extension that injects the role-model table, provides sticky
 `npm:@juicesharp/rpiv-todo` and `npm:@juicesharp/rpiv-ask-user-question` supply
 the `todo` and `ask_user_question` tools the playbooks call.
 `npm:@juicesharp/rpiv-btw` adds the `/btw` side-question overlay. The three are
-pinned to one rpiv release train, so they move together.
+pinned to one rpiv release train, so they move together. They stay npm because
+the rpiv workspace ships 15 packages with no `pi` manifest at its root, and pi
+cannot key a monorepo package by a git source.
 
-pi's two git packages are `flake = false` inputs in `flake.nix`, so the
-revision lives in `flake.lock` and no module holds a sha. `modules/pi.nix`
-renders each input's `rev` into `settings.json` and into
-`~/.pi/agent/.dotfiles-pi-pins`, and `apply` ends with `pi_reconcile`, which
-moves only the checkouts that no longer match the pin. `dotfiles upgrade`
-re-resolves both pins with the rest of `flake.lock`; `nix flake update
-pi-pstack && dotfiles apply` moves one. Commit the `flake.lock` diff to keep
-the next apply on the same pins. The reconcile is inlined into the `dotfiles`
-CLI at build time, so the first `dotfiles apply` after this change lands
-activates the generation without reconciling anything; the one after that
-reconciles.
+pi's git packages (`pi-pstack`, `i-have-adhd`, `pi-subagents`, `pi-web-access`,
+`pi-mcp-adapter`) are `flake = false` inputs in `flake.nix`, so the revision
+lives in `flake.lock` and no module holds a sha. Each carries its declared
+extension entry at the repo root, which is what lets the repo itself be the git
+source. `cc-safety-net` stays an npm row instead: a pi git install runs the
+repository's `prepare` script, and cc-safety-net's runs `lefthook install`,
+which that install cannot satisfy. Its published tarball carries the built
+`dist` with no runtime dependencies. `modules/pi.nix`
+renders each input's repo spec and `rev` into `settings.json` and into
+`~/.pi/agent/.dotfiles-pi-pins`, one `<repo> <rev>` line per git package, and
+`apply` ends with `pi_reconcile`, which moves the git checkouts that no longer
+match the pin and installs an npm package whose installed version differs from
+the version in its `settings.json` spec. The manifest's two-field shape is
+kept deliberately: the CLI that runs the first `apply` after an upgrade is the
+previously installed one, and it parses that file with the same two fields. `dotfiles upgrade` re-resolves the git pins with the rest of
+`flake.lock` and queries the npm registry for the rpiv version;
+`nix flake update pi-pstack && dotfiles apply` moves one git pin. Commit the
+`flake.lock` diff to keep the next apply on the same pins. The reconcile is
+inlined into the `dotfiles` CLI at build time, so the first `dotfiles apply`
+after this change lands activates the generation without reconciling
+anything; the one after that reconciles.
 
-i-have-adhd is the second pinned package: an object with `skills = []` in
+i-have-adhd is pinned the same way: an object with `skills = []` in
 `settings.json` because the skill is vendored in `config/ai/skills/i-have-adhd`
 and the package copy would collide. The extension supplies `/i-have-adhd`,
 `--adhd`, and the always-on switch, which is the Home Manager-managed flag file
@@ -145,14 +157,16 @@ needed.
 `modules/dotfiles.nix` installs through `writeShellApplication` (so the build
 shellchecks it). The command table lives in `README.md`.
 
-Pin story: nixpkgs-managed packages move when `dotfiles upgrade` refreshes
-`flake.lock`. The git-sourced pi packages move with `flake.lock` plus the
-reconcile step. The derivations in `modules/pinned-packages.nix` (solhint,
-prettier-plugin-solidity plus its dist, roots) move when the same command's
-first stage runs `nix-update --flake <name>` against the flake's `packages`
+Pin story: nixpkgs-managed things move with `flake.lock`; pi's git packages
+move with `flake.lock` plus the reconcile; the npm-only rpiv trio moves with
+the registry bump plus the reconcile; the pinned nix derivations move with
+nix-update. Nothing needs a hand-typed version or hash. The derivations in
+`modules/pinned-packages.nix` (solhint, prettier-plugin-solidity plus its
+dist, roots) move when the same command's bump stage runs `nix-update --flake
+<name>` against the flake's `packages`
 output; that stage backs each bump per name, warns and keeps the previous pin
-when one release cannot build, and a wholesale failure restores `flake.lock`
-and the pins file. codediff-watcher is not in the bump list: its version is
+when one release cannot build, and a wholesale failure restores `flake.lock`,
+the pins file, and `modules/pi.nix`. codediff-watcher is not in the bump list: its version is
 derived from nixpkgs' `vimPlugins.codediff-nvim` (`watcher.lua` contains a
 `local VERSION` line), so the watcher cannot drift from the plugin; its
 per-system release hashes are the only hand-edited pin in the repo. To add a

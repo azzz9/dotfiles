@@ -26,11 +26,18 @@
     # Pi is packaged by numtide/llm-agents.nix. Keep its nixpkgs pin separate
     # so its binary cache stays usable.
     llm-agents.url = "github:numtide/llm-agents.nix";
-    # Pi installs both of these as git packages. Nix locks their revisions, so
+    # Pi installs these as git packages. Nix locks their revisions, so
     # `nix flake update <name>` is what moves a pin and flake.lock is what
-    # records it. Nothing reads the input tree, so neither input builds.
+    # records it. Nothing reads the input trees, so none of these builds.
     pi-pstack = { url = "github:azzz9/pi-pstack"; flake = false; };
     i-have-adhd = { url = "github:ayghri/i-have-adhd"; flake = false; };
+    pi-subagents = { url = "github:nicobailon/pi-subagents"; flake = false; };
+    pi-web-access = { url = "github:nicobailon/pi-web-access"; flake = false; };
+    pi-mcp-adapter = { url = "github:nicobailon/pi-mcp-adapter"; flake = false; };
+    # `cc-safety-net` stays an npm row (see modules/pi.nix): its repository runs
+    # `lefthook install` from a prepare script, which a pi git install cannot
+    # satisfy, so it is deliberately not an input here.
+    pi-compact-tools = { url = "github:nedleeds/pi-compact-tools"; flake = false; };
   };
 
   outputs =
@@ -47,7 +54,7 @@
         let configured = builtins.getEnv "DOTFILES_DIR";
         in
         if configured != "" then configured else "${builtins.getEnv "HOME"}/src/github.com/azzz9/dotfiles";
-      # The two git packages pi installs. flake.lock records owner, repo, and
+      # The git packages pi installs. flake.lock records owner, repo, and
       # revision for every locked input, so one node carries both the identity
       # pi keys a package and its checkout by (spec) and the revision the pin
       # sits at. A row in modules/pi.nix names only the input; spec and rev
@@ -62,6 +69,10 @@
       piGitSources = {
         pi-pstack = piGitSource "pi-pstack";
         i-have-adhd = piGitSource "i-have-adhd";
+        pi-subagents = piGitSource "pi-subagents";
+        pi-web-access = piGitSource "pi-web-access";
+        pi-mcp-adapter = piGitSource "pi-mcp-adapter";
+        pi-compact-tools = piGitSource "pi-compact-tools";
       };
       mkHomeConfiguration = system:
         home-manager.lib.homeManagerConfiguration {
@@ -142,9 +153,9 @@
             done
             zsh -n "$files/.zshrc"
             lua -e "assert(loadfile('$files/.config/nvim/init.lua'))"
-            # The reconcile step's manifest: every line is
-            # "<host/owner/repo> <40-hex rev>", and a short sha is the
-            # failure this manifest exists to prevent.
+            # The reconcile step's manifest: one "<host/owner/repo> <40-hex
+            # rev>" line per git package, and a short sha is the failure this
+            # manifest exists to prevent.
             pins="$files/.pi/agent/.dotfiles-pi-pins"
             entries=$(grep -c . "$pins" || true)
             pinned=$(grep -Ec '^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+){2} [0-9a-f]{40}$' "$pins" || true)
@@ -153,11 +164,11 @@
             touch $out
           '';
           pi-reconcile = pkgs.runCommand "pi-reconcile" {
-            nativeBuildInputs = [ pkgs.bash pkgs.coreutils pkgs.gnugrep pkgs.git ];
+            nativeBuildInputs = [ pkgs.bash pkgs.coreutils pkgs.jq pkgs.git ];
           } ''
             export HOME=$TMPDIR/home GIT_CONFIG_NOSYSTEM=1
             export PATH=$TMPDIR/bin:$PATH
-            mkdir -p "$HOME/.pi/agent/git/github.com/example" "$TMPDIR/bin"
+            mkdir -p "$HOME/.pi/agent/git/github.com/example" "$HOME/.pi/agent/npm/node_modules" "$TMPDIR/bin"
 
             # Keep the heredoc body at this indentation; nix strips the common
             # indent from the whole string, which is what puts the shebang at
@@ -173,31 +184,60 @@
             git -C "$checkout" -c user.email=check@invalid -c user.name=check \
               commit -q --allow-empty -m pinned
             pinned=$(git -C "$checkout" rev-parse HEAD)
+            pinnedRepo=github.com/example/pkg
+            pinnedSpec=git:github.com/example/pkg
+            npmName='@example/rpiv-todo'
+            npmSource="npm:$npmName@2.12.0"
             pins=$HOME/.pi/agent/.dotfiles-pi-pins
+            settings=$HOME/.pi/agent/settings.json
             source ${self}/scripts/pi-reconcile.sh
 
-            # Off the pinned revision, one scoped update with no @ref.
-            printf 'github.com/example/pkg %040d\n' 0 > "$pins"
+            npm_dir=$HOME/.pi/agent/npm/node_modules/$npmName
+            mkdir -p "$npm_dir"
+            printf '{"version":"2.12.0"}\n' > "$npm_dir/package.json"
+            printf '{"packages":["%s","%s"]}\n' "$pinnedSpec" "$npmSource" > "$settings"
+
+            # Off the pinned revision, one scoped update with no @ref. The npm
+            # spec is installed at its version, so it asks pi nothing.
+            printf '%s %040d\n' "$pinnedRepo" 0 > "$pins"
             pi_reconcile
-            test "$(cat "$HOME/pi-calls")" = "update git:github.com/example/pkg"
+            test "$(cat "$HOME/pi-calls")" = "update $pinnedSpec"
 
             # On the pinned revision, the next apply asks pi nothing.
-            printf 'github.com/example/pkg %s\n' "$pinned" > "$pins"
+            printf '%s %s\n' "$pinnedRepo" "$pinned" > "$pins"
             pi_reconcile
             test "$(wc -l < "$HOME/pi-calls")" = 1
 
-            # A checkout that is not there is not on the pinned revision.
+            # An npm package whose installed version differs is installed once.
+            printf '{"version":"2.11.0"}\n' > "$npm_dir/package.json"
+            pi_reconcile
+            test "$(sed -n 2p "$HOME/pi-calls")" = "install $npmSource"
+            test "$(wc -l < "$HOME/pi-calls")" = 2
+
+            # On the pinned version, the next apply asks pi nothing.
+            printf '{"version":"2.12.0"}\n' > "$npm_dir/package.json"
+            pi_reconcile
+            test "$(wc -l < "$HOME/pi-calls")" = 2
+
+            # A package.json that is not there needs the install too.
+            rm -rf "$npm_dir"
+            pi_reconcile
+            test "$(wc -l < "$HOME/pi-calls")" = 3
+
+            # With npm converged again, a missing checkout is the only drift.
+            mkdir -p "$npm_dir"
+            printf '{"version":"2.12.0"}\n' > "$npm_dir/package.json"
             rm -rf "$checkout"
             pi_reconcile
-            test "$(wc -l < "$HOME/pi-calls")" = 2
+            test "$(wc -l < "$HOME/pi-calls")" = 4
 
             # No manifest, nothing to converge, and the apply still succeeds.
-            rm "$pins"
+            rm -f "$pins"
             pi_reconcile
-            test "$(wc -l < "$HOME/pi-calls")" = 2
+            test "$(wc -l < "$HOME/pi-calls")" = 4
 
             # A pi that cannot move the checkout fails the apply.
-            printf 'github.com/example/pkg %040d\n' 0 > "$pins"
+            printf '%s %040d\n' "$pinnedRepo" 0 > "$pins"
             printf '#!/bin/sh\nexit 1\n' > "$TMPDIR/bin/pi"
             chmod +x "$TMPDIR/bin/pi"
             if pi_reconcile 2>/dev/null; then

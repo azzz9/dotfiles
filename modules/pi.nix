@@ -1,12 +1,12 @@
 { lib, pkgs, llmAgents, piGitSources, ... }:
 let
-  rpivVersion = "2.11.0";
+  rpivVersion = "2.12.0";
   rpiv = name: "npm:@juicesharp/rpiv-${name}@${rpivVersion}";
 
-  # One row per package pi installs. `spec` is pi's source, `input` names the
-  # locked flake input a git row's revision comes from, and `filter` is the
-  # optional resource narrowing pi accepts on the object form. No row carries a
-  # sha, so a pin cannot disagree with what Nix fetched.
+  # One row per package pi installs. `spec` is an exact npm source; `input`
+  # names the locked flake input whose revision a git row carries; `filter`
+  # is the optional resource narrowing pi accepts on the object form. No row
+  # carries a sha, so a pin cannot disagree with what Nix fetched.
   #
   # Provider packages stay out of this list: subscriptions, catalogs, and API
   # keys differ per host. Install them per machine as files under
@@ -14,19 +14,25 @@ let
   # would be dropped again, because the merge below replaces the `packages`
   # array on every activation.
   rows = [
-    { spec = "npm:pi-mcp-adapter"; }
-    { spec = "npm:pi-web-access"; }
+    { input = "pi-subagents"; }
+    { input = "pi-web-access"; }
+    { input = "pi-mcp-adapter"; }
     { input = "pi-pstack"; }
     # The skill is vendored in config/ai/skills, so load the extension only.
     { input = "i-have-adhd"; filter = { skills = [ ]; }; }
+    # The rpiv packages ship from a 15-package workspace whose root carries no
+    # pi manifest, so they cannot be git sources and stay npm rows.
     { spec = rpiv "todo"; }
     { spec = rpiv "ask-user-question"; }
     { spec = rpiv "btw"; }
-    { spec = "npm:pi-subagents@0.70.1"; }
-    # Blocks destructive shell commands and secret-file access before the
-    # bash tool call runs. Pinned: the rule set is the point, so the pin moves
-    # only on a deliberate bump.
-    { spec = "npm:cc-safety-net@2.4.6"; }
+    # Blocks destructive shell commands and secret-file access before the bash
+    # tool call runs. The rule set is the point, so it stays an npm row: its
+    # repository runs `lefthook install` from a prepare script, which a pi git
+    # install cannot satisfy. The published tarball carries the built dist with
+    # no runtime dependencies.
+    { spec = "npm:cc-safety-net@2.4.14"; }
+    # Compact, expandable TUI tool rows, with its own bundled theme.
+    { input = "pi-compact-tools"; }
   ];
 
   # Exactly what settings.json records for a row.
@@ -38,8 +44,15 @@ let
     in
     if row ? filter then { inherit source; } // row.filter else source;
 
-  # What scripts/pi-reconcile.sh reads: one <spec> <rev> line per git row.
+  # What scripts/pi-reconcile.sh reads: one "<spec> <rev>" line per git row.
   # `spec` is also the path pi keys the checkout by under the agent directory.
+  # The two-field shape is deliberately unchanged from before the npm pins
+  # existed: the CLI running the first apply after an upgrade is the previously
+  # installed one, and it parses this file with the same two fields.
+  #
+  # npm rows are absent on purpose. Their pinned version already sits in the
+  # spec that settings.json records, so the reconcile reads it there instead of
+  # holding a second copy that could disagree.
   pins = lib.concatMapStrings
     (row: "${piGitSources.${row.input}.spec} ${piGitSources.${row.input}.rev}\n")
     (builtins.filter (row: row ? input) rows);
@@ -56,6 +69,8 @@ let
   # Every other key is carried over untouched: objects are merged, scalars
   # replaced. The file stays a regular file so pi can keep writing it.
   piManagedSettingsJson = (pkgs.formats.json { }).generate "pi-managed-settings.json" piManagedSettings;
+  # Compact-tools reads this at startup; only non-default keys belong here.
+  compactToolsConfig = (pkgs.formats.json { }).generate "compact-tools.json" { style = "compact"; };
   piSettingsMerge = pkgs.writeShellScript "pi-settings-managed" ''
     set -euo pipefail
 
@@ -95,6 +110,9 @@ in
   home.file.".pi/agent/.i-have-adhd-always".text = "";
   # The reconcile step reads this. A store symlink, so nothing writes to it.
   home.file.".pi/agent/.dotfiles-pi-pins".text = pins;
+  # The compact-tools extension reads this at startup. A store symlink, so the
+  # style comes from the repo instead of a local edit.
+  home.file.".pi/agent/compact-tools.json".source = compactToolsConfig;
   # Runs before linkGeneration so the first switch can still read the old store
   # symlink and carry the local keys into the regular file.
   home.activation.piSettings = lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''

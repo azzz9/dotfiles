@@ -316,6 +316,38 @@
         "type": "github"
       }
     },
+    "pi-compact-tools": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790760247,
+        "narHash": "sha256-6Z3lsuh36hptapyXnMLypA4IFcP7oRnrm2xetfrbUcU=",
+        "owner": "nedleeds",
+        "repo": "pi-compact-tools",
+        "rev": "3a4d484059c61732283a7c51d1704c4fd232c2b7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nedleeds",
+        "repo": "pi-compact-tools",
+        "type": "github"
+      }
+    },
+    "pi-mcp-adapter": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790791188,
+        "narHash": "sha256-R2aIGE5/P56PUFhLUmAbAk525POuVQsJ4RLuKoGO4cg=",
+        "owner": "nicobailon",
+        "repo": "pi-mcp-adapter",
+        "rev": "5884ac4e45f5834f51ab8914f61b6a36a6a0a51b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nicobailon",
+        "repo": "pi-mcp-adapter",
+        "type": "github"
+      }
+    },
     "pi-pstack": {
       "flake": false,
       "locked": {
@@ -332,6 +364,38 @@
         "type": "github"
       }
     },
+    "pi-subagents": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790790835,
+        "narHash": "sha256-QKf8Y8x90TLBKy3AkTRUc0+FxXAy/GKkHK2WQL2+a+k=",
+        "owner": "nicobailon",
+        "repo": "pi-subagents",
+        "rev": "b6bda32f03b7f549623bc404c9be14dca298ddc4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nicobailon",
+        "repo": "pi-subagents",
+        "type": "github"
+      }
+    },
+    "pi-web-access": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790784697,
+        "narHash": "sha256-3nmkt4faZuuHgpEWf64CYmJScmHxgq/NyJ6QH8ytOPY=",
+        "owner": "nicobailon",
+        "repo": "pi-web-access",
+        "rev": "1e13f17bc9390fa9586950cbe46c70c9178037e5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nicobailon",
+        "repo": "pi-web-access",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "home-manager": "home-manager",
@@ -341,7 +405,11 @@
         "nixpkgs": "nixpkgs_3",
         "nixpkgs-master": "nixpkgs-master",
         "nixvim": "nixvim",
-        "pi-pstack": "pi-pstack"
+        "pi-compact-tools": "pi-compact-tools",
+        "pi-mcp-adapter": "pi-mcp-adapter",
+        "pi-pstack": "pi-pstack",
+        "pi-subagents": "pi-subagents",
+        "pi-web-access": "pi-web-access"
       }
     },
     "systems": {

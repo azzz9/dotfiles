@@ -8,7 +8,7 @@ in
       name = "dotfiles";
       # writeShellApplication runs shellcheck during the build, so the CLI is
       # linted by the build itself and not only by CI.
-      runtimeInputs = with pkgs; [ nix git coreutils gnugrep gnused bash nix-update ]
+      runtimeInputs = with pkgs; [ nix git coreutils gnugrep gnused bash nix-update jq curl ]
         ++ [ llmAgents.packages.${pkgs.stdenv.hostPlatform.system}.pi ];
       text = ''
         # Values come from flake.nix; scripts/dotfiles.sh reads them.
@@ -16,7 +16,10 @@ in
         DOTFILES_SUPPORTED_HOSTS=${lib.escapeShellArg supportedHosts}
       ''
       # scripts/pi-reconcile.sh is a leaf the CLI calls, not a second command.
+      # Join with a newline so a body without a trailing newline cannot merge
+      # its last line into the next file's first line.
       + builtins.replaceStrings [ "#!/usr/bin/env bash\n" ] [ "" ] (builtins.readFile ../scripts/pi-reconcile.sh)
+      + "\n"
       + builtins.replaceStrings [ "#!/usr/bin/env bash\n" ] [ "" ] (builtins.readFile ../scripts/dotfiles.sh);
     })
   ];
