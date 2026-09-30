@@ -129,11 +129,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1790791508,
-        "narHash": "sha256-8ihlvSIqp4IEBvZEfTQrBzJjglX/UeLBJwZ9ntPMA+8=",
+        "lastModified": 1790794061,
+        "narHash": "sha256-IT+cR7qd2xeysU8ZqAp7vQF9Rb6Hlyj6Skbi2wHVnlM=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "bf9c5ff3705a1cafb6a31e85325336c073658f0d",
+        "rev": "cf22324a27249bf67d4eb0a38d8b6fd426efd5c2",
         "type": "github"
       },
       "original": {
@@ -248,11 +248,11 @@
     },
     "nixpkgs-master": {
       "locked": {
-        "lastModified": 1790791031,
-        "narHash": "sha256-TMVOMIBbhG86O2QAY7+0VOB+a5npdPtYl25q5zhfVJo=",
+        "lastModified": 1790793024,
+        "narHash": "sha256-2haQnUL6ne3NbgPG4Pjde3z6thccgqW34AaPVO3+XY4=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "bd102acb21faf6eea82ad03f9257f102129b0f30",
+        "rev": "aaa6377143632b2c9ed7b8f91958144106f2d5c4",
         "type": "github"
       },
       "original": {
@@ -335,11 +335,11 @@
     "pi-mcp-adapter": {
       "flake": false,
       "locked": {
-        "lastModified": 1790791188,
-        "narHash": "sha256-R2aIGE5/P56PUFhLUmAbAk525POuVQsJ4RLuKoGO4cg=",
+        "lastModified": 1790793269,
+        "narHash": "sha256-W9cEPTL6w2B8AAVuwCq6KQAdYmjxpSaAqNDhI4GA8X4=",
         "owner": "nicobailon",
         "repo": "pi-mcp-adapter",
-        "rev": "5884ac4e45f5834f51ab8914f61b6a36a6a0a51b",
+        "rev": "c362b08da917831c89db82b94a259eb6529b58d6",
         "type": "github"
       },
       "original": {
