@@ -14,9 +14,14 @@ mkdir -p "${ZSH_COMPDUMP:h}"
 setopt interactive_comments
 
 zstyle ':autocomplete:*' enabled yes
-# Its key-bindings module requires terminfo[kcbt]; plugin init aborts on
-# terminals that do not expose that key.
-zstyle ':autocomplete:key-bindings' enabled no
+# key-bindings binds terminfo[kcbt]/[kpp]/[knp]; on terminals missing one,
+# bindkey rejects the empty key sequence, so enable it only when all exist.
+zmodload -F zsh/terminfo p:terminfo 2>/dev/null
+if [[ -n ${terminfo[kcbt]} && -n ${terminfo[kpp]} && -n ${terminfo[knp]} ]]; then
+  zstyle ':autocomplete:key-bindings' enabled yes
+else
+  zstyle ':autocomplete:key-bindings' enabled no
+fi
 
 # $fg/$bg availability and a dynamic prompt; ls/diff colors come from the
 # shellAliases in modules/shell.nix instead of subprocess calls.
