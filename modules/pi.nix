@@ -51,6 +51,7 @@ let
     packages = map declare rows;
     # Hidden because the conclusion already appears in the answer.
     hideThinkingBlock = true;
+    defaultThinkingLevel = "xhigh";
   };
   # Every other key is carried over untouched: objects are merged, scalars
   # replaced. The file stays a regular file so pi can keep writing it.
