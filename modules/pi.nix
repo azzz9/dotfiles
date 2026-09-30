@@ -31,6 +31,10 @@ let
     # install cannot satisfy. The published tarball carries the built dist with
     # no runtime dependencies.
     { spec = "npm:cc-safety-net@2.4.14"; }
+    # Persistent memory, session search, and a background learning loop. npm is
+    # the publisher's install path, and its better-sqlite3 dependency arrives
+    # prebuilt, so pi install runs no compiler.
+    { spec = "npm:pi-hermes-memory@0.9.9"; }
     # Compact, expandable TUI tool rows, with its own bundled theme.
     { input = "pi-compact-tools"; }
   ];

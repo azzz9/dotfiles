@@ -103,7 +103,9 @@ extension entry at the repo root, which is what lets the repo itself be the git
 source. `cc-safety-net` stays an npm row instead: a pi git install runs the
 repository's `prepare` script, and cc-safety-net's runs `lefthook install`,
 which that install cannot satisfy. Its published tarball carries the built
-`dist` with no runtime dependencies. `modules/pi.nix`
+`dist` with no runtime dependencies. `pi-hermes-memory` is an npm row too, and
+its `better-sqlite3` dependency arrives prebuilt, so `pi install` runs no
+compiler. `modules/pi.nix`
 renders each input's repo spec and `rev` into `settings.json` and into
 `~/.pi/agent/.dotfiles-pi-pins`, one `<repo> <rev>` line per git package, and
 `apply` ends with `pi_reconcile`, which moves the git checkouts that no longer
@@ -140,6 +142,11 @@ and deliberately not Nix-managed. `~/.pi/agent/pstack/models.md` is the readable
 record of the same choices, including the budget reasoning the JSON cannot
 carry. It sits inside the pstack directory, so the agent dir root matches a
 fresh `/setup-pstack` exactly.
+
+pi-hermes-memory is machine-local on the same principle. It writes under
+`~/.pi/agent/pi-hermes-memory/` and `~/.pi/agent/projects-memory/`, and its
+optional `hermes-memory-config.json` is not Nix-managed, so a fresh machine
+starts with an empty store.
 
 The inline rules that remain in `config/ai/AGENTS.md` are the turn gate, the
 show-me gate, and the git rules. pi reads them through the symlink at

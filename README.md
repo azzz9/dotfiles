@@ -47,9 +47,10 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#a
 `dotfiles upgrade` moves every kind of pin this repo has. Packages nixpkgs
 manages move with `flake.lock`. The git-sourced pi packages move with
 `flake.lock` plus the reconcile step. The npm-only packages (the three rpiv
-ones, which ship from a workspace no git source can key, and `cc-safety-net`,
-whose repository needs `lefthook` at install time) move
-with a registry-queried version bump plus the same reconcile. The
+ones, which ship from a workspace no git source can key; `cc-safety-net`,
+whose repository needs `lefthook` at install time; and `pi-hermes-memory`,
+which publishes to npm and pulls its `better-sqlite3` addon prebuilt)
+move with a registry-queried version bump plus the same reconcile. The
 derivations pinned in `modules/pinned-packages.nix` (solhint,
 prettier-plugin-solidity and its dist, roots) are bumped by `nix-update`
 with per-name backups, and a failed upgrade restores `flake.lock`, the pins
@@ -67,8 +68,9 @@ codediff-watcher's version is read from nixpkgs' codediff-nvim at eval time,
 so the watcher and the plugin never disagree; the per-system release hashes
 stay hand-edited when the plugin itself moves.
 
-pi and herdr are installed by this flake. Provider packages and model choices
-are machine-local; see the `dotfiles-context` skill.
+pi and herdr are installed by this flake. Provider packages, model choices,
+and the pi-hermes-memory memory store are machine-local; see the
+`dotfiles-context` skill.
 
 ## Repository layout
 
