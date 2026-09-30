@@ -16,7 +16,9 @@ let
   rows = [
     { input = "pi-subagents"; }
     { input = "pi-web-access"; }
-    { input = "pi-pstack"; }
+    # The 23 principle-* skills are poteto-mode's own vocabulary and the agent
+    # reads them by path, so the menu lists only skills a person types.
+    { input = "pi-pstack"; filter = { skills = [ "!skills/principle-*" ]; }; }
     # The skill is vendored in config/ai/skills, so load the extension only.
     { input = "i-have-adhd"; filter = { skills = [ ]; }; }
     # The rpiv packages ship from a 15-package workspace whose root carries no
