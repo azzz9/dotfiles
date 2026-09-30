@@ -15,6 +15,11 @@
     # directories out of backups and shared paths, or set `wt.copyignored false`
     # per repo (or globally) to skip the copy.
     git config --global wt.copyignored true
+    # A copied node_modules never works: pnpm's package symlinks are dropped and
+    # npm's .bin shims break once dereferenced. Keep node_modules out of the copy
+    # and let a hook install from the lockfile instead.
+    git config --global wt.nocopy 'node_modules/'
+    git config --global wt.hook 'if [ -f pnpm-lock.yaml ]; then corepack pnpm install --frozen-lockfile; elif [ -f package-lock.json ]; then npm ci; fi'
 
     # hunk is the git pager; it falls back to normal paging for non-diff output.
     git config --global core.pager "hunk pager"
