@@ -82,6 +82,10 @@ in
     previous_workspace = "alt+shift+k"
     next_workspace = "alt+shift+j"
 
+    # Worktrees come from `git wt` (modules/git.nix: wt.basedir = "../{gitroot}-wt"),
+    # so this only opens existing checkouts as grouped child spaces; new_worktree stays unused.
+    open_worktree = "prefix+shift+o"
+
     # Direct (no-prefix) pane navigation. type = "shell" runs detached;
     # `herdr pane focus` talks to the server socket.
     [[keys.command]]
