@@ -3,18 +3,7 @@ let
   zshCacheDir = "${config.xdg.cacheHome}/zsh";
   fzfCache = "${zshCacheDir}/fzf-integration.zsh";
   fastSyntaxHighlighting = pkgs.zsh-fast-syntax-highlighting;
-  zshAsync = pkgs.fetchFromGitHub {
-    owner = "marlonrichert";
-    repo = "z-async";
-    rev = "5370537de80670b4a97e49cd253d15067709c0a6";
-    hash = "sha256-tPosFoZSaUShaRpv7ca9BdOMREfmhnzjd/VKHSshhXo=";
-  };
-  zshAutocomplete = pkgs.zsh-autocomplete.overrideAttrs (old: {
-    postInstall = (old.postInstall or "") + ''
-      install -Dm644 ${zshAsync}/z-async \
-        "$out/share/zsh-autocomplete/z-async/z-async"
-    '';
-  });
+  zshAutocomplete = pkgs.zsh-autocomplete;
 
   initDir = ./shell/init;
   readZsh = file: builtins.readFile (initDir + "/${file}");

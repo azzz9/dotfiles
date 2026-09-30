@@ -40,9 +40,27 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#a
 
 | Command | Description |
 |---------|-------------|
-| `dotfiles apply` | Build and apply the current checkout |
+| `dotfiles apply` | Build and apply the current checkout, moving any pi package checkout the build re-pinned |
 | `dotfiles sync` | Pull latest, then apply (requires clean repo) |
-| `dotfiles upgrade` | Refresh `flake.lock` inputs, then apply (requires clean repo; restores `flake.lock` on failure) |
+| `dotfiles upgrade` | Bump the pinned derivations with `nix-update`, then refresh `flake.lock` inputs and apply (requires clean repo; restores `flake.lock` and the pins file on failure) |
+
+`dotfiles upgrade` moves every kind of pin this repo has. Packages nixpkgs
+packages move with `flake.lock`. The two git-sourced pi packages move with
+`flake.lock` plus the reconcile step. The derivations pinned in
+`modules/pinned-packages.nix` (solhint, prettier-plugin-solidity and its
+dist, roots) are bumped by `nix-update` with per-name backups, and a failed
+upgrade restores both `flake.lock` and the pins file. No pin the upgrade
+bumps needs a hand-typed version or hash; a bump that cannot build (for
+example a new release needs a newer Go than nixpkgs ships) keeps its previous
+pin and warns instead of failing the whole upgrade. `apply` moves any pi checkout
+that drifted. The reconcile step is baked into the installed CLI at build
+time, so the first `dotfiles apply` or `dotfiles upgrade` after this change
+lands activates the new generation without reconciling anything; the one
+after that reconciles.
+
+codediff-watcher's version is read from nixpkgs' codediff-nvim at eval time,
+so the watcher and the plugin never disagree; the per-system release hashes
+stay hand-edited when the plugin itself moves.
 
 pi and herdr are installed by this flake. Provider packages and model choices
 are machine-local; see the `dotfiles-context` skill.
@@ -65,12 +83,13 @@ dotfiles/
 |   +-- ghostty.nix            # macOS Ghostty configuration (Ghostty external)
 |   +-- nvim.nix               # Neovim (via nixvim)
 |   +-- packages.nix           # Additional system packages
-|   +-- solidity.nix           # Solidity toolchain
+|   +-- pinned-packages.nix   # nixpkgs-missing derivations, bumped by nix-update
 |   +-- lazygit.nix            # lazygit config
 +-- config/ai/                 # AI agent config (pi)
 |   +-- AGENTS.md              # Core rules (turn gate, show-me gate, git rules)
 |   +-- skills/                # Global skills (linked to ~/.agents/skills)
 +-- scripts/dotfiles.sh        # the `dotfiles` CLI
++-- scripts/pi-reconcile.sh    # moves pi package checkouts to their pinned revisions
 +-- scripts/check.sh           # the checks the pre-push hook and CI run
 +-- scripts/setup-system.sh    # Bootstrap script
 +-- .agents/skills/            # Project-scoped skills (this repo only)

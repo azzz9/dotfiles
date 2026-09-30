@@ -27,7 +27,7 @@ dotfiles/
 |   +-- nvim.nix             # Neovim via nixvim
 |   +-- nvim/lua/            # Lua configs loaded by nixvim extraConfigLua
 |   +-- packages.nix         # Additional system packages
-|   +-- solidity.nix         # Solidity toolchain
+|   +-- pinned-packages.nix  # nixpkgs-missing derivations, bumped by nix-update
 |   +-- lazygit.nix          # lazygit config (delta stdin filter)
 +-- config/ai/
 |   +-- AGENTS.md            # Core rules (turn gate, show-me gate, git rules)
@@ -82,7 +82,7 @@ discovers them as project skills once the project is trusted. Neither is linked
 globally, so neither costs tokens in other projects.
 
 pstack is not vendored as a tree. pi consumes the personal fork
-`git:github.com/azzz9/pi-pstack@<sha>` (pinned in `modules/pi.nix`) with
+`git:github.com/azzz9/pi-pstack@<sha>` (pinned by `flake.lock`) with
 `npm:pi-subagents` alongside it. The fork carries the pi-native port plus local
 harness fixes (pi session paths, pi subagent parameters, no Cursor cloud agents,
 review-automation naming, the `todo` tool). It ships the skills, the
@@ -94,17 +94,25 @@ the `todo` and `ask_user_question` tools the playbooks call.
 `npm:@juicesharp/rpiv-btw` adds the `/btw` side-question overlay. The three are
 pinned to one rpiv release train, so they move together.
 
-Moving that pin takes two steps. Edit the sha, run `dotfiles apply`, then run
-`pi update git:github.com/azzz9/pi-pstack`. Activation only reconciles
-`settings.json`. Without the update the checkout stays on the old ref.
+pi's two git packages are `flake = false` inputs in `flake.nix`, so the
+revision lives in `flake.lock` and no module holds a sha. `modules/pi.nix`
+renders each input's `rev` into `settings.json` and into
+`~/.pi/agent/.dotfiles-pi-pins`, and `apply` ends with `pi_reconcile`, which
+moves only the checkouts that no longer match the pin. `dotfiles upgrade`
+re-resolves both pins with the rest of `flake.lock`; `nix flake update
+pi-pstack && dotfiles apply` moves one. Commit the `flake.lock` diff to keep
+the next apply on the same pins. The reconcile is inlined into the `dotfiles`
+CLI at build time, so the first `dotfiles apply` after this change lands
+activates the generation without reconciling anything; the one after that
+reconciles.
 
-i-have-adhd is the second pinned package: `git:github.com/ayghri/i-have-adhd@<sha>`
-in `modules/pi.nix`, declared as an object with `skills = []` because the skill
-is vendored in `config/ai/skills/i-have-adhd` and the package copy would collide.
-The extension supplies `/i-have-adhd`, `--adhd`, and the always-on switch, which
-is the Home Manager-managed flag file `~/.pi/agent/.i-have-adhd-always`. The
-extension reads the rules from its own checkout, not from the vendored skill, so
-bump the pin with the same two steps as pstack when upstream changes the rules.
+i-have-adhd is the second pinned package: an object with `skills = []` in
+`settings.json` because the skill is vendored in `config/ai/skills/i-have-adhd`
+and the package copy would collide. The extension supplies `/i-have-adhd`,
+`--adhd`, and the always-on switch, which is the Home Manager-managed flag file
+`~/.pi/agent/.i-have-adhd-always`. The extension reads the rules from its own
+checkout, not from the vendored skill, so refresh that pin with
+`nix flake update i-have-adhd` when upstream changes the rules.
 
 The fork's bundled scripts (`skills/poteto-mode/scripts`) install their own
 dependencies on first run through `bootstrap.ts`, so no manual `bun install` is
@@ -136,6 +144,20 @@ needed.
 `apply`, `sync`, and `upgrade` are implemented in `scripts/dotfiles.sh`, which
 `modules/dotfiles.nix` installs through `writeShellApplication` (so the build
 shellchecks it). The command table lives in `README.md`.
+
+Pin story: nixpkgs-managed packages move when `dotfiles upgrade` refreshes
+`flake.lock`. The git-sourced pi packages move with `flake.lock` plus the
+reconcile step. The derivations in `modules/pinned-packages.nix` (solhint,
+prettier-plugin-solidity plus its dist, roots) move when the same command's
+first stage runs `nix-update --flake <name>` against the flake's `packages`
+output; that stage backs each bump per name, warns and keeps the previous pin
+when one release cannot build, and a wholesale failure restores `flake.lock`
+and the pins file. codediff-watcher is not in the bump list: its version is
+derived from nixpkgs' `vimPlugins.codediff-nvim` (`watcher.lua` contains a
+`local VERSION` line), so the watcher cannot drift from the plugin; its
+per-system release hashes are the only hand-edited pin in the repo. To add a
+pinned package: give it `pname`, `version`, and a `src` built from
+`${version}`, list it in `pin_names`, and expose it as a flake package.
 
 ## Checks
 
