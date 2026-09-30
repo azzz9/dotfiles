@@ -20,6 +20,17 @@ let
     p.tree-sitter-vim
     p.tree-sitter-yaml
   ]);
+  # The explorer refuses to open on a clean tree, which kills a parked review
+  # view. Keep it open so the watcher can fill in edits as they land.
+  # Delete this and set explorer.open_on_empty once upstream PR 520 lands.
+  codediffNvim = pkgs.vimPlugins.codediff-nvim.overrideAttrs (old: {
+    postPatch = (old.postPatch or "") + ''
+      substituteInPlace lua/codediff/commands/handlers/explorer.lua \
+        --replace-fail 'if #status_result.unstaged == 0 and #status_result.staged == 0 and not has_conflicts then' 'if false then'
+      substituteInPlace lua/codediff/commands/handlers/explorer_staged.lua \
+        --replace-fail 'if #status_result.staged == 0 then' 'if false then'
+    '';
+  });
   luaConfigDir = ./nvim/lua;
   luaFiles = [
     "core.lua"
@@ -140,7 +151,7 @@ assert lib.assertMsg (luaFilesUnlisted == [ ] && luaFilesAbsent == [ ])
         nvim-web-devicons
         blink-cmp
         telescope-nvim
-        codediff-nvim
+        codediffNvim
         fff-nvim
         plenary-nvim
         telescope-ui-select-nvim
