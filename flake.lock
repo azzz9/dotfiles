@@ -332,22 +332,6 @@
         "type": "github"
       }
     },
-    "pi-mcp-adapter": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1790793269,
-        "narHash": "sha256-W9cEPTL6w2B8AAVuwCq6KQAdYmjxpSaAqNDhI4GA8X4=",
-        "owner": "nicobailon",
-        "repo": "pi-mcp-adapter",
-        "rev": "c362b08da917831c89db82b94a259eb6529b58d6",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nicobailon",
-        "repo": "pi-mcp-adapter",
-        "type": "github"
-      }
-    },
     "pi-pstack": {
       "flake": false,
       "locked": {
@@ -406,7 +390,6 @@
         "nixpkgs-master": "nixpkgs-master",
         "nixvim": "nixvim",
         "pi-compact-tools": "pi-compact-tools",
-        "pi-mcp-adapter": "pi-mcp-adapter",
         "pi-pstack": "pi-pstack",
         "pi-subagents": "pi-subagents",
         "pi-web-access": "pi-web-access"

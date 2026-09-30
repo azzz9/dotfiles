@@ -33,7 +33,6 @@
     i-have-adhd = { url = "github:ayghri/i-have-adhd"; flake = false; };
     pi-subagents = { url = "github:nicobailon/pi-subagents"; flake = false; };
     pi-web-access = { url = "github:nicobailon/pi-web-access"; flake = false; };
-    pi-mcp-adapter = { url = "github:nicobailon/pi-mcp-adapter"; flake = false; };
     # `cc-safety-net` stays an npm row (see modules/pi.nix): its repository runs
     # `lefthook install` from a prepare script, which a pi git install cannot
     # satisfy, so it is deliberately not an input here.
@@ -71,7 +70,6 @@
         i-have-adhd = piGitSource "i-have-adhd";
         pi-subagents = piGitSource "pi-subagents";
         pi-web-access = piGitSource "pi-web-access";
-        pi-mcp-adapter = piGitSource "pi-mcp-adapter";
         pi-compact-tools = piGitSource "pi-compact-tools";
       };
       mkHomeConfiguration = system:

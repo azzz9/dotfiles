@@ -96,8 +96,8 @@ pinned to one rpiv release train, so they move together. They stay npm because
 the rpiv workspace ships 15 packages with no `pi` manifest at its root, and pi
 cannot key a monorepo package by a git source.
 
-pi's git packages (`pi-pstack`, `i-have-adhd`, `pi-subagents`, `pi-web-access`,
-`pi-mcp-adapter`) are `flake = false` inputs in `flake.nix`, so the revision
+pi's git packages (`pi-pstack`, `i-have-adhd`, `pi-subagents`, `pi-web-access`)
+are `flake = false` inputs in `flake.nix`, so the revision
 lives in `flake.lock` and no module holds a sha. Each carries its declared
 extension entry at the repo root, which is what lets the repo itself be the git
 source. `cc-safety-net` stays an npm row instead: a pi git install runs the

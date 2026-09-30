@@ -16,7 +16,6 @@ let
   rows = [
     { input = "pi-subagents"; }
     { input = "pi-web-access"; }
-    { input = "pi-mcp-adapter"; }
     { input = "pi-pstack"; }
     # The skill is vendored in config/ai/skills, so load the extension only.
     { input = "i-have-adhd"; filter = { skills = [ ]; }; }
