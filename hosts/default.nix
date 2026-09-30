@@ -8,6 +8,14 @@ let
   );
   skillsWithoutSkillFile = lib.filter (name: !builtins.pathExists (skillsDir + "/${name}/SKILL.md")) localSkillNames;
 
+  # A vendored skill carries its upstream license next to it, because the
+  # deploy symlinks the skill directory, not the repo root.
+  upstreamSkillsWithoutLicense = lib.filter (
+    name:
+    lib.hasInfix "upstream:" (builtins.readFile (skillsDir + "/${name}/SKILL.md"))
+    && !builtins.pathExists (skillsDir + "/${name}/LICENSE")
+  ) localSkillNames;
+
   # Out-of-store links, so edits here take effect without a rebuild.
   skillLinks = builtins.listToAttrs (
     lib.concatMap (base: map (name: {
@@ -18,6 +26,9 @@ let
 in
 assert lib.assertMsg (skillsWithoutSkillFile == [ ])
   "hosts/default.nix: config/ai/skills entries without SKILL.md: ${toString skillsWithoutSkillFile}";
+
+assert lib.assertMsg (upstreamSkillsWithoutLicense == [ ])
+  "hosts/default.nix: third-party skills without a LICENSE: ${toString upstreamSkillsWithoutLicense}";
 {
   home.username = builtins.getEnv "USER";
   home.homeDirectory = builtins.getEnv "HOME";
