@@ -70,9 +70,9 @@ blink.setup({
 		completion = {
 			list = {
 				selection = {
-					-- <CR> only accepts a selected item: with none, accept falls through to
-					-- `fallback` and runs the command line. Keep preselect on for cmdline.
-					preselect = true,
+					-- Preselecting makes <CR> confirm a candidate instead of running `:w`. Keep
+					-- the menu unselected: it still shows while typing, and Tab picks one.
+					preselect = false,
 					auto_insert = false,
 				},
 			},
