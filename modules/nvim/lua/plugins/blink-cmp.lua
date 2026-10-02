@@ -80,7 +80,7 @@ blink.setup({
 				enabled = false,
 			},
 			menu = {
-				auto_show = false,
+				auto_show = true,
 				draw = {
 					columns = { { "kind_icon" }, { "label", "label_description", gap = 1 }, { "source_name" } },
 				},
