@@ -70,7 +70,9 @@ blink.setup({
 		completion = {
 			list = {
 				selection = {
-					preselect = false,
+					-- <CR> only accepts a selected item: with none, accept falls through to
+					-- `fallback` and runs the command line. Keep preselect on for cmdline.
+					preselect = true,
 					auto_insert = false,
 				},
 			},
