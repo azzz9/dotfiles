@@ -71,8 +71,9 @@ fi
 have_lock=1
 
 # Services start with a minimal PATH, so add the directories Home Manager's
-# activate script expects alongside the runtime inputs on PATH.
-export PATH="/run/current-system/sw/bin:/usr/bin:/bin:$PATH"
+# activate script expects. Appended, never prepended: the runtime inputs have
+# to win, because macOS' /usr/bin/sed is BSD sed and its /bin/bash is 3.2.
+export PATH="$PATH:/run/current-system/sw/bin:/usr/bin:/bin"
 
 nix_cmd() {
   nix --extra-experimental-features "nix-command flakes" "$@"

@@ -159,6 +159,11 @@
             pinned=$(grep -Ec '^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+){2} [0-9a-f]{40}$' "$pins" || true)
             test "$entries" -gt 0
             test "$entries" -eq "$pinned"
+            # The CLI appends the system directories to PATH, never prepends
+            # them: on macOS /usr/bin/sed is BSD sed and /bin/bash is 3.2, so a
+            # prefix would shadow the runtime inputs the script needs.
+            grep -q '^export PATH="\$PATH:' \
+              ${self.homeConfigurations.${system}.activationPackage}/home-path/bin/dotfiles
             touch $out
           '';
           pi-reconcile = pkgs.runCommand "pi-reconcile" {
