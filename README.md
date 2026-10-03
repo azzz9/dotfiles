@@ -1,12 +1,32 @@
 # dotfiles
 
-Home Manager + Nix flake setup (not a NixOS user).
+Home Manager + Nix flake setup for x86_64 Linux (Ubuntu, Arch, NixOS) and
+Apple Silicon macOS.
 
 ## Quick start (new machine)
 
-Prerequisites: `curl` and `git`
+Start with Bash and the operating system's base utilities, internet access,
+and administrator access for system package installation on Ubuntu, Arch, or
+macOS. NixOS uses its built-in Nix. Git, Home Manager, npm, Node.js, and other
+development tools do not need to be installed beforehand. On Ubuntu and Arch,
+the script installs curl before downloading Nix; macOS includes curl.
 
-### 1. Clone & bootstrap
+### 1. Download & bootstrap (no Git needed)
+
+Download [setup-system.sh](https://raw.githubusercontent.com/azzz9/dotfiles/main/scripts/setup-system.sh)
+using a browser and run the downloaded file:
+
+```bash
+GIT_NAME="your-name" GIT_EMAIL="your-noreply@users.noreply.github.com" \
+  bash ~/Downloads/setup-system.sh
+```
+
+The script prepares missing tools, clones the repository, and applies the
+Home Manager configuration. Nix provides a missing Git or curl to the setup
+process, and the script reuses any command that already exists. Home Manager
+then installs Git permanently.
+
+If Git is already available, cloning first is also supported:
 
 ```bash
 git clone https://github.com/azzz9/dotfiles.git ~/src/github.com/azzz9/dotfiles
@@ -17,6 +37,29 @@ GIT_NAME="your-name" GIT_EMAIL="your-noreply@users.noreply.github.com" \
 The script installs system dependencies, installs Nix if needed, configures
 Git/Zsh/Docker, and applies the Home Manager flake for the current platform
 and user.
+
+On NixOS, the script uses the existing Nix installation and applies standalone
+Home Manager. It temporarily provides Git and curl if needed, and Home Manager
+installs Git and Zsh permanently. Set the login shell and enable Docker in your
+NixOS system configuration, merging these options with your existing user
+definition:
+
+```nix
+{ pkgs, ... }: {
+  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  programs.zsh.enable = true;
+  users.users."your-user".shell = pkgs.zsh;
+  virtualisation.docker.enable = true;
+  users.users."your-user".extraGroups = [ "docker" ];
+}
+```
+
+Apply those system changes with `sudo nixos-rebuild switch`, then log out and
+back in for the shell and Docker group membership to take effect.
+
+Bootstrap and `dotfiles` enable the required Nix features for their subprocesses
+automatically, preserving existing `NIX_CONFIG` settings. The system option
+above also enables them for Nix commands you run directly.
 
 Optional overrides:
 

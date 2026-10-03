@@ -183,17 +183,26 @@ pinned package: give it `pname`, `version`, and a `src` built from
 ## Checks
 
 `flake.nix` defines `checks.<system>`: deadnix, shellcheck (scripts and the
-pre-push hook), actionlint, and generated-configs (parses the emitted TOML,
-YAML, zsh, and Lua). The pre-push hook and CI both run `scripts/check.sh`, so
+pre-push hook), bootstrap (drives `scripts/setup-system.sh` against fixture
+PATHs), actionlint, generated-configs (parses the emitted TOML, YAML, zsh, and
+Lua), and pi-reconcile. The pre-push hook and CI both run `scripts/check.sh`, so
 the check set has one definition. Registry drift is caught by asserts instead:
 `modules/nvim.nix` compares `luaFiles` with `modules/nvim/lua/`, and
 `hosts/default.nix` requires a `SKILL.md` in every skill directory.
 
 ## Supported platforms
 
-- `x86_64-linux` (WSL2 / Arch)
+- `x86_64-linux` (Ubuntu / Arch / NixOS, including WSL2)
 - `aarch64-darwin` (Apple Silicon Mac)
 
 `flake.nix` owns `supportedSystems`. `scripts/setup-system.sh` and the
 `dotfiles` CLI detect `uname -m` / `uname -s`, and the CLI rejects a host
 outside that list. `HM_HOST` overrides the detection.
+
+Bootstrap runs as a standalone downloaded script or from stdin, without
+preinstalled Git or development tools. System setup installs curl for the Nix
+installer on Ubuntu and Arch, macOS includes curl, and NixOS provides Nix. The
+script fetches a missing Git or curl with Nix, adds it to PATH for this run, and
+reuses any command that already exists before detecting or cloning the
+checkout. Home Manager then installs Git and Zsh permanently. On NixOS the
+system configuration owns the login shell and Docker, not bootstrap.

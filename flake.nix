@@ -133,6 +133,12 @@
             bash -n ${self}/scripts/*.sh ${self}/.githooks/pre-push
             touch $out
           '';
+          bootstrap = pkgs.runCommand "bootstrap" {
+            nativeBuildInputs = [ pkgs.python3 pkgs.bash pkgs.coreutils pkgs.gnugrep ];
+          } ''
+            python3 ${self}/scripts/test-setup.py ${self}/scripts/setup-system.sh
+            touch $out
+          '';
           actionlint = pkgs.runCommand "actionlint" { nativeBuildInputs = [ pkgs.actionlint ]; } ''
             actionlint ${self}/.github/workflows/*.yml
             touch $out

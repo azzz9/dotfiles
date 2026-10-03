@@ -7,6 +7,10 @@ if [[ -z "${GIT_NAME:-}" || -z "${GIT_EMAIL:-}" ]]; then
   exit 1
 fi
 
+# Home Manager and its activation script invoke Nix themselves. CLI flags only
+# affect the outer process; export the features so child processes inherit them.
+export NIX_CONFIG="${NIX_CONFIG:-}"$'\nextra-experimental-features = nix-command flakes'
+
 DOTFILES_REPO_URL="${DOTFILES_REPO_URL:-https://github.com/azzz9/dotfiles.git}"
 DEFAULT_DOTFILES_DIR="${HOME}/src/github.com/azzz9/dotfiles"
 HM_HOST="${HM_HOST:-}"
@@ -14,18 +18,36 @@ HM_HOST="${HM_HOST:-}"
 os_name="$(uname -s)"
 machine="$(uname -m)"
 should_reboot=0
+linux_distribution=""
 
 command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+run_as_root() {
+  if [[ "$EUID" == 0 ]]; then
+    "$@"
+  elif command_exists sudo; then
+    sudo "$@"
+  else
+    echo "System package setup needs administrator access. Run with sudo or from a root shell." >&2
+    exit 1
+  fi
+}
+
 script_dir() {
+  # A downloaded script can also be read from stdin; then there is no checkout.
+  if [[ -z "${BASH_SOURCE[0]:-}" || ! -f "${BASH_SOURCE[0]}" ]]; then
+    return 1
+  fi
   cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd
 }
 
 current_repo_dir() {
   local dir
-  dir="$(script_dir)"
+  if ! dir="$(script_dir)"; then
+    return
+  fi
 
   if command_exists git && git -C "$dir/.." rev-parse --show-toplevel >/dev/null 2>&1; then
     git -C "$dir/.." rev-parse --show-toplevel
@@ -93,11 +115,46 @@ nix_cmd() {
   nix --extra-experimental-features "nix-command flakes" "$@"
 }
 
+ensure_bootstrap_tools() {
+  local tool paths path
+  local missing=()
+
+  for tool in git curl; do
+    if ! command_exists "$tool"; then
+      missing+=("nixpkgs#$tool")
+    fi
+  done
+
+  if [[ "${#missing[@]}" -gt 0 ]]; then
+    echo "Preparing missing bootstrap tools: ${missing[*]}"
+    # Nix can fetch binary packages without Git or the curl executable. Add
+    # their binaries for this run, without installing a separate user profile.
+    paths="$(nix_cmd build --no-link --print-out-paths "${missing[@]}")"
+    while IFS= read -r path; do
+      if [[ -n "$path" ]]; then
+        export PATH="$path/bin:$PATH"
+      fi
+    done <<< "$paths"
+  fi
+
+  for tool in git curl; do
+    if ! command_exists "$tool"; then
+      echo "Bootstrap tool is still unavailable after setup: $tool" >&2
+      exit 1
+    fi
+  done
+}
+
 install_nix() {
   load_nix_profile
 
   if command_exists nix; then
     return
+  fi
+
+  if ! command_exists curl; then
+    echo "curl is required to download Nix, but system package setup did not provide it." >&2
+    exit 1
   fi
 
   echo "Installing Nix..."
@@ -126,7 +183,6 @@ install_macos_packages() {
   fi
 
   brew update
-  brew list git >/dev/null 2>&1 || brew install git
   brew list zsh >/dev/null 2>&1 || brew install zsh
   brew list --cask font-udev-gothic-nf >/dev/null 2>&1 || brew install --cask font-udev-gothic-nf
 
@@ -143,29 +199,37 @@ install_linux_packages() {
 
   # shellcheck disable=SC1091
   . /etc/os-release
+  linux_distribution="${ID:-}"
 
-  case "${ID:-}" in
+  case "$linux_distribution" in
+    nixos)
+      load_nix_profile
+      if ! command_exists nix; then
+        echo "NixOS's system Nix is not available in PATH." >&2
+        exit 1
+      fi
+      ;;
     ubuntu)
-      sudo apt-get update
-      sudo apt-get install -y ca-certificates curl gnupg lsb-release
-      sudo install -m 0755 -d /etc/apt/keyrings
+      run_as_root apt-get update
+      run_as_root apt-get install -y ca-certificates curl gnupg lsb-release
+      run_as_root install -m 0755 -d /etc/apt/keyrings
       curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
-        | sudo gpg --dearmor --yes -o /etc/apt/keyrings/docker.gpg
-      sudo chmod a+r /etc/apt/keyrings/docker.gpg
+        | run_as_root gpg --dearmor --yes -o /etc/apt/keyrings/docker.gpg
+      run_as_root chmod a+r /etc/apt/keyrings/docker.gpg
       echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu ${VERSION_CODENAME} stable" \
-        | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
-      sudo apt-get update
-      sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-      sudo systemctl enable --now docker
-      sudo usermod -aG docker "$USER"
-      sudo apt-get install -y git zsh
+        | run_as_root tee /etc/apt/sources.list.d/docker.list >/dev/null
+      run_as_root apt-get update
+      run_as_root apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      run_as_root systemctl enable --now docker
+      run_as_root usermod -aG docker "$USER"
+      run_as_root apt-get install -y zsh
       should_reboot=1
       ;;
     arch)
-      sudo pacman -Syu --noconfirm
-      sudo pacman -S --noconfirm curl docker docker-compose-plugin git zsh
-      sudo systemctl enable --now docker
-      sudo usermod -aG docker "$USER"
+      run_as_root pacman -Syu --noconfirm
+      run_as_root pacman -S --needed --noconfirm curl docker docker-compose-plugin zsh
+      run_as_root systemctl enable --now docker
+      run_as_root usermod -aG docker "$USER"
       should_reboot=1
       ;;
     *)
@@ -178,20 +242,25 @@ install_linux_packages() {
 configure_zsh() {
   local zsh_path
 
+  # NixOS manages login shells declaratively through users.users.<name>.shell.
+  if [[ "$linux_distribution" == "nixos" ]]; then
+    return
+  fi
+
   if ! zsh_path="$(command -v zsh)"; then
     return
   fi
 
   if [[ "$os_name" == "Darwin" ]]; then
     if ! grep -qxF "$zsh_path" /etc/shells; then
-      echo "$zsh_path" | sudo tee -a /etc/shells >/dev/null
+      echo "$zsh_path" | run_as_root tee -a /etc/shells >/dev/null
     fi
 
     if [[ "$(basename "${SHELL:-}")" != "zsh" ]]; then
       chsh -s "$zsh_path" "$USER"
     fi
   else
-    sudo chsh -s "$zsh_path" "$USER"
+    run_as_root chsh -s "$zsh_path" "$USER"
   fi
 }
 
@@ -220,14 +289,13 @@ apply_home_manager() {
   local repo_dir="$1"
   local host="$2"
 
-  nix_cmd run nixpkgs#home-manager -- switch --flake "$repo_dir#$host" --impure -b backup
+  DOTFILES_DIR="$repo_dir" nix_cmd run nixpkgs#home-manager -- switch --flake "$repo_dir#$host" --impure -b backup
 }
 
 main() {
   local repo_dir
   local host
 
-  repo_dir="$(dotfiles_dir)"
   host="$(detect_home_configuration)"
 
   case "$os_name" in
@@ -243,17 +311,23 @@ main() {
       ;;
   esac
 
+  install_nix
+  ensure_bootstrap_tools
+  # Resolve only after Git is available, so an existing checkout is detected.
+  repo_dir="$(dotfiles_dir)"
   configure_zsh
   configure_git
   ensure_dotfiles_repo "$repo_dir"
-  install_nix
   apply_home_manager "$repo_dir" "$host"
 
   if [[ "$should_reboot" == 1 && "${REBOOT:-0}" == 1 ]]; then
     echo "Setup complete. Rebooting now..."
-    sudo reboot
+    run_as_root reboot
   elif [[ "$os_name" == "Darwin" ]]; then
     echo "Setup complete. Open Docker.app once to finish Docker Desktop setup."
+  elif [[ "$linux_distribution" == "nixos" ]]; then
+    echo "Setup complete. Git and Zsh are installed through Home Manager."
+    echo "Configure the login shell and Docker in your NixOS configuration (see README.md)."
   else
     echo "Setup complete. Reboot before using Docker without sudo."
   fi
