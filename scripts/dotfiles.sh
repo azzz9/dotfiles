@@ -8,6 +8,9 @@
 # pinned npm version, too.
 set -euo pipefail
 
+# Activation invokes Nix directly, so it needs the same features as the build.
+export NIX_CONFIG="${NIX_CONFIG:-}"$'\nextra-experimental-features = nix-command flakes'
+
 usage() {
   cat <<'EOF'
 usage: dotfiles <command> [host]

@@ -138,6 +138,9 @@ in
   # Reinstall pi's integration on every activation: the command is idempotent
   # and refreshes the generated hook files when Herdr changes its assets.
   home.activation.herdrIntegrations = lib.hm.dag.entryAfter [ "writeBoundary" "installPackages" ] ''
-    ${pkgs.herdr}/bin/herdr integration install pi >/dev/null
+    # Installing pi's binary does not initialize its user directories. Herdr
+    # requires this directory even before pi has been launched for the first time.
+    run mkdir -p "$HOME/.pi/agent/extensions"
+    run ${pkgs.herdr}/bin/herdr integration install pi >/dev/null
   '';
 }
