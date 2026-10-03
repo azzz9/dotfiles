@@ -40,8 +40,21 @@ class BootstrapTests(unittest.TestCase):
             elif conflicting_target:
                 repo.mkdir(parents=True)
                 (repo / "keep.txt").write_text("keep")
-            source = SETUP.read_text().replace("/etc/os-release", str(os_release))
-            source = source.replace("/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh", str(base / "no-profile"))
+            source = SETUP.read_text()
+            # Host paths a test run must not follow, because the tools they point
+            # at are not the fixtures. Homebrew especially, since a runner that
+            # has it installed reaches the real brew and its read-only Cellar.
+            host_paths = {
+                "/etc/os-release": str(os_release),
+                "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh": str(base / "no-profile"),
+                "/opt/homebrew/bin/brew": str(base / "no-brew"),
+                "/usr/local/bin/brew": str(base / "no-brew"),
+            }
+            for host_path, replacement in host_paths.items():
+                source = source.replace(host_path, replacement)
+            missed = [path for path in host_paths if path in source]
+            if missed:
+                raise AssertionError(f"fixture rewrite missed {missed}")
             source = source.replace('"$EUID"', '"$TEST_EUID"')
             source = source.replace('/bin/bash -c', f'{BASH} -c')
             script.write_text(source)
