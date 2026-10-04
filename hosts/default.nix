@@ -50,7 +50,9 @@ assert lib.assertMsg (upstreamSkillsWithoutLicense == [ ])
   };
   # The updater can write a real file here before the first activation, and
   # Home Manager's clobber guard would abort the switch.
-  xdg.configFile."user-dirs.dirs".force = true;
+  xdg.configFile."user-dirs.dirs" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+    force = true;
+  };
 
   programs.home-manager.enable = true;
   # Weekly GC, keeping 30 days of generations.
