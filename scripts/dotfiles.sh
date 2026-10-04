@@ -19,6 +19,9 @@ commands:
   apply      apply the current checkout, reconciling pi packages to their pinned revision or version
   sync       pull latest changes, then apply
   upgrade    update flake.lock inputs, then apply
+
+host: a platform attribute (x86_64-linux) or a machine attribute from hosts/machines.
+      Without it, the attribute recorded by the last apply is used.
 EOF
 }
 
@@ -39,17 +42,30 @@ if [ "$arch" = "arm64" ]; then
   arch="aarch64"
 fi
 os="$(uname -s | tr '[:upper:]' '[:lower:]')"
-host="${1:-$arch-$os}"
 
-# flake.nix owns the host list; fail here rather than inside nix eval.
-case " $supported_hosts " in
-  *" $host "*) ;;
-  *)
-    echo "dotfiles: unsupported host: $host" >&2
-    echo "dotfiles: supported hosts: $supported_hosts" >&2
-    exit 2
-    ;;
-esac
+# hosts/default.nix writes the attribute the last apply used. A host given on
+# the command line skips the check below, so a CLI built before a machine
+# attribute existed still accepts it; nix rejects a bad name on its own.
+host_marker="${HOME:-}/.config/dotfiles/host"
+if [ -n "${1:-}" ]; then
+  host="$1"
+else
+  host=""
+  if [ -f "$host_marker" ]; then
+    host="$(tr -d '[:space:]' < "$host_marker")"
+  fi
+  host="${host:-$arch-$os}"
+
+  # flake.nix owns the host list; fail here rather than inside nix eval.
+  case " $supported_hosts " in
+    *" $host "*) ;;
+    *)
+      echo "dotfiles: unsupported host: $host" >&2
+      echo "dotfiles: supported hosts: $supported_hosts" >&2
+      exit 2
+      ;;
+  esac
+fi
 
 tmp_dir="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
 lock_dir="$tmp_dir/dotfiles.lockdir"

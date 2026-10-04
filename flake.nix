@@ -42,11 +42,32 @@
   outputs =
     { self, nixpkgs, nixpkgs-master, home-manager, nixvim, hunk, llm-agents, ... }:
     let
+      lib = nixpkgs.lib;
       supportedSystems = [
         "x86_64-linux"
         "aarch64-darwin"
       ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
+      # The ledger of machine-specific Home Manager configurations, one entry
+      # per hosts/machines/<name>.nix file. The value is the system that
+      # attribute builds for, so `homeConfigurations` and the checks both
+      # derive from this one list.
+      machines = {
+        desktop = "x86_64-linux";
+        headless = "x86_64-linux";
+        wsl = "x86_64-linux";
+        mac = "aarch64-darwin";
+      };
+      # `./hosts/machines/${name}.nix` does not parse as path interpolation.
+      machineFile = name: ./hosts/machines + "/${name}.nix";
+      machineNames = lib.attrNames machines;
+      absentMachineFiles = lib.filter (name: !builtins.pathExists (machineFile name)) machineNames;
+      # A machine file that no ledger entry names would build nothing, so drift
+      # in either direction is an eval failure rather than a dead file.
+      unregisteredMachineFiles = lib.filter (name: !(machines ? ${name})) (
+        builtins.map (name: lib.removeSuffix ".nix" name)
+          (lib.filter (name: lib.hasSuffix ".nix" name) (lib.attrNames (builtins.readDir ./hosts/machines)))
+      );
       # Resolved once. hosts/default.nix and modules/dotfiles.nix both need the
       # checkout path, and HOME matches the home.homeDirectory those modules set.
       repoDir =
@@ -72,7 +93,7 @@
         pi-web-access = piGitSource "pi-web-access";
         pi-compact-tools = piGitSource "pi-compact-tools";
       };
-      mkHomeConfiguration = system:
+      mkHomeConfiguration = name: system:
         home-manager.lib.homeManagerConfiguration {
           pkgs = import nixpkgs {
             inherit system;
@@ -90,14 +111,15 @@
             ];
           };
           extraSpecialArgs = {
-            inherit repoDir supportedSystems piGitSources;
+            inherit repoDir supportedHosts piGitSources;
+            flakeHost = name;
             hunk = hunk;
             llmAgents = llm-agents;
           };
           modules = [
             ./hosts/default.nix
             nixvim.homeModules.nixvim
-          ];
+          ] ++ lib.optionals (machines ? ${name}) [ (machineFile name) ];
         };
       # The pinned derivations in modules/pinned-packages.nix, exposed as
       # flake packages so `nix-update --flake <name>` (the bump `dotfiles
@@ -122,6 +144,39 @@
       mkChecks = system:
         let
           pkgs = import nixpkgs { inherit system; };
+          # Every attribute this system builds: its platform attribute plus the
+          # machine entries whose ledger value is this system.
+          systemHosts =
+            [ system ]
+            ++ lib.attrNames (lib.filterAttrs (_: hostSystem: hostSystem == system) machines);
+          parseGeneratedConfigs = host:
+            let
+              activationPackage = self.homeConfigurations.${host}.activationPackage;
+            in
+            ''
+              files=${activationPackage}/home-files
+              for f in .config/herdr/config.toml .config/hunk/config.toml; do
+                python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$files/$f"
+              done
+              for f in .config/lazygit/config.yml .config/gh/config.yml; do
+                yq -e '.' "$files/$f" > /dev/null
+              done
+              zsh -n "$files/.zshrc"
+              lua -e "assert(loadfile('$files/.config/nvim/init.lua'))"
+              # The reconcile step's manifest: one "<host/owner/repo> <40-hex
+              # rev>" line per git package, and a short sha is the failure this
+              # manifest exists to prevent.
+              pins="$files/.pi/agent/.dotfiles-pi-pins"
+              entries=$(grep -c . "$pins" || true)
+              pinned=$(grep -Ec '^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+){2} [0-9a-f]{40}$' "$pins" || true)
+              test "$entries" -gt 0
+              test "$entries" -eq "$pinned"
+              # The CLI appends the system directories to PATH, never prepends
+              # them: on macOS /usr/bin/sed is BSD sed and /bin/bash is 3.2, so a
+              # prefix would shadow the runtime inputs the script needs.
+              grep -q '^export PATH="\$PATH:' \
+                ${activationPackage}/home-path/bin/dotfiles
+            '';
         in
         {
           deadnix = pkgs.runCommand "deadnix" { nativeBuildInputs = [ pkgs.deadnix ]; } ''
@@ -144,34 +199,10 @@
             touch $out
           '';
           # The generated files are only text until a tool parses them, so parse
-          # every config this flake emits.
+          # every config this flake emits, for every attribute the system builds.
           generated-configs = pkgs.runCommand "generated-configs" {
             nativeBuildInputs = [ pkgs.python3 pkgs.yq-go pkgs.zsh pkgs.lua5_1 ];
-          } ''
-            files=${self.homeConfigurations.${system}.activationPackage}/home-files
-            for f in .config/herdr/config.toml .config/hunk/config.toml; do
-              python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$files/$f"
-            done
-            for f in .config/lazygit/config.yml .config/gh/config.yml; do
-              yq -e '.' "$files/$f" > /dev/null
-            done
-            zsh -n "$files/.zshrc"
-            lua -e "assert(loadfile('$files/.config/nvim/init.lua'))"
-            # The reconcile step's manifest: one "<host/owner/repo> <40-hex
-            # rev>" line per git package, and a short sha is the failure this
-            # manifest exists to prevent.
-            pins="$files/.pi/agent/.dotfiles-pi-pins"
-            entries=$(grep -c . "$pins" || true)
-            pinned=$(grep -Ec '^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+){2} [0-9a-f]{40}$' "$pins" || true)
-            test "$entries" -gt 0
-            test "$entries" -eq "$pinned"
-            # The CLI appends the system directories to PATH, never prepends
-            # them: on macOS /usr/bin/sed is BSD sed and /bin/bash is 3.2, so a
-            # prefix would shadow the runtime inputs the script needs.
-            grep -q '^export PATH="\$PATH:' \
-              ${self.homeConfigurations.${system}.activationPackage}/home-path/bin/dotfiles
-            touch $out
-          '';
+          } (lib.concatMapStrings parseGeneratedConfigs systemHosts + "touch $out");
           pi-reconcile = pkgs.runCommand "pi-reconcile" {
             nativeBuildInputs = [ pkgs.bash pkgs.coreutils pkgs.jq pkgs.git ];
           } ''
@@ -256,9 +287,23 @@
             touch $out
           '';
         };
+      # The platform attributes keep their platform name. Each machine entry
+      # adds a third attribute named after the machine, built for its system.
+      homeConfigurations =
+        (forAllSystems (system: mkHomeConfiguration system system))
+        // (lib.mapAttrs (name: system: mkHomeConfiguration name system) machines);
+      supportedHosts = lib.attrNames homeConfigurations;
     in
+    assert lib.assertMsg (absentMachineFiles == [ ])
+      "flake.nix: hosts/machines files missing for ledger entries: ${toString (map (name: "hosts/machines/${name}.nix") absentMachineFiles)}";
+
+    assert lib.assertMsg (unregisteredMachineFiles == [ ])
+      "flake.nix: hosts/machines files with no machines ledger entry: ${toString unregisteredMachineFiles}";
+
+    assert lib.assertMsg (lib.all (name: !(builtins.elem name supportedSystems)) machineNames)
+      "flake.nix: machines ledger entry shadows a platform attribute";
     {
-      homeConfigurations = forAllSystems mkHomeConfiguration;
+      inherit homeConfigurations;
       packages = forAllSystems mkPackages;
       checks = forAllSystems mkChecks;
     };

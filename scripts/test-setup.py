@@ -21,7 +21,7 @@ class BootstrapTests(unittest.TestCase):
                   clone_fail=False, conflicting_target=False,
                   dotfiles_dir=None, existing_target=False, nixos_machine=None,
                   machine_entry=True, machine_hardware=True, nixos_config=True,
-                  scratch_dir=None, test_arch=None):
+                  scratch_dir=None, hm_host=None, test_arch=None):
         scratch_ctx = (tempfile.TemporaryDirectory(prefix="bootstrap-test-")
                        if scratch_dir is None else contextlib.nullcontext(scratch_dir))
         with scratch_ctx as scratch:
@@ -192,6 +192,8 @@ fi
                 env.pop(name, None)
             if dotfiles_dir is not None:
                 env["DOTFILES_DIR"] = str(repo) if dotfiles_dir else ""
+            if hm_host is not None:
+                env["HM_HOST"] = hm_host
             result = subprocess.run(
                 [BASH, "-s"] if stdin else [BASH, str(script)],
                 input=source if stdin else None, env=env, text=True,
@@ -355,6 +357,18 @@ fi
         self.assert_success(result, calls, repo)
         self.assertIn(f"-- switch --flake {repo}#x86_64-linux", calls)
         self.assertNotIn("nixos/machines", calls)
+
+    def test_nixos_machine_names_the_home_manager_attribute(self):
+        result, calls, repo = self.run_setup(nixos_machine="desktop", existing_target=True)
+        self.assert_success(result, calls, repo)
+        self.assertIn(f"-- switch --flake {repo}#desktop", calls)
+
+    def test_explicit_home_manager_host_wins_over_the_machine_name(self):
+        result, calls, repo = self.run_setup(
+            nixos_machine="desktop", existing_target=True, hm_host="x86_64-linux",
+        )
+        self.assert_success(result, calls, repo)
+        self.assertIn(f"-- switch --flake {repo}#x86_64-linux", calls)
 
 
 if __name__ == "__main__":

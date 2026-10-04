@@ -59,7 +59,7 @@ target. Used for AGENTS.md, rules, and skills deployment.
 }
 ```
 
-`flake.nix` also owns `supportedSystems` and `repoDir`, which reach the modules
+`flake.nix` also owns `supportedHosts` and `repoDir`, which reach the modules
 through `extraSpecialArgs`. Do not re-derive either in a module.
 
 ### Module imports

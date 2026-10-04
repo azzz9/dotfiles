@@ -334,6 +334,12 @@ main() {
       ;;
   esac
 
+  # On NixOS one machine name selects both layers, so the system configuration
+  # and the Home Manager attribute cannot drift. HM_HOST still wins.
+  if [[ "$linux_distribution" == "nixos" && -z "$HM_HOST" && -n "$NIXOS_MACHINE" ]]; then
+    host="$NIXOS_MACHINE"
+  fi
+
   install_nix
   ensure_bootstrap_tools
   repo_dir="$(dotfiles_dir)"

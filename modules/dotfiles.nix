@@ -1,7 +1,4 @@
-{ lib, pkgs, llmAgents, repoDir, supportedSystems, ... }:
-let
-  supportedHosts = lib.concatStringsSep " " supportedSystems;
-in
+{ lib, pkgs, llmAgents, repoDir, supportedHosts, ... }:
 {
   home.packages = [
     (pkgs.writeShellApplication {
@@ -14,7 +11,7 @@ in
         # Values come from flake.nix; scripts/dotfiles.sh reads them.
         # Exported because flake.nix's repoDir reads it back via builtins.getEnv during evaluation.
         export DOTFILES_DIR=${lib.escapeShellArg repoDir}
-        DOTFILES_SUPPORTED_HOSTS=${lib.escapeShellArg supportedHosts}
+        DOTFILES_SUPPORTED_HOSTS=${lib.escapeShellArg (lib.concatStringsSep " " supportedHosts)}
       ''
       # scripts/pi-reconcile.sh is a leaf the CLI calls, not a second command.
       # Join with a newline so a body without a trailing newline cannot merge

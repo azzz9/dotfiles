@@ -500,7 +500,7 @@ _dotfiles() {
     'sync:pull latest changes, then apply'
     'upgrade:update flake.lock inputs, then apply'
   )
-  # Host list injected from flake.nix supportedSystems.
+  # Host list injected from flake.nix supportedHosts.
   local -a hosts=("${_dotfiles_hosts[@]}")
   _arguments -C \
     '(-h --help)'{-h,--help}'[show help]' \

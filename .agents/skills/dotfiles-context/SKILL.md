@@ -13,7 +13,8 @@ before exploring files so you start with full context.
 ```
 dotfiles/
 +-- flake.nix                # inputs, outputs, homeConfigurations, checks
-+-- hosts/default.nix        # HM entry point, skill symlinks, machine basics
++-- hosts/default.nix        # HM entry point, skill symlinks, applied-host marker
++-- hosts/machines/          # Per-machine HM settings (one file per machine)
 +-- modules/
 |   +-- dotfiles.nix         # wraps scripts/dotfiles.sh as the `dotfiles` CLI
 |   +-- pi.nix               # pi packages and the settings.json merge
@@ -40,6 +41,12 @@ dotfiles/
 +-- .githooks/pre-push       # Pre-push checks
 +-- .github/workflows/ci.yml # CI
 ```
+
+`hosts/machines/<name>.nix` holds per-machine Home Manager settings. The
+`machines` attr in `flake.nix` names each machine and its system, and a
+registry/file mismatch fails evaluation. The installed `dotfiles` CLI records
+the last applied host in `~/.config/dotfiles/host` and reads it when called
+with no host argument.
 
 ## Neovim config structure
 
@@ -195,9 +202,12 @@ the check set has one definition. Registry drift is caught by asserts instead:
 - `x86_64-linux` (Ubuntu / Arch / NixOS, including WSL2)
 - `aarch64-darwin` (Apple Silicon Mac)
 
-`flake.nix` owns `supportedSystems`. `scripts/setup-system.sh` and the
-`dotfiles` CLI detect `uname -m` / `uname -s`, and the CLI rejects a host
-outside that list. `HM_HOST` overrides the detection.
+`flake.nix` owns `supportedHosts`, the `homeConfigurations` attribute names
+(the two platforms plus the `machines` ledger). `scripts/setup-system.sh` and
+the `dotfiles` CLI detect `uname -m` / `uname -s`, and the CLI rejects a
+resolved host outside that list; an explicit host argument passes through to
+nix. `HM_HOST` overrides the detection, and on NixOS `NIXOS_MACHINE` supplies
+the host.
 
 Bootstrap runs as a standalone downloaded script or from stdin, without
 preinstalled Git or development tools. System setup installs curl for the Nix

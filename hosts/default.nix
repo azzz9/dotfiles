@@ -1,4 +1,4 @@
-{ config, lib, pkgs, repoDir, ... }:
+{ config, lib, pkgs, repoDir, flakeHost, ... }:
 let
   # Every directory under config/ai/skills is a global skill, so the list is
   # derived. Skills that only make sense in this repo live in .agents/skills.
@@ -80,6 +80,8 @@ assert lib.assertMsg (upstreamSkillsWithoutLicense == [ ])
   # keep edits in this repo immediately visible at the target path.
   home.file = skillLinks // {
     ".pi/agent/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${repoDir}/config/ai/AGENTS.md";
+    # The `dotfiles` CLI reads this to resolve the attribute it last applied.
+    ".config/dotfiles/host".text = flakeHost;
   };
 
   imports = [

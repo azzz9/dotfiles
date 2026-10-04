@@ -1,4 +1,4 @@
-{ config, lib, pkgs, supportedSystems, ... }:
+{ config, lib, pkgs, supportedHosts, ... }:
 let
   zshCacheDir = "${config.xdg.cacheHome}/zsh";
   fzfCache = "${zshCacheDir}/fzf-integration.zsh";
@@ -14,8 +14,8 @@ let
     # Paths resolved at build time from Nix; referenced by init scripts.
     _dotfiles_fzf_cache="${fzfCache}"
     _dotfiles_fsh_plugin="${fastSyntaxHighlighting}/share/zsh/plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh"
-    # flake.nix supportedSystems, used by the `dotfiles` completion.
-    _dotfiles_hosts=(${lib.concatStringsSep " " supportedSystems})
+    # flake.nix homeConfigurations attributes, used by the `dotfiles` completion.
+    _dotfiles_hosts=(${lib.concatStringsSep " " supportedHosts})
   '';
 in
 {

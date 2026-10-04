@@ -77,7 +77,7 @@ Optional overrides:
 |----------|---------|---------|
 | `DOTFILES_DIR` | `~/src/github.com/azzz9/dotfiles` | Checkout to clone or reuse and apply |
 | `DOTFILES_REPO_URL` | `https://github.com/azzz9/dotfiles.git` | Repo URL |
-| `HM_HOST` | auto-detect | Home Manager attribute (e.g. `x86_64-linux`) |
+| `HM_HOST` | auto-detect | Home Manager attribute (platform or machine, e.g. `wsl`) |
 | `NIXOS_MACHINE` | unset | Machine under `nixos/machines/` to wire as `/etc/nixos/configuration.nix` (NixOS only) |
 | `REBOOT` | `0` | Reboot after setup |
 
@@ -131,12 +131,36 @@ pi and herdr are installed by this flake. Provider packages, model choices,
 and the pi-hermes-memory memory store are machine-local; see the
 `dotfiles-context` skill.
 
+### Machine-specific settings
+
+`dotfiles` takes an optional host argument. A host is a platform attribute
+(`x86_64-linux`, `aarch64-darwin`) or a machine attribute from `machines` in
+`flake.nix` (`desktop`, `headless`, `wsl`, `mac`). With no argument, the CLI
+applies the host recorded by the last apply, then falls back to the platform
+on the first run.
+
+Apply a machine once to make it sticky:
+
+```bash
+dotfiles apply wsl
+```
+
+Its settings live in `hosts/machines/<name>.nix`, a plain Home Manager module.
+The marker is `~/.config/dotfiles/host`, managed by Home Manager. To add a
+machine, add its name and system to `machines` in `flake.nix` and create that
+file. The flake fails when the registry and the directory disagree.
+
+On NixOS, `scripts/setup-system.sh` uses `NIXOS_MACHINE` as the host
+argument unless `HM_HOST` is set, so one machine carries one name in both
+layers.
+
 ## Repository layout
 
 ```
 dotfiles/
 +-- flake.nix                  # homeConfigurations + checks for both systems
-+-- hosts/default.nix          # HM entry point, skill symlinks
++-- hosts/default.nix          # HM entry point, skill symlinks, applied-host marker
++-- hosts/machines/            # Per-machine Home Manager settings (one file per machine)
 +-- nixos/
 |   +-- modules/
 |   |   +-- common.nix           # shared by both machines
@@ -228,10 +252,10 @@ once in `flake.nix` under `checks.<system>`.
 
 ## CI
 
-CI evaluates both Home Manager configurations with `scripts/check.sh
---no-build`, then builds the checks and the activation package for
-`x86_64-linux` and `aarch64-darwin`. Because the checks live in `flake.nix`, a
-local run, the pre-push hook, and CI cannot disagree.
+CI evaluates every Home Manager attribute with `scripts/check.sh --no-build`,
+then builds the checks and every activation package for `x86_64-linux` and
+`aarch64-darwin`. Because the checks live in `flake.nix`, a local run, the
+pre-push hook, and CI cannot disagree.
 
 ### Binary cache (optional)
 
