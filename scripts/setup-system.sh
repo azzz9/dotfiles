@@ -35,39 +35,8 @@ run_as_root() {
   fi
 }
 
-script_dir() {
-  # A downloaded script can also be read from stdin; then there is no checkout.
-  if [[ -z "${BASH_SOURCE[0]:-}" || ! -f "${BASH_SOURCE[0]}" ]]; then
-    return 1
-  fi
-  cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd
-}
-
-current_repo_dir() {
-  local dir
-  if ! dir="$(script_dir)"; then
-    return
-  fi
-
-  if command_exists git && git -C "$dir/.." rev-parse --show-toplevel >/dev/null 2>&1; then
-    git -C "$dir/.." rev-parse --show-toplevel
-  fi
-}
-
 dotfiles_dir() {
-  local repo
-
-  if [[ -n "${DOTFILES_DIR:-}" ]]; then
-    printf '%s\n' "$DOTFILES_DIR"
-    return
-  fi
-
-  if repo="$(current_repo_dir)" && [[ -n "${repo:-}" ]]; then
-    printf '%s\n' "$repo"
-    return
-  fi
-
-  printf '%s\n' "$DEFAULT_DOTFILES_DIR"
+  printf '%s\n' "${DOTFILES_DIR:-$DEFAULT_DOTFILES_DIR}"
 }
 
 detect_home_configuration() {
@@ -313,7 +282,6 @@ main() {
 
   install_nix
   ensure_bootstrap_tools
-  # Resolve only after Git is available, so an existing checkout is detected.
   repo_dir="$(dotfiles_dir)"
   configure_zsh
   configure_git

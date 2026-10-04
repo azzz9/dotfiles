@@ -17,7 +17,8 @@ BASH = shutil.which("bash")
 class BootstrapTests(unittest.TestCase):
     def run_setup(self, distro="nixos", tools=("nix",), checkout=False,
                   stdin=False, root=False, sudo=True, build_fail=False,
-                  clone_fail=False, conflicting_target=False):
+                  clone_fail=False, conflicting_target=False,
+                  dotfiles_dir=None, existing_target=False):
         with tempfile.TemporaryDirectory(prefix="bootstrap-test-") as scratch:
             base = Path(scratch)
             home = base / "home"
@@ -29,16 +30,21 @@ class BootstrapTests(unittest.TestCase):
             log = base / "calls"
             os_release = base / "os-release"
             os_release.write_text(f"ID={distro}\nVERSION_CODENAME=test\n")
-            repo = home / "src/github.com/azzz9/dotfiles"
+            repo = base / dotfiles_dir if dotfiles_dir else home / "src/github.com/azzz9/dotfiles"
             (base / "downloads").mkdir()
             script = base / "downloads/renamed-bootstrap.sh"
+            execution_checkout = base / "existing-checkout"
             if checkout:
-                repo = base / "existing-checkout"
+                (execution_checkout / ".git").mkdir(parents=True)
+                (execution_checkout / ".git/HEAD").write_text("ref: refs/heads/main\n")
+                (execution_checkout / "keep.txt").write_text("local changes")
+                (execution_checkout / "scripts").mkdir()
+                script = execution_checkout / "scripts/renamed-bootstrap.sh"
+            if existing_target:
                 (repo / ".git").mkdir(parents=True)
-                (repo / "scripts").mkdir()
-                script = repo / "scripts/renamed-bootstrap.sh"
-            elif conflicting_target:
-                repo.mkdir(parents=True)
+                (repo / ".git/HEAD").write_text("ref: refs/heads/main\n")
+            if existing_target or conflicting_target:
+                repo.mkdir(parents=True, exist_ok=True)
                 (repo / "keep.txt").write_text("keep")
             source = SETUP.read_text()
             # Host paths a test run must not follow, because the tools they point
@@ -58,6 +64,11 @@ class BootstrapTests(unittest.TestCase):
             source = source.replace('"$EUID"', '"$TEST_EUID"')
             source = source.replace('/bin/bash -c', f'{BASH} -c')
             script.write_text(source)
+            if checkout:
+                checkout_before = {
+                    str(path.relative_to(execution_checkout)): path.read_bytes() if path.is_file() else None
+                    for path in execution_checkout.rglob("*")
+                }
 
             # Only OS base utilities are exposed. Git, curl, Nix, Homebrew,
             # and package managers are absent until a fixture provides them.
@@ -148,6 +159,7 @@ fi
             env.update(
                 PATH=str(commands), HOME=str(home), USER="test", SHELL="/bin/bash",
                 NIX_CONFIG="max-jobs = 2", GIT_NAME="test", GIT_EMAIL="test@example.invalid",
+                DOTFILES_REPO_URL="https://github.com/azzz9/dotfiles.git",
                 TEST_OS="Darwin" if distro == "macos" else "Linux",
                 TEST_ARCH="arm64" if distro == "macos" else "x86_64",
                 TEST_BIN=str(commands), TEST_FIXTURES=str(fixtures), TEST_LOG=str(log),
@@ -156,19 +168,33 @@ fi
             )
             for name in ("DOTFILES_DIR", "HM_HOST", "REBOOT", "BASH_ENV", "ENV"):
                 env.pop(name, None)
+            if dotfiles_dir is not None:
+                env["DOTFILES_DIR"] = str(repo) if dotfiles_dir else ""
             result = subprocess.run(
                 [BASH, "-s"] if stdin else [BASH, str(script)],
                 input=source if stdin else None, env=env, text=True,
                 capture_output=True, timeout=20,
             )
             calls = log.read_text() if log.exists() else ""
-            if conflicting_target:
+            if checkout:
+                self.assertTrue(execution_checkout.is_dir())
+                checkout_after = {
+                    str(path.relative_to(execution_checkout)): path.read_bytes() if path.is_file() else None
+                    for path in execution_checkout.rglob("*")
+                }
+                self.assertEqual(checkout_after, checkout_before)
+            if existing_target or conflicting_target:
                 self.assertEqual((repo / "keep.txt").read_text(), "keep")
+            if existing_target:
+                self.assertEqual((repo / ".git/HEAD").read_text(), "ref: refs/heads/main\n")
+            if result.returncode == 0:
+                self.assertTrue((repo / ".git").is_dir())
             return result, calls, str(repo)
 
     def assert_success(self, result, calls, repo):
         self.assertEqual(result.returncode, 0, result.stderr + "\n" + calls)
         self.assertIn(f"apply {repo}\n", calls)
+        self.assertIn(f"-- switch --flake {repo}#", calls)
         self.assertIn("max-jobs = 2\nextra-experimental-features = nix-command flakes", calls)
 
     def test_nixos_missing_tools(self):
@@ -180,10 +206,39 @@ fi
                 for name in ("git", "curl"):
                     self.assertEqual(any(f"nixpkgs#{name}" in line for line in builds), name not in tools)
 
-    def test_existing_checkout_detected_after_git_bootstrap(self):
-        result, calls, repo = self.run_setup(checkout=True)
+    def test_outside_ghq_checkout_uses_default_target_without_moving_source(self):
+        for tools in (("nix",), ("nix", "git", "curl")):
+            with self.subTest(tools=tools):
+                result, calls, repo = self.run_setup(checkout=True, tools=tools)
+                self.assert_success(result, calls, repo)
+                self.assertIn(f"git clone https://github.com/azzz9/dotfiles.git {repo}\n", calls)
+
+    def test_explicit_override_outside_ghq(self):
+        for existing_target in (False, True):
+            with self.subTest(existing_target=existing_target):
+                result, calls, repo = self.run_setup(
+                    checkout=True, dotfiles_dir="custom dotfiles", existing_target=existing_target,
+                )
+                self.assert_success(result, calls, repo)
+                if existing_target:
+                    self.assertNotIn("git clone", calls)
+                else:
+                    self.assertIn(f"git clone https://github.com/azzz9/dotfiles.git {repo}\n", calls)
+
+    def test_explicit_override_can_reuse_execution_checkout(self):
+        result, calls, repo = self.run_setup(checkout=True, dotfiles_dir="existing-checkout")
         self.assert_success(result, calls, repo)
         self.assertNotIn("git clone", calls)
+
+    def test_existing_default_target_is_reused(self):
+        result, calls, repo = self.run_setup(checkout=True, existing_target=True)
+        self.assert_success(result, calls, repo)
+        self.assertNotIn("git clone", calls)
+
+    def test_empty_override_uses_default_target(self):
+        result, calls, repo = self.run_setup(checkout=True, dotfiles_dir="")
+        self.assert_success(result, calls, repo)
+        self.assertIn(f"git clone https://github.com/azzz9/dotfiles.git {repo}\n", calls)
 
     def test_stdin_without_git_or_curl(self):
         result, calls, repo = self.run_setup(stdin=True)

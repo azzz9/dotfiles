@@ -26,6 +26,16 @@ Home Manager configuration. Nix provides a missing Git or curl to the setup
 process, and the script reuses any command that already exists. Home Manager
 then installs Git permanently.
 
+The default checkout is `~/src/github.com/azzz9/dotfiles`, regardless of where
+you run the script. This matches the configured ghq root, `~/src`, so
+`ghq list` includes `github.com/azzz9/dotfiles` after setup. ghq finds
+repository directories under its root. No separate registration is needed.
+
+The script reuses an existing Git checkout at the selected path instead of
+cloning again. Running from a checkout elsewhere does not move or change that
+checkout. Without `DOTFILES_DIR`, the script still clones or reuses the default
+path and applies that checkout.
+
 If Git is already available, cloning first is also supported:
 
 ```bash
@@ -65,10 +75,15 @@ Optional overrides:
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `DOTFILES_DIR` | `~/src/github.com/azzz9/dotfiles` | Clone location |
+| `DOTFILES_DIR` | `~/src/github.com/azzz9/dotfiles` | Checkout to clone or reuse and apply |
 | `DOTFILES_REPO_URL` | `https://github.com/azzz9/dotfiles.git` | Repo URL |
 | `HM_HOST` | auto-detect | Home Manager attribute (e.g. `x86_64-linux`) |
 | `REBOOT` | `0` | Reboot after setup |
+
+Set `DOTFILES_DIR` to use a different checkout. This override may be outside
+`~/src`, in which case `ghq list` does not include that checkout under the
+default ghq configuration. An unset or empty `DOTFILES_DIR` uses the default
+path.
 
 ### 2. Manual apply (alternative)
 
