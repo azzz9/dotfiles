@@ -14,6 +14,7 @@ export NIX_CONFIG="${NIX_CONFIG:-}"$'\nextra-experimental-features = nix-command
 DOTFILES_REPO_URL="${DOTFILES_REPO_URL:-https://github.com/azzz9/dotfiles.git}"
 DEFAULT_DOTFILES_DIR="${HOME}/src/github.com/azzz9/dotfiles"
 HM_HOST="${HM_HOST:-}"
+NIXOS_MACHINE="${NIXOS_MACHINE:-}"
 
 os_name="$(uname -s)"
 machine="$(uname -m)"
@@ -254,6 +255,59 @@ ensure_dotfiles_repo() {
   git clone "$DOTFILES_REPO_URL" "$repo_dir"
 }
 
+list_nixos_machines() {
+  local repo_dir="$1"
+  local machine
+  local names=""
+
+  for machine in "$repo_dir"/nixos/machines/*/; do
+    [[ -d "$machine" ]] || continue
+    names+="${names:+ }$(basename "$machine")"
+  done
+
+  printf '%s' "$names"
+}
+
+configure_nixos_system() {
+  local repo_dir="$1"
+  local entry hardware target
+
+  if [[ "$linux_distribution" != "nixos" ]]; then
+    return 0
+  fi
+
+  if [[ -z "$NIXOS_MACHINE" ]]; then
+    echo "NIXOS_MACHINE is not set. Re-run with NIXOS_MACHINE=<name> to wire the system configuration. Available machines: $(list_nixos_machines "$repo_dir")"
+    return 0
+  fi
+
+  entry="$repo_dir/nixos/machines/$NIXOS_MACHINE/default.nix"
+  hardware="$repo_dir/nixos/machines/$NIXOS_MACHINE/hardware-configuration.nix"
+  target=/etc/nixos/configuration.nix
+
+  if [[ ! -f "$entry" ]]; then
+    echo "No NixOS configuration for machine '$NIXOS_MACHINE'. Available machines: $(list_nixos_machines "$repo_dir")" >&2
+    exit 1
+  fi
+
+  if [[ ! -f "$hardware" ]]; then
+    echo "Missing hardware configuration for machine '$NIXOS_MACHINE'." >&2
+    echo "Generate it on this machine and copy it into the repository:" >&2
+    echo "  sudo nixos-generate-config --show-hardware-config > /tmp/hardware-configuration.nix" >&2
+    echo "  cp /tmp/hardware-configuration.nix $hardware" >&2
+    exit 1
+  fi
+
+  entry="$(readlink -f "$entry")"
+
+  if [[ -e "$target" && ! -L "$target" ]]; then
+    run_as_root mv "$target" "$target.before-dotfiles"
+  fi
+
+  run_as_root ln -sfn "$entry" "$target"
+  echo "Wired $target -> $entry. Run 'sudo nixos-rebuild switch' to apply it."
+}
+
 apply_home_manager() {
   local repo_dir="$1"
   local host="$2"
@@ -286,6 +340,7 @@ main() {
   configure_zsh
   configure_git
   ensure_dotfiles_repo "$repo_dir"
+  configure_nixos_system "$repo_dir"
   apply_home_manager "$repo_dir" "$host"
 
   if [[ "$should_reboot" == 1 && "${REBOOT:-0}" == 1 ]]; then

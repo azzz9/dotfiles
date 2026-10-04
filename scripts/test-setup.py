@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise bootstrap in isolated PATHs without touching the host system."""
 
+import contextlib
 import os
 from pathlib import Path
 import shutil
@@ -18,8 +19,12 @@ class BootstrapTests(unittest.TestCase):
     def run_setup(self, distro="nixos", tools=("nix",), checkout=False,
                   stdin=False, root=False, sudo=True, build_fail=False,
                   clone_fail=False, conflicting_target=False,
-                  dotfiles_dir=None, existing_target=False):
-        with tempfile.TemporaryDirectory(prefix="bootstrap-test-") as scratch:
+                  dotfiles_dir=None, existing_target=False, nixos_machine=None,
+                  machine_entry=True, machine_hardware=True, nixos_config=True,
+                  scratch_dir=None, test_arch=None):
+        scratch_ctx = (tempfile.TemporaryDirectory(prefix="bootstrap-test-")
+                       if scratch_dir is None else contextlib.nullcontext(scratch_dir))
+        with scratch_ctx as scratch:
             base = Path(scratch)
             home = base / "home"
             home.mkdir()
@@ -46,6 +51,20 @@ class BootstrapTests(unittest.TestCase):
             if existing_target or conflicting_target:
                 repo.mkdir(parents=True, exist_ok=True)
                 (repo / "keep.txt").write_text("keep")
+            # The machine tree lands in a checkout the caller already created,
+            # because a repo path that exists without .git is a bootstrap error.
+            if machine_entry and repo.is_dir():
+                machine_dir = repo / "nixos/machines/desktop"
+                machine_dir.mkdir(parents=True)
+                (machine_dir / "default.nix").write_text("{ }\n")
+                if machine_hardware:
+                    (machine_dir / "hardware-configuration.nix").write_text("{ }\n")
+            # Not fixtures/etc/nixos, because the rewrite check below rejects a
+            # host path that survives as a substring of its own replacement.
+            etc_nixos = fixtures / "system-etc"
+            if nixos_config:
+                etc_nixos.mkdir(parents=True)
+                (etc_nixos / "configuration.nix").write_text("{ }\n")
             source = SETUP.read_text()
             # Host paths a test run must not follow, because the tools they point
             # at are not the fixtures. Homebrew especially, since a runner that
@@ -55,6 +74,7 @@ class BootstrapTests(unittest.TestCase):
                 "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh": str(base / "no-profile"),
                 "/opt/homebrew/bin/brew": str(base / "no-brew"),
                 "/usr/local/bin/brew": str(base / "no-brew"),
+                "/etc/nixos": str(etc_nixos),
             }
             for host_path, replacement in host_paths.items():
                 source = source.replace(host_path, replacement)
@@ -72,7 +92,8 @@ class BootstrapTests(unittest.TestCase):
 
             # Only OS base utilities are exposed. Git, curl, Nix, Homebrew,
             # and package managers are absent until a fixture provides them.
-            for name in ("bash", "sh", "dirname", "mkdir", "ln", "cat", "grep", "basename"):
+            for name in ("bash", "sh", "dirname", "mkdir", "ln", "cat", "grep", "basename",
+                         "mv", "readlink"):
                 (commands / name).symlink_to(shutil.which(name))
             preamble = (
                 f"#!{BASH}\nset -euo pipefail\n"
@@ -161,10 +182,11 @@ fi
                 NIX_CONFIG="max-jobs = 2", GIT_NAME="test", GIT_EMAIL="test@example.invalid",
                 DOTFILES_REPO_URL="https://github.com/azzz9/dotfiles.git",
                 TEST_OS="Darwin" if distro == "macos" else "Linux",
-                TEST_ARCH="arm64" if distro == "macos" else "x86_64",
+                TEST_ARCH=test_arch or ("arm64" if distro == "macos" else "x86_64"),
                 TEST_BIN=str(commands), TEST_FIXTURES=str(fixtures), TEST_LOG=str(log),
                 TEST_EUID="0" if root else "1000", TEST_BUILD_FAIL=str(int(build_fail)),
                 TEST_CLONE_FAIL=str(int(clone_fail)),
+                NIXOS_MACHINE=nixos_machine or "",
             )
             for name in ("DOTFILES_DIR", "HM_HOST", "REBOOT", "BASH_ENV", "ENV"):
                 env.pop(name, None)
@@ -252,6 +274,12 @@ fi
                 self.assertLess(calls.index("curl "), calls.index("git config "))
                 self.assertIn("nixpkgs#git", calls)
 
+    def test_intel_mac_fails_before_installing_packages(self):
+        result, calls, _ = self.run_setup(distro="macos", tools=(), test_arch="x86_64")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("not supported", result.stderr)
+        self.assertNotIn("curl ", calls)
+
     def test_root_without_sudo(self):
         result, calls, repo = self.run_setup(distro="ubuntu", tools=(), root=True, sudo=False)
         self.assert_success(result, calls, repo)
@@ -286,6 +314,47 @@ fi
         self.assertIn("Unsupported Linux distribution", result.stderr)
         self.assertNotIn("git ", calls)
         self.assertNotIn("nix ", calls)
+
+    def test_nixos_system_configuration_is_wired(self):
+        with tempfile.TemporaryDirectory(prefix="bootstrap-wiring-") as scratch:
+            result, calls, repo = self.run_setup(
+                nixos_machine="desktop", existing_target=True, scratch_dir=scratch,
+            )
+            self.assert_success(result, calls, repo)
+            target = Path(scratch) / "fixtures/system-etc/configuration.nix"
+            entry = Path(repo) / "nixos/machines/desktop/default.nix"
+            self.assertTrue(target.is_symlink())
+            self.assertEqual(target.with_name("configuration.nix.before-dotfiles").read_text(), "{ }\n")
+            self.assertEqual(os.path.realpath(target), os.path.realpath(entry))
+            self.assertIn(f"sudo mv {target} {target}.before-dotfiles\n", calls)
+            self.assertIn(f"sudo ln -sfn {os.path.realpath(entry)} {target}\n", calls)
+
+    def test_nixos_unknown_machine_lists_available(self):
+        result, calls, _ = self.run_setup(nixos_machine="nope", existing_target=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Available machines: desktop", result.stderr)
+        self.assertNotIn("ln -sfn", calls)
+        self.assertNotIn("mv ", calls)
+
+    def test_nixos_missing_hardware_configuration_is_reported(self):
+        with tempfile.TemporaryDirectory(prefix="bootstrap-hardware-") as scratch:
+            result, calls, repo = self.run_setup(
+                nixos_machine="desktop", existing_target=True,
+                machine_hardware=False, scratch_dir=scratch,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            target = Path(scratch) / "fixtures/system-etc/configuration.nix"
+            hardware = Path(repo) / "nixos/machines/desktop/hardware-configuration.nix"
+            self.assertIn("nixos-generate-config", result.stderr)
+            self.assertIn(f"cp /tmp/hardware-configuration.nix {hardware}", result.stderr)
+            self.assertFalse(target.is_symlink())
+            self.assertFalse(target.with_name("configuration.nix.before-dotfiles").exists())
+
+    def test_other_distributions_ignore_the_machine_name(self):
+        result, calls, repo = self.run_setup(distro="ubuntu", nixos_machine="desktop")
+        self.assert_success(result, calls, repo)
+        self.assertIn(f"-- switch --flake {repo}#x86_64-linux", calls)
+        self.assertNotIn("nixos/machines", calls)
 
 
 if __name__ == "__main__":
