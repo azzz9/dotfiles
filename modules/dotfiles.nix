@@ -12,7 +12,8 @@ in
         ++ [ llmAgents.packages.${pkgs.stdenv.hostPlatform.system}.pi ];
       text = ''
         # Values come from flake.nix; scripts/dotfiles.sh reads them.
-        DOTFILES_DIR=${lib.escapeShellArg repoDir}
+        # Exported because flake.nix's repoDir reads it back via builtins.getEnv during evaluation.
+        export DOTFILES_DIR=${lib.escapeShellArg repoDir}
         DOTFILES_SUPPORTED_HOSTS=${lib.escapeShellArg supportedHosts}
       ''
       # scripts/pi-reconcile.sh is a leaf the CLI calls, not a second command.
