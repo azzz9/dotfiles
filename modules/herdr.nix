@@ -66,6 +66,10 @@ in
     [theme]
     name = "kanagawa"
 
+    [theme.custom]
+    # Terminal default background, so Ghostty's background-opacity reaches the tab bar
+    panel_bg = "reset"
+
     [terminal]
     # New panes/tabs/workspaces inherit the source pane's CWD
     new_cwd = "follow"
