@@ -17,6 +17,7 @@ in
   home.packages =
     (with pkgs; [
       # --- General tools ---
+      fastfetch
       git
       openssh
       less
