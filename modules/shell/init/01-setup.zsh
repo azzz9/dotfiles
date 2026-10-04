@@ -7,6 +7,10 @@ ZSH_DISABLE_COMPFIX=true
 DISABLE_AUTO_UPDATE=true
 mkdir -p "${ZSH_COMPDUMP:h}"
 
+# zsh-autocomplete resolves recent-dirs-file to $XDG_DATA_HOME/zsh and its
+# chpwd hook redirects into that file, so the directory must exist first.
+mkdir -p "${XDG_DATA_HOME:-$HOME/.local/share}/zsh"
+
 # zsh-autocomplete runs its async completion in a PTY, which needs the
 # `interactive_comments` option: without it the `#` in the plugin's
 # commented-out $(...) line parses as a command and its braces abort command
