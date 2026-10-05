@@ -45,8 +45,7 @@ GIT_NAME="your-name" GIT_EMAIL="your-noreply@users.noreply.github.com" \
 ```
 
 The script installs system dependencies, installs Nix if needed, configures
-Git/Zsh/Docker, and applies the Home Manager flake for the current platform
-and user.
+Git/Zsh/Docker, and applies the Home Manager flake for this machine and user.
 
 On NixOS, the script uses the existing Nix installation and applies standalone
 Home Manager. It temporarily provides Git and curl if needed, and Home Manager
@@ -77,8 +76,7 @@ Optional overrides:
 |----------|---------|---------|
 | `DOTFILES_DIR` | `~/src/github.com/azzz9/dotfiles` | Checkout to clone or reuse and apply |
 | `DOTFILES_REPO_URL` | `https://github.com/azzz9/dotfiles.git` | Repo URL |
-| `HM_HOST` | auto-detect | Home Manager attribute (platform or machine, e.g. `wsl`) |
-| `NIXOS_MACHINE` | unset | Machine under `nixos/machines/` to wire as `/etc/nixos/configuration.nix` (NixOS only) |
+| `MACHINE` | this machine's hostname | Machine whose Home Manager profile the bootstrap applies, and whose NixOS system configuration it checks (NixOS only) |
 | `REBOOT` | `0` | Reboot after setup |
 
 Set `DOTFILES_DIR` to use a different checkout. This override may be outside
@@ -89,10 +87,10 @@ path.
 ### 2. Manual apply (alternative)
 
 ```bash
-nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#x86_64-linux --impure -b backup
+nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#desktop --impure -b backup
 
-# Apple Silicon
-nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#aarch64-darwin --impure -b backup
+# Apple Silicon Mac
+nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#mac --impure -b backup
 ```
 
 ## Day-to-day commands
@@ -131,44 +129,48 @@ pi and herdr are installed by this flake. Provider packages, model choices,
 and the pi-hermes-memory memory store are machine-local; see the
 `dotfiles-context` skill.
 
-### Machine-specific settings
+### Machines
 
-`dotfiles` takes an optional host argument. A host is a platform attribute
-(`x86_64-linux`, `aarch64-darwin`) or a machine attribute from `machines` in
-`flake.nix` (`desktop`, `headless`, `wsl`, `mac`). With no argument, the CLI
-applies the host recorded by the last apply, then falls back to the platform
-on the first run.
+A machine has one name, and both layers use it. That name is the machine's
+hostname, so nothing has to be passed in. The `machines` row key in
+`flake.nix` is the `homeConfigurations` attribute and, for a row that carries
+an `nixos` path, the `nixosConfigurations` attribute too. The current rows are
+`desktop` and `mac`.
 
-Apply a machine once to make it sticky:
+The installed `dotfiles` CLI reads `hostname`, drops a trailing `.local`
+macOS reports its mDNS name with, and applies that name. An argument names
+another machine, and an unknown name fails with the list. A hostname the table
+does not have fails the same way, so set the hostname once per machine:
 
 ```bash
-dotfiles apply wsl
+# macOS
+sudo scutil --set HostName mac
 ```
 
-Its settings live in `hosts/machines/<name>.nix`, a plain Home Manager module.
-The marker is `~/.config/dotfiles/host`, managed by Home Manager. To add a
-machine, add its name and system to `machines` in `flake.nix` and create that
-file. The flake fails when the registry and the directory disagree.
+```bash
+# Both are the same attribute on a machine named mac.
+dotfiles apply
+dotfiles apply mac
+```
 
-On NixOS, `scripts/setup-system.sh` uses `NIXOS_MACHINE` as the host
-argument unless `HM_HOST` is set, so one machine carries one name in both
-layers.
+Differences between platforms live in guard clauses inside the modules
+(`pkgs.stdenv.hostPlatform.isDarwin` and `isLinux`), not in per-machine files.
+`MACHINE` overrides the hostname in the bootstrap script.
 
 ## Repository layout
 
 ```
 dotfiles/
-+-- flake.nix                  # homeConfigurations + checks for both systems
-+-- hosts/default.nix          # HM entry point, skill symlinks, applied-host marker
-+-- hosts/machines/            # Per-machine Home Manager settings (one file per machine)
-+-- nixos/
-|   +-- modules/
-|   |   +-- common.nix           # shared by both machines
-|   |   +-- desktop.nix          # the GUI stack (this machine)
-|   |   +-- headless.nix         # the minimum for a machine without a display
-|   +-- machines/
-|       +-- desktop/             # this machine: default.nix + hardware-configuration.nix
-|       +-- headless/            # GUI-less machine; add its generated hardware-configuration.nix
++-- flake.nix                  # machines, homeConfigurations, nixosConfigurations, checks
++-- hosts/default.nix          # HM entry point, skill symlinks
++-- hosts/platform/            # per-platform settings
++|   +-- linux.nix             #   HM: Linux differences
++|   +-- darwin.nix            #   HM: macOS differences
++|   +-- nixos/                #   the NixOS platform
++|       +-- home.nix         #     HM: NixOS differences (add when needed)
++|       +-- modules/         #     shared NixOS capability modules
++|       +-- machines/<name>/ #     this machine: default.nix + hardware files
++-- checks/default.nix         # the check set, wired into checks.<system>
 +-- modules/
 |   +-- dotfiles.nix           # wraps scripts/dotfiles.sh as the `dotfiles` CLI
 |   +-- pi.nix                 # pi settings and the settings.json merge
@@ -197,31 +199,38 @@ dotfiles/
 
 ## System configuration (NixOS)
 
-Each machine is a directory under `nixos/machines/`. The directory name is the
-machine name. `default.nix` is the entry point, edited by hand.
-`hardware-configuration.nix` is generated by `nixos-generate-config` on that
-machine and copied back into the repository.
+`hosts/platform/nixos/` holds the NixOS platform. `modules/` inside it are the
+shared capability modules, and `machines/<name>/` is one directory per machine.
+The directory name is the machine name. `default.nix` is the NixOS entry point,
+edited by hand. `hardware-configuration.nix` is generated by
+`nixos-generate-config` on that machine and copied back into the repository.
+Anything that fits only one machine, such as its GPU, lives in this directory
+too as `hardware-<part>.nix`. So `nixosConfigurations.<name>` builds from one
+directory here, and an HM difference that only NixOS needs would sit beside it
+too as `hosts/platform/nixos/home.nix`.
 
-`nixos/modules/` holds the capability modules. `common.nix` has the settings
-both machines share. `desktop.nix` has the GUI stack. `headless.nix` has the
-minimum for a machine without a display.
+`hosts/platform/nixos/modules/` holds the NixOS capability modules, and nothing
+device-specific. No file there mentions `hardware.*`, a drive, or a kernel
+module. `common.nix` has the settings both machines share. `desktop.nix` has
+the GUI stack. `headless.nix` has the minimum for a machine without a display.
 
-`nixos/` is a separate layer from the Home Manager flake, so no other platform
-evaluates it. macOS is unaffected.
+`hosts/platform/nixos/` feeds `nixosConfigurations.<machine>` in the same flake.
+macOS never evaluates it, and no other platform does either.
 
-Wire a machine once so `nixos-rebuild` reads that machine's entry point. Set
-`NIXOS_MACHINE` to the directory name (see the bootstrap invocation above for
-`GIT_NAME` and `GIT_EMAIL`):
+The system configuration is a flake output, so applying it needs no `/etc/nixos`
+wiring:
 
 ```bash
-NIXOS_MACHINE=desktop ~/src/github.com/azzz9/dotfiles/scripts/setup-system.sh
+sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#desktop --impure
 ```
 
-Setup backs up an existing `/etc/nixos/configuration.nix` to
-`configuration.nix.before-dotfiles` and points the symlink at
-`nixos/machines/<name>/default.nix`. Nix resolves the relative imports through
-the symlink, so the repository copy is the one that builds. Apply system
-changes with `sudo nixos-rebuild switch`.
+The bootstrap checks that a machine is complete and prints that command. It
+reads this machine's hostname, unless `MACHINE` names another one (see the
+bootstrap invocation above for `GIT_NAME` and `GIT_EMAIL`):
+
+```bash
+MACHINE=desktop ~/src/github.com/azzz9/dotfiles/scripts/setup-system.sh
+```
 
 ### Adding a machine
 
@@ -229,15 +238,17 @@ On the new machine, generate the hardware file and copy it back:
 
 ```bash
 sudo nixos-generate-config --show-hardware-config > /tmp/hardware-configuration.nix
-cp /tmp/hardware-configuration.nix ~/src/github.com/azzz9/dotfiles/nixos/machines/<name>/hardware-configuration.nix
+cp /tmp/hardware-configuration.nix ~/src/github.com/azzz9/dotfiles/hosts/platform/nixos/machines/<name>/hardware-configuration.nix
 ```
 
 Remove any argument the generated file does not use, so the `deadnix` check
 passes. In `machines/<name>/default.nix`, set `networking.hostName`, the boot
 loader, and `system.stateVersion` (copy the value from the machine's current
-`configuration.nix`). Import either `desktop.nix` or `headless.nix`. Then run
-setup with `NIXOS_MACHINE=<name>` as above. Setup stops before wiring while the
-hardware file is missing.
+system). Import either `desktop.nix` or `headless.nix`. Then add the machine to
+`machines` in `flake.nix`, which is what exposes `nixosConfigurations.<name>`
+and gives the machine its one name; the table key has to match
+`networking.hostName`, which is the hostname the CLI reads. Setup stops before
+printing the apply command while the hardware file is missing.
 
 When the disk layout changes, regenerate the hardware file the same way.
 
@@ -248,12 +259,12 @@ git config core.hooksPath .githooks
 ```
 
 Runs `scripts/check.sh`, the same check set CI builds. The checks are defined
-once in `flake.nix` under `checks.<system>`.
+once in `checks/default.nix`, which `flake.nix` wires into `checks.<system>`.
 
 ## CI
 
-CI evaluates every Home Manager attribute with `scripts/check.sh --no-build`,
-then builds the checks and every activation package for `x86_64-linux` and
+CI evaluates every machine attribute with `scripts/check.sh --no-build`, then
+builds the checks and every activation package for `x86_64-linux` and
 `aarch64-darwin`. Because the checks live in `flake.nix`, a local run, the
 pre-push hook, and CI cannot disagree.
 

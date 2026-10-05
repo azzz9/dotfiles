@@ -12,9 +12,11 @@ before exploring files so you start with full context.
 
 ```
 dotfiles/
-+-- flake.nix                # inputs, outputs, homeConfigurations, checks
-+-- hosts/default.nix        # HM entry point, skill symlinks, applied-host marker
-+-- hosts/machines/          # Per-machine HM settings (one file per machine)
++-- flake.nix                # inputs, outputs, machines, homeConfigurations, nixosConfigurations
++-- hosts/default.nix        # HM entry point and skill symlinks
++-- hosts/platform/          # per-platform settings: linux.nix, darwin.nix, nixos/
++-- hosts/platform/nixos/    # the NixOS platform: modules/ (shared) + machines/<name>/
++-- checks/default.nix       # the check set, wired into checks.<system>
 +-- modules/
 |   +-- dotfiles.nix         # wraps scripts/dotfiles.sh as the `dotfiles` CLI
 |   +-- pi.nix               # pi packages and the settings.json merge
@@ -22,7 +24,7 @@ dotfiles/
 |   +-- gh.nix               # GitHub CLI aliases
 |   +-- shell.nix            # zsh: aliases, plugins, init script ordering
 |   +-- shell/init/          # zsh init scripts sourced by shell.nix; dev()/deva() live here
-|   +-- herdr.nix            # herdr multiplexer + Windows toast bridge
+|   +-- herdr.nix            # herdr multiplexer + notification settings
 |   +-- hunk.nix             # hunk diff review TUI (Linux ld-linux wrapper)
 |   +-- ghostty.nix          # macOS Ghostty configuration (Ghostty external)
 |   +-- nvim.nix             # Neovim via nixvim
@@ -42,11 +44,9 @@ dotfiles/
 +-- .github/workflows/ci.yml # CI
 ```
 
-`hosts/machines/<name>.nix` holds per-machine Home Manager settings. The
-`machines` attr in `flake.nix` names each machine and its system, and a
-registry/file mismatch fails evaluation. The installed `dotfiles` CLI records
-the last applied host in `~/.config/dotfiles/host` and reads it when called
-with no host argument.
+Per-platform differences live in guard clauses inside the modules
+(`pkgs.stdenv.hostPlatform.isDarwin` / `isLinux`), not in per-machine files. The installed `dotfiles` CLI
+resolves this machine's name from `hostname` and applies it.
 
 ## Neovim config structure
 
@@ -68,7 +68,7 @@ via HM. Theme: kanagawa (built-in). Splits are prefix ctrl+b with `/` and `-`,
 pane navigation is alt+h/j/k/l, tabs and workspaces are alt+shift+h/j/k/l.
 No agent launcher is bound.
 Completion notifications use herdr's system delivery backend with a 15-second
-delay; the WSL Windows toast bridge remains enabled. Herdr's pi integration is
+delay. Herdr's pi integration is
 reinstalled on every activation.
 
 ## AI config deployment model
@@ -189,25 +189,81 @@ pinned package: give it `pname`, `version`, and a `src` built from
 
 ## Checks
 
-`flake.nix` defines `checks.<system>`: deadnix, shellcheck (scripts and the
-pre-push hook), bootstrap (drives `scripts/setup-system.sh` against fixture
+`checks/default.nix` defines `checks.<system>`: deadnix, shellcheck (scripts
+and the pre-push hook), no-device-config (device facts stay in
+`hosts/platform/nixos/machines/<name>/`), bootstrap (drives
+`scripts/setup-system.sh` against fixture
 PATHs), actionlint, generated-configs (parses the emitted TOML, YAML, zsh, and
 Lua), and pi-reconcile. The pre-push hook and CI both run `scripts/check.sh`, so
 the check set has one definition. Registry drift is caught by asserts instead:
 `modules/nvim.nix` compares `luaFiles` with `modules/nvim/lua/`, and
 `hosts/default.nix` requires a `SKILL.md` in every skill directory.
 
+## OS differences
+
+The two platforms differ in three kinds only: generated files (16
+on Linux, 9 on Darwin), packages (74 against 68), and PATH plus environment
+variables. Shared config content stays identical, and the only differences
+chosen rather than forced by the OS are `modules/ghostty.nix` and
+`modules/hunk.nix`.
+
+Conditionals live in five files, each next to what it configures.
+
+| File | What it separates |
+|------|-------------------|
+| `hosts/default.nix` | sessionPath entries and the GC launchd argument split on Darwin, the XDG user dirs on Linux |
+| `modules/ghostty.nix` | `config` against `config.ghostty`, with different content |
+| `modules/hunk.nix` | the ld-linux wrapper on Linux, upstream on Darwin |
+| `modules/packages.nix` | unar, xclip, wl-clipboard on Linux, terminal-notifier on Darwin |
+| `modules/pinned-packages.nix` | the per-system codediff-watcher hash and `autoPatchelfHook` on Linux |
+
+Home Manager has no per-machine difference today, only per-platform ones. A
+machine that needs one gains `home = [ ./hosts/machines/<name>.nix ];` in its
+row, which is already wired into `mkHomeConfiguration`.
+
+Regenerate the file and package lists instead of grepping for conditionals.
+
+```bash
+for m in desktop mac; do
+  echo "== $m"
+  nix --extra-experimental-features "nix-command flakes" eval --impure \
+    --json ".#homeConfigurations.$m.config.xdg.configFile" --apply builtins.attrNames
+  nix --extra-experimental-features "nix-command flakes" eval --impure \
+    --json ".#homeConfigurations.$m.config.home.packages" --apply 'ps: map (p: p.name) ps'
+done
+```
+
+Evaluation reads `$HOME`, so the `mac` attribute evaluated on Linux prints
+Linux home paths. Compare names and keys, not absolute paths.
+
 ## Supported platforms
 
-- `x86_64-linux` (Ubuntu / Arch / NixOS, including WSL2)
+- `x86_64-linux` (Ubuntu / Arch / NixOS)
 - `aarch64-darwin` (Apple Silicon Mac)
 
-`flake.nix` owns `supportedHosts`, the `homeConfigurations` attribute names
-(the two platforms plus the `machines` ledger). `scripts/setup-system.sh` and
-the `dotfiles` CLI detect `uname -m` / `uname -s`, and the CLI rejects a
-resolved host outside that list; an explicit host argument passes through to
-nix. `HM_HOST` overrides the detection, and on NixOS `NIXOS_MACHINE` supplies
-the host.
+A machine has one name, and that name is its hostname. `flake.nix` owns the
+`machines` table: the row key names `homeConfigurations.<name>` and, for a row
+that carries an `nixos` path, `nixosConfigurations.<name>`. The rows are
+`desktop` (NixOS) and `mac`. `supportedSystems` stays for `packages`
+and `checks`, which build per platform.
+
+`scripts/setup-system.sh` and the `dotfiles` CLI resolve the name from
+`hostname`, with a trailing `.local` dropped, and the CLI rejects a name with
+no row. `MACHINE` overrides it in the bootstrap. Set the hostname once per
+machine:
+
+```bash
+# macOS
+sudo scutil --set HostName mac
+```
+
+On NixOS the system layer is `nixosConfigurations.<machine>`, built from
+`hosts/platform/nixos/machines/<machine>/` and listed in that same `machines`
+table. Apply it
+with `sudo nixos-rebuild switch --flake <repo>#<machine> --impure`. The
+bootstrap checks that the machine is complete and prints that command.
+Device-specific files, such as `hardware-nvidia.nix`, sit in the machine
+directory so `hosts/platform/nixos/modules/` stays portable.
 
 Bootstrap runs as a standalone downloaded script or from stdin, without
 preinstalled Git or development tools. System setup installs curl for the Nix

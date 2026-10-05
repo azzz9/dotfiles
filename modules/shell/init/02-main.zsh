@@ -493,22 +493,22 @@ wtcd() {
   [[ -n "$wt_path" ]] && builtin cd "$wt_path"
 }
 
-# Completion for `dotfiles`; keep the host list in sync with flake.nix.
+# Completion for `dotfiles`; keep the machine list in sync with flake.nix.
 _dotfiles() {
   local -a commands=(
     'apply:apply the current checkout'
     'sync:pull latest changes, then apply'
     'upgrade:update flake.lock inputs, then apply'
   )
-  # Host list injected from flake.nix supportedHosts.
-  local -a hosts=("${_dotfiles_hosts[@]}")
+  # Machine names injected from flake.nix.
+  local -a machines=("${_dotfiles_machines[@]}")
   _arguments -C \
     '(-h --help)'{-h,--help}'[show help]' \
     '1:command:->commands' \
-    '2:host:->hosts'
+    '2:machine:->machines'
   case $state in
     commands) _describe -t commands 'dotfiles command' commands ;;
-    hosts)    _describe -t hosts 'host' hosts ;;
+    machines) _describe -t machines 'machine' machines ;;
   esac
 }
 
@@ -518,4 +518,4 @@ compdef _dotfiles dotfiles
 # it. The bracketed-paste fix above is zsh core, independent of this plugin.
 source "${_dotfiles_fsh_plugin}" 2>/dev/null
 
-unset _dotfiles_fzf_cache _dotfiles_fsh_plugin _dotfiles_hosts
+unset _dotfiles_fzf_cache _dotfiles_fsh_plugin _dotfiles_machines

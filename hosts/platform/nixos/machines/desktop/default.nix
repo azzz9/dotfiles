@@ -5,6 +5,7 @@
     ../../modules/common.nix
     ../../modules/desktop.nix
     ./hardware-configuration.nix
+    ./hardware-nvidia.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
@@ -12,7 +13,7 @@
 
   boot.kernelPackages = pkgs.linuxPackages;
 
-  networking.hostName = "nixos";
+  networking.hostName = "desktop";
 
   # This option defines the first version of NixOS you have installed on this particular machine,
   # and is used to maintain compatibility with application data (e.g. databases) created on older NixOS versions.

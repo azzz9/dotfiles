@@ -19,9 +19,9 @@ class BootstrapTests(unittest.TestCase):
     def run_setup(self, distro="nixos", tools=("nix",), checkout=False,
                   stdin=False, root=False, sudo=True, build_fail=False,
                   clone_fail=False, conflicting_target=False,
-                  dotfiles_dir=None, existing_target=False, nixos_machine=None,
+                  dotfiles_dir=None, existing_target=False, machine=None,
                   machine_entry=True, machine_hardware=True, nixos_config=True,
-                  scratch_dir=None, hm_host=None, test_arch=None):
+                  scratch_dir=None, hostname="desktop", test_arch=None):
         scratch_ctx = (tempfile.TemporaryDirectory(prefix="bootstrap-test-")
                        if scratch_dir is None else contextlib.nullcontext(scratch_dir))
         with scratch_ctx as scratch:
@@ -53,12 +53,16 @@ class BootstrapTests(unittest.TestCase):
                 (repo / "keep.txt").write_text("keep")
             # The machine tree lands in a checkout the caller already created,
             # because a repo path that exists without .git is a bootstrap error.
-            if machine_entry and repo.is_dir():
-                machine_dir = repo / "nixos/machines/desktop"
+            # A clone lands it through the git stub below.
+            machine_tree = base / "machine-tree"
+            if machine_entry:
+                machine_dir = machine_tree / "hosts/platform/nixos/machines/desktop"
                 machine_dir.mkdir(parents=True)
                 (machine_dir / "default.nix").write_text("{ }\n")
                 if machine_hardware:
                     (machine_dir / "hardware-configuration.nix").write_text("{ }\n")
+            if machine_entry and repo.is_dir():
+                shutil.copytree(machine_tree, repo, dirs_exist_ok=True)
             # Not fixtures/etc/nixos, because the rewrite check below rejects a
             # host path that survives as a substring of its own replacement.
             etc_nixos = fixtures / "system-etc"
@@ -93,7 +97,7 @@ class BootstrapTests(unittest.TestCase):
             # Only OS base utilities are exposed. Git, curl, Nix, Homebrew,
             # and package managers are absent until a fixture provides them.
             for name in ("bash", "sh", "dirname", "mkdir", "ln", "cat", "grep", "basename",
-                         "mv", "readlink"):
+                         "mv", "readlink", "cp"):
                 (commands / name).symlink_to(shutil.which(name))
             preamble = (
                 f"#!{BASH}\nset -euo pipefail\n"
@@ -102,12 +106,14 @@ class BootstrapTests(unittest.TestCase):
             )
             bodies = {
                 "uname": 'if [[ "$1" == -s ]]; then echo "$TEST_OS"; else echo "$TEST_ARCH"; fi\n',
+                "hostname": 'printf "%s\\n" "$TEST_HOSTNAME"\n',
                 "git": '''
 if [[ "$1" == -C ]]; then
   if [[ -d "$2/.git" ]]; then (cd "$2" && pwd); else exit 1; fi
 elif [[ "$1" == clone ]]; then
   [[ "$TEST_CLONE_FAIL" == 0 ]] || exit 1
   mkdir -p "${@: -1}/.git"
+  [[ "$TEST_MACHINE_TREE" == "" ]] || cp -r "$TEST_MACHINE_TREE/hosts" "${@: -1}/hosts"
 fi
 ''',
                 "nix": '''
@@ -165,7 +171,7 @@ fi
                 package_bin = fixtures / "packages" / name / "bin"
                 package_bin.mkdir(parents=True)
                 (package_bin / name).symlink_to(fixtures / name)
-            available = list(tools) + ["uname"]
+            available = list(tools) + ["uname", "hostname"]
             if distro == "ubuntu":
                 available += ["apt-get", "dpkg", "install", "chmod", "tee", "systemctl", "usermod", "chsh"]
             elif distro == "arch":
@@ -186,14 +192,14 @@ fi
                 TEST_BIN=str(commands), TEST_FIXTURES=str(fixtures), TEST_LOG=str(log),
                 TEST_EUID="0" if root else "1000", TEST_BUILD_FAIL=str(int(build_fail)),
                 TEST_CLONE_FAIL=str(int(clone_fail)),
-                NIXOS_MACHINE=nixos_machine or "",
+                MACHINE=machine or "",
+                TEST_HOSTNAME=hostname,
+                TEST_MACHINE_TREE=str(machine_tree) if machine_entry else "",
             )
-            for name in ("DOTFILES_DIR", "HM_HOST", "REBOOT", "BASH_ENV", "ENV"):
+            for name in ("DOTFILES_DIR", "REBOOT", "BASH_ENV", "ENV"):
                 env.pop(name, None)
             if dotfiles_dir is not None:
                 env["DOTFILES_DIR"] = str(repo) if dotfiles_dir else ""
-            if hm_host is not None:
-                env["HM_HOST"] = hm_host
             result = subprocess.run(
                 [BASH, "-s"] if stdin else [BASH, str(script)],
                 input=source if stdin else None, env=env, text=True,
@@ -317,58 +323,42 @@ fi
         self.assertNotIn("git ", calls)
         self.assertNotIn("nix ", calls)
 
-    def test_nixos_system_configuration_is_wired(self):
-        with tempfile.TemporaryDirectory(prefix="bootstrap-wiring-") as scratch:
-            result, calls, repo = self.run_setup(
-                nixos_machine="desktop", existing_target=True, scratch_dir=scratch,
-            )
-            self.assert_success(result, calls, repo)
-            target = Path(scratch) / "fixtures/system-etc/configuration.nix"
-            entry = Path(repo) / "nixos/machines/desktop/default.nix"
-            self.assertTrue(target.is_symlink())
-            self.assertEqual(target.with_name("configuration.nix.before-dotfiles").read_text(), "{ }\n")
-            self.assertEqual(os.path.realpath(target), os.path.realpath(entry))
-            self.assertIn(f"sudo mv {target} {target}.before-dotfiles\n", calls)
-            self.assertIn(f"sudo ln -sfn {os.path.realpath(entry)} {target}\n", calls)
+    def test_nixos_machine_reports_the_flake_command(self):
+        result, calls, repo = self.run_setup(machine="desktop", existing_target=True)
+        self.assert_success(result, calls, repo)
+        self.assertIn(f"sudo nixos-rebuild switch --flake {repo}#desktop --impure", result.stdout)
+        self.assertIn(f"-- switch --flake {repo}#desktop", calls)
+        self.assertNotIn("ln -sfn", calls)
+        self.assertNotIn("mv ", calls)
 
     def test_nixos_unknown_machine_lists_available(self):
-        result, calls, _ = self.run_setup(nixos_machine="nope", existing_target=True)
+        result, calls, _ = self.run_setup(machine="nope", existing_target=True)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Available machines: desktop", result.stderr)
         self.assertNotIn("ln -sfn", calls)
         self.assertNotIn("mv ", calls)
 
     def test_nixos_missing_hardware_configuration_is_reported(self):
-        with tempfile.TemporaryDirectory(prefix="bootstrap-hardware-") as scratch:
-            result, calls, repo = self.run_setup(
-                nixos_machine="desktop", existing_target=True,
-                machine_hardware=False, scratch_dir=scratch,
-            )
-            self.assertNotEqual(result.returncode, 0)
-            target = Path(scratch) / "fixtures/system-etc/configuration.nix"
-            hardware = Path(repo) / "nixos/machines/desktop/hardware-configuration.nix"
-            self.assertIn("nixos-generate-config", result.stderr)
-            self.assertIn(f"cp /tmp/hardware-configuration.nix {hardware}", result.stderr)
-            self.assertFalse(target.is_symlink())
-            self.assertFalse(target.with_name("configuration.nix.before-dotfiles").exists())
+        result, calls, repo = self.run_setup(
+            machine="desktop", existing_target=True, machine_hardware=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        hardware = Path(repo) / "hosts/platform/nixos/machines/desktop/hardware-configuration.nix"
+        self.assertIn("nixos-generate-config", result.stderr)
+        self.assertIn(f"cp /tmp/hardware-configuration.nix {hardware}", result.stderr)
+        self.assertNotIn("ln -sfn", calls)
 
-    def test_other_distributions_ignore_the_machine_name(self):
-        result, calls, repo = self.run_setup(distro="ubuntu", nixos_machine="desktop")
-        self.assert_success(result, calls, repo)
-        self.assertIn(f"-- switch --flake {repo}#x86_64-linux", calls)
-        self.assertNotIn("nixos/machines", calls)
-
-    def test_nixos_machine_names_the_home_manager_attribute(self):
-        result, calls, repo = self.run_setup(nixos_machine="desktop", existing_target=True)
+    def test_other_distributions_use_the_machine_name(self):
+        result, calls, repo = self.run_setup(distro="ubuntu", machine="desktop")
         self.assert_success(result, calls, repo)
         self.assertIn(f"-- switch --flake {repo}#desktop", calls)
+        self.assertNotIn("hosts/platform/nixos", calls)
 
-    def test_explicit_home_manager_host_wins_over_the_machine_name(self):
-        result, calls, repo = self.run_setup(
-            nixos_machine="desktop", existing_target=True, hm_host="x86_64-linux",
-        )
+    def test_hostname_resolves_the_machine(self):
+        # macOS reports an mDNS name; the .local suffix is not part of the name.
+        result, calls, repo = self.run_setup(distro="ubuntu", hostname="azzz-mac.local")
         self.assert_success(result, calls, repo)
-        self.assertIn(f"-- switch --flake {repo}#x86_64-linux", calls)
+        self.assertIn(f"-- switch --flake {repo}#azzz-mac", calls)
 
 
 if __name__ == "__main__":

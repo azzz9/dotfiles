@@ -15,10 +15,10 @@ dotfiles repo. Load this skill before editing `.nix` files.
 nix-instantiate --parse modules/some-file.nix > /dev/null
 
 # 2. Eval check (catches type errors, attribute issues)
-nix eval --raw .#homeConfigurations.x86_64-linux.activationPackage --impure 2>&1 | head -20
+nix eval --raw .#homeConfigurations.desktop.activationPackage --impure 2>&1 | head -20
 
 # 3. Dry-run build (catches build-time issues without downloading)
-nix build --dry-run .#homeConfigurations.x86_64-linux.activationPackage --impure 2>&1 | tail -20
+nix build --dry-run .#homeConfigurations.desktop.activationPackage --impure 2>&1 | tail -20
 
 # 4. The full check set (deadnix, shellcheck, actionlint, generated-configs)
 ./scripts/check.sh
@@ -49,18 +49,23 @@ target. Used for AGENTS.md, rules, and skills deployment.
   };
   outputs = { self, nixpkgs, ... }@inputs:
     let
+      machines = {
+        desktop = { system = "x86_64-linux"; nixos = ./hosts/platform/nixos/machines/desktop; };
+        mac = { system = "aarch64-darwin"; };
+      };
       supportedSystems = [ "x86_64-linux" "aarch64-darwin" ];
       # repoDir, mkHomeConfiguration, mkChecks live here too.
     in
     {
-      homeConfigurations = nixpkgs.lib.genAttrs supportedSystems mkHomeConfiguration;
+      homeConfigurations = nixpkgs.lib.mapAttrs mkHomeConfiguration machines;
       checks = nixpkgs.lib.genAttrs supportedSystems mkChecks;
     };
 }
 ```
 
-`flake.nix` also owns `supportedHosts` and `repoDir`, which reach the modules
-through `extraSpecialArgs`. Do not re-derive either in a module.
+`flake.nix` also owns `machineNames` (the `machines` keys) and `repoDir`, which
+reach the modules through `extraSpecialArgs`. Do not re-derive either in a
+module.
 
 ### Module imports
 
@@ -123,7 +128,7 @@ which are impure operations. Always pass `--impure`, including to
 `nix flake check`, or `repoDir` resolves to a path under an empty HOME:
 
 ```bash
-nix build .#homeConfigurations.x86_64-linux.activationPackage --impure
+nix build .#homeConfigurations.desktop.activationPackage --impure
 ```
 
 ### 3. Dirty tree warnings
@@ -139,7 +144,7 @@ is on a read-only filesystem in the sandbox. Prefix nix commands with
 temp directory:
 
 ```bash
-XDG_CACHE_HOME=/tmp/nix-cache nix build .#homeConfigurations.x86_64-linux.activationPackage --impure
+XDG_CACHE_HOME=/tmp/nix-cache nix build .#homeConfigurations.desktop.activationPackage --impure
 XDG_CACHE_HOME=/tmp/nix-cache nix search nixpkgs <package>
 ```
 
@@ -175,7 +180,7 @@ compatibility (see `scripts/dotfiles.sh`).
 find . -name '*.nix' -exec nix-instantiate --parse {} > /dev/null \;
 
 # Eval a specific attribute
-nix eval --raw .#homeConfigurations.x86_64-linux.activationPackage --impure
+nix eval --raw .#homeConfigurations.desktop.activationPackage --impure
 
 # The whole check set, the same one CI builds
 ./scripts/check.sh

@@ -13,11 +13,10 @@ export NIX_CONFIG="${NIX_CONFIG:-}"$'\nextra-experimental-features = nix-command
 
 DOTFILES_REPO_URL="${DOTFILES_REPO_URL:-https://github.com/azzz9/dotfiles.git}"
 DEFAULT_DOTFILES_DIR="${HOME}/src/github.com/azzz9/dotfiles"
-HM_HOST="${HM_HOST:-}"
-NIXOS_MACHINE="${NIXOS_MACHINE:-}"
+MACHINE="${MACHINE:-}"
 
 os_name="$(uname -s)"
-machine="$(uname -m)"
+arch="$(uname -m)"
 should_reboot=0
 linux_distribution=""
 
@@ -40,29 +39,35 @@ dotfiles_dir() {
   printf '%s\n' "${DOTFILES_DIR:-$DEFAULT_DOTFILES_DIR}"
 }
 
-detect_home_configuration() {
-  if [[ -n "$HM_HOST" ]]; then
-    printf '%s\n' "$HM_HOST"
-    return
-  fi
-
-  case "${os_name}:${machine}" in
-    Linux:x86_64)
-      printf '%s\n' "x86_64-linux"
-      ;;
-    Darwin:arm64)
-      printf '%s\n' "aarch64-darwin"
+# Only x86_64 Linux and Apple Silicon macOS have machine rows, so reject any
+# other OS/arch pair before touching the system.
+check_supported_platform() {
+  case "${os_name}:${arch}" in
+    Linux:x86_64 | Darwin:arm64)
       ;;
     Darwin:x86_64)
       echo "Intel Mac (x86_64-darwin) is not supported. This flake only provides" >&2
-      echo "an aarch64-darwin configuration. Set HM_HOST=x86_64-darwin to override." >&2
+      echo "an aarch64-darwin configuration." >&2
       exit 1
       ;;
     *)
-      echo "Unsupported Home Manager target: ${os_name}:${machine}. Set HM_HOST to override." >&2
+      echo "Unsupported platform: ${os_name}:${arch}." >&2
       exit 1
       ;;
   esac
+}
+
+# The one name both layers use. MACHINE names it explicitly; otherwise the
+# hostname does, minus the .local suffix macOS reports its mDNS name with.
+machine_name() {
+  if [[ -n "$MACHINE" ]]; then
+    printf '%s\n' "$MACHINE"
+    return
+  fi
+
+  local name
+  name="$(hostname)"
+  printf '%s\n' "${name%.local}"
 }
 
 load_nix_profile() {
@@ -260,66 +265,59 @@ list_nixos_machines() {
   local machine
   local names=""
 
-  for machine in "$repo_dir"/nixos/machines/*/; do
-    [[ -d "$machine" ]] || continue
-    names+="${names:+ }$(basename "$machine")"
+  for entry in "$repo_dir"/hosts/platform/nixos/machines/*/default.nix; do
+    [[ -f "$entry" ]] || continue
+    names+="${names:+ }$(basename "$(dirname "$entry")")"
   done
 
   printf '%s' "$names"
 }
 
-configure_nixos_system() {
+# On NixOS the system configuration is a flake output, so the bootstrap only
+# checks that the machine is complete and prints the command that applies it.
+check_nixos_machine() {
   local repo_dir="$1"
-  local entry hardware target
+  local machine="$2"
+  local entry hardware
 
   if [[ "$linux_distribution" != "nixos" ]]; then
     return 0
   fi
 
-  if [[ -z "$NIXOS_MACHINE" ]]; then
-    echo "NIXOS_MACHINE is not set. Re-run with NIXOS_MACHINE=<name> to wire the system configuration. Available machines: $(list_nixos_machines "$repo_dir")"
-    return 0
-  fi
-
-  entry="$repo_dir/nixos/machines/$NIXOS_MACHINE/default.nix"
-  hardware="$repo_dir/nixos/machines/$NIXOS_MACHINE/hardware-configuration.nix"
-  target=/etc/nixos/configuration.nix
+  entry="$repo_dir/hosts/platform/nixos/machines/$machine/default.nix"
+  hardware="$repo_dir/hosts/platform/nixos/machines/$machine/hardware-configuration.nix"
 
   if [[ ! -f "$entry" ]]; then
-    echo "No NixOS configuration for machine '$NIXOS_MACHINE'. Available machines: $(list_nixos_machines "$repo_dir")" >&2
+    echo "No NixOS configuration for machine '$machine'. Available machines: $(list_nixos_machines "$repo_dir")" >&2
+    echo "Set MACHINE=<name> to check a different machine." >&2
     exit 1
   fi
 
   if [[ ! -f "$hardware" ]]; then
-    echo "Missing hardware configuration for machine '$NIXOS_MACHINE'." >&2
+    echo "Missing hardware configuration for machine '$machine'." >&2
     echo "Generate it on this machine and copy it into the repository:" >&2
     echo "  sudo nixos-generate-config --show-hardware-config > /tmp/hardware-configuration.nix" >&2
     echo "  cp /tmp/hardware-configuration.nix $hardware" >&2
     exit 1
   fi
 
-  entry="$(readlink -f "$entry")"
-
-  if [[ -e "$target" && ! -L "$target" ]]; then
-    run_as_root mv "$target" "$target.before-dotfiles"
-  fi
-
-  run_as_root ln -sfn "$entry" "$target"
-  echo "Wired $target -> $entry. Run 'sudo nixos-rebuild switch' to apply it."
+  echo "System configuration for '$machine' is a flake output. Apply it with:"
+  echo "  sudo nixos-rebuild switch --flake $repo_dir#$machine --impure"
 }
 
 apply_home_manager() {
   local repo_dir="$1"
-  local host="$2"
+  local machine="$2"
 
-  DOTFILES_DIR="$repo_dir" nix_cmd run nixpkgs#home-manager -- switch --flake "$repo_dir#$host" --impure -b backup
+  DOTFILES_DIR="$repo_dir" nix_cmd run nixpkgs#home-manager -- switch --flake "$repo_dir#$machine" --impure -b backup
 }
 
 main() {
   local repo_dir
-  local host
+  local machine
 
-  host="$(detect_home_configuration)"
+  check_supported_platform
+  machine="$(machine_name)"
 
   case "$os_name" in
     Darwin)
@@ -334,20 +332,14 @@ main() {
       ;;
   esac
 
-  # On NixOS one machine name selects both layers, so the system configuration
-  # and the Home Manager attribute cannot drift. HM_HOST still wins.
-  if [[ "$linux_distribution" == "nixos" && -z "$HM_HOST" && -n "$NIXOS_MACHINE" ]]; then
-    host="$NIXOS_MACHINE"
-  fi
-
   install_nix
   ensure_bootstrap_tools
   repo_dir="$(dotfiles_dir)"
   configure_zsh
   configure_git
   ensure_dotfiles_repo "$repo_dir"
-  configure_nixos_system "$repo_dir"
-  apply_home_manager "$repo_dir" "$host"
+  check_nixos_machine "$repo_dir" "$machine"
+  apply_home_manager "$repo_dir" "$machine"
 
   if [[ "$should_reboot" == 1 && "${REBOOT:-0}" == 1 ]]; then
     echo "Setup complete. Rebooting now..."

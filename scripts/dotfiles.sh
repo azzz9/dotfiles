@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # The `dotfiles` CLI. modules/dotfiles.nix installs this file through
 # writeShellApplication and supplies two values from flake.nix:
-#   DOTFILES_DIR               the checkout to build and activate
-#   DOTFILES_SUPPORTED_HOSTS   the homeConfigurations attributes that exist
+#   DOTFILES_DIR       the checkout to build and activate
+#   DOTFILES_MACHINES  the homeConfigurations attributes that exist
 # `apply` also runs pi_reconcile from scripts/pi-reconcile.sh after activation,
 # so a build that moved a pi package pin lands its checkout, or installs the
 # pinned npm version, too.
@@ -13,20 +13,20 @@ export NIX_CONFIG="${NIX_CONFIG:-}"$'\nextra-experimental-features = nix-command
 
 usage() {
   cat <<'EOF'
-usage: dotfiles <command> [host]
+usage: dotfiles <command> [machine]
 
 commands:
   apply      apply the current checkout, reconciling pi packages to their pinned revision or version
   sync       pull latest changes, then apply
   upgrade    update flake.lock inputs, then apply
 
-host: a platform attribute (x86_64-linux) or a machine attribute from hosts/machines.
-      Without it, the attribute recorded by the last apply is used.
+machine: the name of the machine to apply. This machine's hostname is the
+         default. An unknown name is listed against the names flake.nix has.
 EOF
 }
 
 repo="${DOTFILES_DIR:?DOTFILES_DIR is not set; run the installed dotfiles command}"
-supported_hosts="${DOTFILES_SUPPORTED_HOSTS:?DOTFILES_SUPPORTED_HOSTS is not set}"
+machines="${DOTFILES_MACHINES:?DOTFILES_MACHINES is not set}"
 
 command="${1:-}"
 if [ -z "$command" ] || [ "$command" = "-h" ] || [ "$command" = "--help" ]; then
@@ -35,37 +35,23 @@ if [ -z "$command" ] || [ "$command" = "-h" ] || [ "$command" = "--help" ]; then
 fi
 shift
 
-# Auto-detect system if no host argument is given.
-# macOS reports "arm64"; Nix expects "aarch64".
-arch="$(uname -m)"
-if [ "$arch" = "arm64" ]; then
-  arch="aarch64"
+# A machine argument names the attribute to apply. Otherwise this machine's
+# hostname does, minus the .local suffix macOS reports its mDNS name with.
+machine="${1:-}"
+if [ -z "$machine" ]; then
+  machine="$(hostname)"
+  machine="${machine%.local}"
 fi
-os="$(uname -s | tr '[:upper:]' '[:lower:]')"
 
-# hosts/default.nix writes the attribute the last apply used. A host given on
-# the command line skips the check below, so a CLI built before a machine
-# attribute existed still accepts it; nix rejects a bad name on its own.
-host_marker="${HOME:-}/.config/dotfiles/host"
-if [ -n "${1:-}" ]; then
-  host="$1"
-else
-  host=""
-  if [ -f "$host_marker" ]; then
-    host="$(tr -d '[:space:]' < "$host_marker")"
-  fi
-  host="${host:-$arch-$os}"
-
-  # flake.nix owns the host list; fail here rather than inside nix eval.
-  case " $supported_hosts " in
-    *" $host "*) ;;
-    *)
-      echo "dotfiles: unsupported host: $host" >&2
-      echo "dotfiles: supported hosts: $supported_hosts" >&2
-      exit 2
-      ;;
-  esac
-fi
+# flake.nix owns the machine list; fail here rather than inside nix eval.
+case " $machines " in
+  *" $machine "*) ;;
+  *)
+    echo "dotfiles: unknown machine: $machine" >&2
+    echo "dotfiles: machines: $machines" >&2
+    exit 2
+    ;;
+esac
 
 tmp_dir="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
 lock_dir="$tmp_dir/dotfiles.lockdir"
@@ -116,7 +102,7 @@ require_clean_repo() {
 }
 
 build_home() {
-  activation_path="$(nix_cmd build --no-link --print-out-paths "$repo#homeConfigurations.$host.activationPackage" --impure)"
+  activation_path="$(nix_cmd build --no-link --print-out-paths "$repo#homeConfigurations.$machine.activationPackage" --impure)"
   patched_activate="$(mktemp "$tmp_dir/dotfiles-activate.XXXXXX")"
   cp "$activation_path/activate" "$patched_activate"
 }

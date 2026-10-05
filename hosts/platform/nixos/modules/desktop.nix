@@ -1,4 +1,7 @@
-{ config, pkgs, ... }:
+# The desktop stack, portable across machines. Hardware that only fits one
+# machine lives in hosts/platform/nixos/machines/<name>/ next to its
+# hardware-configuration.nix.
+{ pkgs, ... }:
 
 {
   i18n.inputMethod = {
@@ -9,13 +12,6 @@
   };
 
   services.xserver.enable = true;
-  services.xserver.videoDrivers = [ "nvidia" ];
-  hardware.graphics.enable = true;
-  hardware.nvidia = {
-    modesetting.enable = true;
-    open = true;
-    package = config.boot.kernelPackages.nvidiaPackages.stable;
-  };
 
   services.displayManager.sddm.enable = true;
   services.desktopManager.plasma6.enable = true;
@@ -50,5 +46,13 @@
     discord
     noctalia
     xwayland-satellite
+    haruna
+    mpv
   ];
+
+  # kbuildsycoca6 looks for <XDG_MENU_PREFIX>applications.menu and builds a
+  # service database with no applications when it finds none. A niri session
+  # sets no XDG_MENU_PREFIX, so KDE apps would have no MIME associations at all.
+  environment.etc."xdg/menus/applications.menu".source =
+    "${pkgs.kdePackages.plasma-workspace}/etc/xdg/menus/plasma-applications.menu";
 }
