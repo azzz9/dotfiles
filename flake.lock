@@ -122,22 +122,6 @@
         "type": "github"
       }
     },
-    "herdr-auto-title": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1791133949,
-        "narHash": "sha256-K/Pzekm5Jcv9AWNYBzFsFivPvK2DR04n5fOP1k93SUY=",
-        "owner": "kryptamine",
-        "repo": "herdr-auto-title",
-        "rev": "0cf776db9a9450f1b190b4f3d787674c7a9d3ddb",
-        "type": "github"
-      },
-      "original": {
-        "owner": "kryptamine",
-        "repo": "herdr-auto-title",
-        "type": "github"
-      }
-    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -398,7 +382,6 @@
     },
     "root": {
       "inputs": {
-        "herdr-auto-title": "herdr-auto-title",
         "home-manager": "home-manager",
         "hunk": "hunk",
         "i-have-adhd": "i-have-adhd",

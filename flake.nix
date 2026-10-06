@@ -36,7 +36,6 @@
     # `cc-safety-net` stays an npm row (see modules/pi.nix), so it is not an
     # input here.
     pi-compact-tools = { url = "github:nedleeds/pi-compact-tools"; flake = false; };
-    herdr-auto-title = { url = "github:kryptamine/herdr-auto-title"; flake = false; };
   };
 
   outputs =
@@ -55,19 +54,11 @@
         let configured = builtins.getEnv "DOTFILES_DIR";
         in
         if configured != "" then configured else "${builtins.getEnv "HOME"}/src/github.com/azzz9/dotfiles";
-      lockedSources = (builtins.fromJSON (builtins.readFile ./flake.lock)).nodes;
-      lockedSource = name:
-        let node = lockedSources.${name}.locked;
-        in {
-          inherit (node) owner repo rev;
-          spec = "github.com/${node.owner}/${node.repo}";
-        };
       # The pi packages, by flake input name. A row hands pi that input's store
       # path, so pi loads the source flake.lock locked.
       piPackagePaths = {
         inherit pi-pstack i-have-adhd pi-subagents pi-web-access pi-compact-tools;
       };
-      herdrAutoTitleSource = lockedSource "herdr-auto-title";
       # One table for every machine. The key names homeConfigurations.<name>,
       # and nixosConfigurations.<name> for a row that carries a nixos path. The
       # key is the machine's hostname, so the CLI and the bootstrap resolve a
@@ -99,7 +90,7 @@
             ];
           };
           extraSpecialArgs = {
-            inherit repoDir machineNames piPackagePaths herdrAutoTitleSource;
+            inherit repoDir machineNames piPackagePaths;
             hunk = hunk;
             llmAgents = llm-agents;
           };

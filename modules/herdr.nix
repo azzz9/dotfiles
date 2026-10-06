@@ -1,32 +1,10 @@
-{ config, lib, pkgs, repoDir, herdrAutoTitleSource, ... }:
+{ config, lib, pkgs, repoDir, ... }:
 let
   toastDelivery = "system";
-  autoTitleReconcile = pkgs.writeShellApplication {
-    name = "herdr-auto-title-reconcile";
-    runtimeInputs = with pkgs; [ coreutils git go herdr jq ];
-    text =
-      builtins.replaceStrings [ "#!/usr/bin/env bash\n" ] [ "" ]
-        (builtins.readFile ../scripts/herdr-auto-title-reconcile.sh)
-      + "\nherdr_auto_title_reconcile\n";
-  };
-  herdrAutoTitleAfter = builtins.filter
-    (name: name != "herdrAutoTitle")
-    (builtins.attrNames config.home.activation);
 in
 {
   # herdr agent multiplexer, https://github.com/ogulcancelik/herdr
   home.packages = [ pkgs.herdr ];
-
-  # Herdr owns the checkout and registry.
-  home.file.".local/share/dotfiles/herdr-auto-title-pin".text =
-    "${herdrAutoTitleSource.owner}/${herdrAutoTitleSource.repo} ${herdrAutoTitleSource.rev}\n";
-
-  home.activation.herdrAutoTitle = lib.hm.dag.entryAfter herdrAutoTitleAfter ''
-    lock_dir="''${XDG_RUNTIME_DIR:-''${TMPDIR:-/tmp}}/dotfiles.lockdir"
-    if [ "''${DOTFILES_DIR:-}" = ${lib.escapeShellArg repoDir} ] && [ -d "$lock_dir" ]; then
-      run ${autoTitleReconcile}/bin/herdr-auto-title-reconcile
-    fi
-  '';
 
   xdg.configFile."herdr/config.toml".text = ''
     # Managed by Home Manager (modules/herdr.nix); do not edit directly.

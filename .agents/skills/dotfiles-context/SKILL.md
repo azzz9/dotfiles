@@ -29,19 +29,11 @@ alt+shift+h/j/k/l tabs and workspaces, and no agent launcher. Completion
 notifications use herdr's system delivery backend with a 15-second delay, and
 herdr's pi integration is reinstalled on every activation.
 
-Herdr owns plugin checkouts, builds, and registry entries. `flake.lock` pins
-`herdr-auto-title`, and the last Home Manager activation entry reconciles it,
-but only while the `dotfiles` CLI holds its lock for this repository, so a
-direct Home Manager switch leaves the registry alone. Dotfiles never writes
-under `~/.config/herdr-auto-title/` and keeps the plugin enabled; a manual
-disable lasts until the next `dotfiles apply`, `sync`, or `upgrade`.
-
-After an install, update, or enable, activation prints `herdr plugin action
-invoke herdr.auto-title.restart` and stops there. Restart stays manual because
-installing does not replace a running Auto Title process, and a tab or pane
-renamed by hand is left alone from then on. A failed installation stops the
-activation, and `dotfiles upgrade` restores source files rather than the
-already activated generation.
+The `herdr.auto-title` plugin stays machine-local, like the pi provider
+extensions. Install it by hand with `herdr plugin install
+kryptamine/herdr-auto-title --yes`, and Herdr updates it. Dotfiles links the
+local `worktree-layout` plugin and reinstalls the pi integration on every
+activation, and it never writes under `~/.config/herdr-auto-title/`.
 
 ## AI config deployment model
 
