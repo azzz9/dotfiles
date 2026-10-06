@@ -69,6 +69,28 @@ in
     width = "80%"
     height = "80%"
 
+    # lazygit in a full-tab overlay pane; exiting lazygit closes the pane.
+    # prefix+g is the session navigator and prefix+shift+g is new_worktree,
+    # both in use, so this uses the alt+shift+ letter row that already carries
+    # tab and workspace navigation.
+    [[keys.command]]
+    key = "alt+shift+g"
+    type = "pane"
+    command = "lazygit"
+    description = "lazygit"
+
+    [[keys.command]]
+    key = "prefix+e"
+    type = "plugin_action"
+    command = "chmarax.herdr-nvim.toggle"
+    description = "nvim sidebar"
+
+    [[keys.command]]
+    key = "prefix+o"
+    type = "plugin_action"
+    command = "chmarax.herdr-nvim.pick-file"
+    description = "open file from agent output"
+
     [session]
     # Resume AI-agent panes into their native sessions after a server restart
     resume_agents_on_restore = true
@@ -111,6 +133,11 @@ in
     # requires this directory even before pi has been launched for the first time.
     run mkdir -p "$HOME/.pi/agent/extensions"
     run ${pkgs.herdr}/bin/herdr integration install pi >/dev/null
+  '';
+
+  # Link the checkout so layout edits take effect without a rebuild.
+  home.activation.herdrWorktreeLayout = lib.hm.dag.entryAfter [ "writeBoundary" "installPackages" ] ''
+    run ${pkgs.herdr}/bin/herdr plugin link "${repoDir}/modules/herdr/worktree-layout" >/dev/null
   '';
 
   home.file.".pi/agent/extensions/prompt-display.ts".source =

@@ -139,6 +139,7 @@
           "prettier-plugin-solidity-dist" = pinned.prettierPluginSolidityDist;
           roots = pinned.roots;
           codediff-watcher = pinned.codediffWatcher;
+          herdr-nvim = pinned.herdrNvim;
         };
       # The verification layer, one file per check. scripts/check.sh, the
       # pre-push hook, and CI all run these.

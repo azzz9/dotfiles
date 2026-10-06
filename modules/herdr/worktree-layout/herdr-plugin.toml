@@ -1,0 +1,14 @@
+id = "local.worktree-layout"
+name = "Worktree Layout"
+version = "0.1.0"
+min_herdr_version = "0.9.0"
+description = "Lay out a fresh worktree workspace as the fixed agents, diff, git, and scratch tabs."
+platforms = ["linux", "macos"]
+
+[[events]]
+on = "worktree.created"
+command = ["bash", "layout.sh"]
+
+[[events]]
+on = "worktree.opened"
+command = ["bash", "layout.sh"]

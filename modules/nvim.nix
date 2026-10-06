@@ -47,6 +47,7 @@ let
     "plugins/gitsigns.lua"
     "plugins/gitblame.lua"
     "plugins/codediff.lua"
+    "plugins/herdr.lua"
     "plugins/mini.lua"
     "plugins/oil.lua"
     "plugins/nvim-autopairs.lua"
@@ -179,7 +180,7 @@ assert lib.assertMsg (luaFilesUnlisted == [ ] && luaFilesAbsent == [ ])
         smear-cursor-nvim
         which-key-nvim
       ]
-      ++ [ treesitterWithGrammars ];
+      ++ [ treesitterWithGrammars pinned.herdrNvim ];
     inherit extraConfigLua;
   };
 }

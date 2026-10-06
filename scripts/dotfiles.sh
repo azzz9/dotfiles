@@ -67,7 +67,7 @@ pins_file="modules/pinned-packages.nix"
 # The @juicesharp/rpiv packages stay npm-installed; their shared version lives
 # in one line of modules/pi.nix, which the upgrade rewrites from the registry.
 pi_module="modules/pi.nix"
-pin_names=(solhint roots prettier-plugin-solidity prettier-plugin-solidity-dist)
+pin_names=(solhint roots prettier-plugin-solidity prettier-plugin-solidity-dist herdr-nvim)
 trap 'for backup in "${upgrade_backups[@]}"; do rm -f "${backup%%|*}"; done; if [ -n "$pin_scratch" ]; then rm -f "$pin_scratch"; fi; if [ -n "$patched_activate" ]; then rm -f "$patched_activate"; fi; if [ "$have_lock" = 1 ]; then rmdir "$lock_dir" 2>/dev/null || true; fi' EXIT
 if ! mkdir "$lock_dir" 2>/dev/null; then
   echo "dotfiles: already running; skipping"
