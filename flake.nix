@@ -3,8 +3,9 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    # Temporary: nixos-unstable lacks herdr 0.7.3 (PR #539412). Pull it from
-    # master through the overlay below; drop both once the channel catches up.
+    # Temporary: nixos-unstable lags master for the packages the overlay below
+    # takes from it (tuios 0.8.1 there, 0.8.5 here). Drop both once the channel
+    # catches up; herdr already matches unstable at 0.9.3.
     nixpkgs-master.url = "github:NixOS/nixpkgs/master";
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -93,12 +94,14 @@
               "barbar.nvim"
             ];
             overlays = [
-              # Temporary herdr 0.7.3 override; drop with the nixpkgs-master input.
+              # nixpkgs-master fills what nixos-unstable has not caught up with.
+              # herdr is a no-op here now (unstable has 0.9.3 too); tuios is the
+              # live one, because unstable's 0.8.1 predates the herdr socket API.
               (_final: prev: {
-                herdr = (import nixpkgs-master {
+                inherit (import nixpkgs-master {
                   inherit system;
                   config.allowUnfreePredicate = prev.config.allowUnfreePredicate;
-                }).herdr;
+                }) herdr tuios;
               })
             ];
           };

@@ -64,6 +64,7 @@ assert lib.assertMsg (upstreamSkillsWithoutLicense == [ ])
     ../modules/lazygit.nix
     ../modules/shell.nix
     ../modules/herdr.nix
+    ../modules/tuios.nix
     ../modules/ghostty.nix
     ../modules/nvim.nix
     ../modules/packages.nix
