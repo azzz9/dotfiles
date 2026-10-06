@@ -17,9 +17,18 @@ Download [setup-system.sh](https://raw.githubusercontent.com/azzz9/dotfiles/main
 using a browser and run the downloaded file:
 
 ```bash
+MACHINE=macbook \
 GIT_NAME="your-name" GIT_EMAIL="your-noreply@users.noreply.github.com" \
   bash ~/Downloads/setup-system.sh
 ```
+
+`MACHINE` is required and names this machine. It is the `machines` row in
+`flake.nix` that this machine applies, and the hostname the script sets on the
+machine, so the installed `dotfiles` needs no argument afterwards. macOS,
+Ubuntu, and Arch must name a row the repository already carries, and the script
+prints the one line to add when it does not. NixOS may name a new machine, and
+the adoption writes that row. `macbook` in that block is this repository's
+macOS row.
 
 The script prepares missing tools, clones the repository, and applies the
 Home Manager configuration. Nix provides a missing Git or curl to the setup
@@ -38,7 +47,7 @@ If Git is already available, cloning first is also supported:
 
 ```bash
 git clone https://github.com/azzz9/dotfiles.git ~/src/github.com/azzz9/dotfiles
-GIT_NAME="your-name" GIT_EMAIL="your-noreply@users.noreply.github.com" \
+MACHINE=macbook GIT_NAME="your-name" GIT_EMAIL="your-noreply@users.noreply.github.com" \
   ~/src/github.com/azzz9/dotfiles/scripts/setup-system.sh
 ```
 
@@ -47,17 +56,17 @@ Git/Zsh/Docker, and applies the Home Manager flake for this machine and user.
 
 On NixOS, the script needs nothing prepared in the repository. It uses the
 existing Nix installation, applies standalone Home Manager, and then applies
-the system configuration with the command below. It asks for your password
-once to run that step.
+the system configuration with the command below, where `<machine>` is the name
+`MACHINE` gives. It asks for your password once to run that step.
 
 ```bash
-sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#<hostname> --impure
+sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#<machine> --impure
 ```
 
 Adoption writes the machine into the flake when the repository does not carry
-it yet: `machines/<hostname>/hardware-configuration.nix` from
+it yet: `machines/<machine>/hardware-configuration.nix` from
 `nixos-generate-config`, a copy of `/etc/nixos/configuration.nix` as
-`machines/<hostname>/configuration.nix`, `default.nix` importing the shared
+`machines/<machine>/configuration.nix`, `default.nix` importing the shared
 modules, and the machine row in `flake.nix`. The copy drops two lines. The row
 owns `networking.hostName`, and the user's `shell` leaves because NixOS gives
 that option the uniq type, where two definitions are an error even when the
@@ -74,13 +83,13 @@ exceptions that cannot be defaults: the user's shell, for the reason above, and
 Bootstrap and `dotfiles` enable the Nix features their subprocesses need and
 preserve an existing `NIX_CONFIG`.
 
-Optional overrides:
+Variables:
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `DOTFILES_DIR` | `~/src/github.com/azzz9/dotfiles` | Checkout to clone or reuse and apply |
 | `DOTFILES_REPO_URL` | `https://github.com/azzz9/dotfiles.git` | Repo URL |
-| `MACHINE` | this machine's hostname | Machine whose Home Manager profile the bootstrap applies, and whose NixOS system configuration it adopts and switches (NixOS only) |
+| `MACHINE` | required | This machine's name: the `machines` row to apply, and the hostname the bootstrap sets |
 | `MACHINE_CAPABILITY` | picked from the copied configuration | `desktop` or `headless`, the NixOS capability module the adoption imports (NixOS only) |
 | `REBOOT` | `0` | Reboot after setup |
 
@@ -140,27 +149,33 @@ and the pi-hermes-memory memory store are machine-local; see the
 
 ### Machines
 
-A machine has one name, and both layers use it. That name is the machine's
-hostname, so nothing has to be passed in. The `machines` row key in
+A machine has one name, and both layers use it. The `machines` row key in
 `flake.nix` is the `homeConfigurations` attribute and, for a row that carries
 an `nixos` path, the `nixosConfigurations` attribute too. The current rows are
 `nix-desktop`, `macbook`, and `nix-server`.
 
+The bootstrap sets the hostname from `MACHINE`: `scutil` on macOS,
+`hostnamectl` and the `127.0.1.1` line of `/etc/hosts` on Ubuntu and Arch, and
+`networking.hostName` through the system switch on NixOS. So the row key, the
+machine name, and the hostname agree, and no one types a hostname by hand.
+
 The installed `dotfiles` CLI reads `hostname`, drops a trailing `.local`
 macOS reports its mDNS name with, and applies that name. An argument names
 another machine, and an unknown name fails with the list. A hostname the table
-does not have fails the same way, so set the hostname once per machine:
+does not have fails the same way. The bootstrap sets the hostname from
+`MACHINE`, so the two names agree and the CLI needs no argument.
 
-```bash
-# macOS
-sudo scutil --set HostName macbook
-```
+Renaming a machine means the row key, the directory under
+`hosts/platform/nixos/machines/` for a NixOS row, and `networking.hostName`,
+then a run with `MACHINE=<new name>`. Rename the row first. With the old key in
+the repository and a new name in `MACHINE`, a NixOS run adopts a second machine
+instead of renaming the one in front of you.
 
 A machine that has not applied since a rename still carries the old name list in
 its installed `dotfiles`, so its first apply runs the checkout's script instead:
 
 ```bash
-DOTFILES_DIR=$PWD DOTFILES_MACHINES="nix-desktop macbook" bash scripts/dotfiles.sh apply macbook
+DOTFILES_DIR=$PWD DOTFILES_MACHINES="nix-desktop macbook nix-server" bash scripts/dotfiles.sh apply macbook
 ```
 
 ```bash
@@ -171,7 +186,8 @@ dotfiles apply macbook
 
 Differences between platforms live in guard clauses inside the modules
 (`pkgs.stdenv.hostPlatform.isDarwin` and `isLinux`), not in per-machine files.
-`MACHINE` overrides the hostname in the bootstrap script.
+`MACHINE` is the bootstrap script's one knob: the machine it applies and the
+name it sets the hostname to.
 
 ## Repository layout
 
@@ -227,8 +243,9 @@ too as `hosts/platform/nixos/home.nix`.
 
 `hosts/platform/nixos/modules/` holds the NixOS capability modules, and nothing
 device-specific. No file there mentions `hardware.*`, a drive, or a kernel
-module. `common.nix` has the settings both machines share. `desktop.nix` has
-the GUI stack. `headless.nix` has the minimum for a machine without a display.
+module. `common.nix` has the settings every NixOS machine shares. `desktop.nix`
+has the GUI stack. `headless.nix` has the minimum for a machine without a
+display.
 
 `hosts/platform/nixos/` feeds `nixosConfigurations.<machine>` in the same flake.
 macOS never evaluates it, and no other platform does either.
@@ -241,9 +258,9 @@ sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#nix-desktop --
 ```
 
 The bootstrap adopts the machine and then runs that command, so a machine the
-repository does not carry yet needs no preparation. It reads this machine's
-hostname, unless `MACHINE` names another one (see the bootstrap invocation above
-for `GIT_NAME` and `GIT_EMAIL`):
+repository does not carry yet needs no preparation. It applies the machine
+`MACHINE` names, which is required (see the bootstrap invocation above for
+`GIT_NAME` and `GIT_EMAIL`):
 
 ```bash
 MACHINE=nix-desktop ~/src/github.com/azzz9/dotfiles/scripts/setup-system.sh
@@ -265,8 +282,9 @@ Two things the script cannot know:
   They arrive as `machines/<name>/configuration.nix`, and that file is where
   they are edited from then on. Every value the shared modules set is a
   `lib.mkDefault`, so a setting this file makes wins.
-- A rename still needs the two steps in [Machines](#machines): set the hostname
-  once, then apply once with the checkout's script and the old name list.
+- A rename still needs the step in [Machines](#machines): apply once with the
+  checkout's script and the old name list, because the installed `dotfiles`
+  carries the old list until that apply.
 
 When the disk layout changes, regenerate the hardware file the same way and copy
 it in. Drop its three header comment lines and any lambda argument the body does

@@ -3,7 +3,7 @@ set -euo pipefail
 
 if [[ -z "${GIT_NAME:-}" || -z "${GIT_EMAIL:-}" ]]; then
   echo "Set GIT_NAME and GIT_EMAIL before running." >&2
-  echo "Example: GIT_NAME=\"your-name\" GIT_EMAIL=\"your-noreply@users.noreply.github.com\" ./scripts/setup-system.sh" >&2
+  echo "Example: MACHINE=macbook GIT_NAME=\"your-name\" GIT_EMAIL=\"your-noreply@users.noreply.github.com\" ./scripts/setup-system.sh" >&2
   exit 1
 fi
 
@@ -57,22 +57,26 @@ check_supported_platform() {
   esac
 }
 
-# The hostname, minus the .local suffix macOS reports its mDNS name with.
+# The hostname, minus the .local suffix macOS reports its mDNS name with. The
+# readiness check reads this, not the value the operator passed, so it reports
+# the name the installed `dotfiles` will resolve.
 hostname_name() {
   local name
   name="$(hostname)"
   printf '%s\n' "${name%.local}"
 }
 
-# The one name both layers use. MACHINE names it explicitly; otherwise the
-# hostname does.
+# The operator names the machine once, here. The hostname follows from it
+# (sync_hostname below), so the `dotfiles` CLI resolves the same name with
+# nothing passed in.
 machine_name() {
-  if [[ -n "$MACHINE" ]]; then
-    printf '%s\n' "$MACHINE"
-    return
+  if [[ -z "$MACHINE" ]]; then
+    echo "Set MACHINE to this machine's name, one of the machines rows in flake.nix." >&2
+    echo "Example: MACHINE=macbook ./scripts/setup-system.sh" >&2
+    exit 1
   fi
 
-  hostname_name
+  printf '%s\n' "$MACHINE"
 }
 
 load_nix_profile() {
@@ -265,6 +269,53 @@ ensure_dotfiles_repo() {
   git clone "$DOTFILES_REPO_URL" "$repo_dir"
 }
 
+# The machines the repository carries, from the flake's own attr names. The
+# machines row key is a homeConfigurations attribute, so this is the list the
+# `dotfiles` CLI and its completion resolve a name against.
+flake_machines() {
+  local repo_dir="$1"
+
+  nix_cmd eval --impure --raw \
+    --apply 'names: builtins.concatStringsSep " " (builtins.attrNames names)' \
+    "$repo_dir#homeConfigurations"
+}
+
+# MACHINE has to name a machine this repository can apply. NixOS adopts a name
+# the repository does not carry yet, because the adoption writes the row. The
+# other platforms have nothing that writes one, so a missing name stops the run
+# before anything is installed or applied.
+require_known_machine() {
+  local repo_dir="$1"
+  local machine="$2"
+  local known=""
+  local system="${arch}-linux"
+
+  if ! known="$(flake_machines "$repo_dir")"; then
+    echo "Could not read the machine list from the flake. Home Manager reports an unknown machine itself." >&2
+    return 0
+  fi
+
+  if [[ " $known " == *" $machine "* ]]; then
+    return 0
+  fi
+
+  if [[ "$linux_distribution" == "nixos" ]]; then
+    echo "The repository does not carry '$machine' yet. The adoption below writes its row."
+    return 0
+  fi
+
+  if [[ "$os_name" == "Darwin" ]]; then
+    system="aarch64-darwin"
+  fi
+
+  echo "MACHINE names '$machine', which the repository does not carry." >&2
+  echo "Machines in flake.nix: $known" >&2
+  echo "Add this row to its machines block, then run the bootstrap again:" >&2
+  echo "" >&2
+  echo "        $machine = { system = \"$system\"; };" >&2
+  exit 1
+}
+
 # nixos-generate-config writes three header comment lines, and its lambda
 # pattern can name an argument the body never uses. deadnix fails on an unused
 # named argument, so drop both. `...` stays, so the module keeps accepting
@@ -448,6 +499,91 @@ apply_home_manager() {
   DOTFILES_DIR="$repo_dir" nix_cmd run nixpkgs#home-manager -- switch --flake "$repo_dir#$machine" --impure -b backup
 }
 
+# Debian's installer points the 127.0.1.1 line at the name the machine had when
+# it was installed, and tools that resolve through /etc/hosts, `hostname -f`
+# included, still answer with that name. Read the file whole first, because tee
+# truncates it while this runs.
+rewrite_hosts_hostname() {
+  local machine="$1"
+  local line rest name
+  local changed=0
+  local -a lines=() rewritten=()
+
+  [[ -r /etc/hosts ]] || return 0
+  mapfile -t lines < /etc/hosts
+
+  for line in "${lines[@]}"; do
+    if [[ "$line" == "127.0.1.1" || "$line" == 127.0.1.1[[:space:]]* ]]; then
+      rest="${line#127.0.1.1}"
+      rest="${rest#"${rest%%[![:space:]]*}"}"
+      name="${rest%%[[:space:]]*}"
+      if [[ "$name" != "$machine" ]]; then
+        line="127.0.1.1"$'\t'"$machine"
+        changed=1
+      fi
+    fi
+    rewritten+=("$line")
+  done
+
+  [[ "$changed" == 1 ]] || return 0
+  printf '%s\n' "${rewritten[@]}" | run_as_root tee /etc/hosts >/dev/null
+  echo "Pointed the 127.0.1.1 line of /etc/hosts at '$machine'."
+}
+
+# The installed `dotfiles` CLI reads the hostname, and the machines row key is
+# the machine name, so the hostname has to be that name. NixOS is exempt: its
+# machine configuration carries networking.hostName and the system switch
+# applies it.
+sync_hostname() {
+  local machine="$1"
+  local current
+  local failed=0
+
+  if [[ "$linux_distribution" == "nixos" ]]; then
+    return 0
+  fi
+
+  current="$(hostname_name)"
+  if [[ "$current" == "$machine" ]]; then
+    return 0
+  fi
+
+  # A failure here leaves the rest of the setup done, so warn rather than abort
+  # and let report_ready_name say what the CLI will resolve.
+  if [[ "$os_name" == "Darwin" ]]; then
+    run_as_root scutil --set HostName "$machine" || failed=1
+    run_as_root scutil --set LocalHostName "$machine" || failed=1
+  else
+    run_as_root hostnamectl set-hostname "$machine" || failed=1
+    rewrite_hosts_hostname "$machine" || failed=1
+  fi
+
+  if [[ "$failed" == 1 ]]; then
+    echo "Could not set the hostname to '$machine'. Set it by hand before relying on the bare 'dotfiles'." >&2
+    return 0
+  fi
+
+  echo "Set the hostname to '$machine' (was '$current')."
+}
+
+# The last word on the one name, read from the machine so it says what the next
+# `dotfiles` run will resolve.
+report_ready_name() {
+  local machine="$1"
+  local current
+  current="$(hostname_name)"
+
+  if [[ "$current" == "$machine" ]]; then
+    echo "This machine's hostname is '$machine', so 'dotfiles' needs no argument."
+    return 0
+  fi
+
+  echo "This machine's hostname is '$current', not '$machine', so 'dotfiles' still needs one." >&2
+  if [[ "$linux_distribution" == "nixos" ]]; then
+    echo "hosts/platform/nixos/machines/$machine/default.nix sets networking.hostName, and the switch above applies it." >&2
+  fi
+}
+
 main() {
   local repo_dir
   local machine
@@ -474,8 +610,10 @@ main() {
   configure_zsh
   configure_git
   ensure_dotfiles_repo "$repo_dir"
+  require_known_machine "$repo_dir" "$machine"
   adopt_nixos_machine "$repo_dir" "$machine"
   apply_home_manager "$repo_dir" "$machine"
+  sync_hostname "$machine"
 
   if [[ "$linux_distribution" == "nixos" && -d "$repo_dir/hosts/platform/nixos/machines/$machine" ]]; then
     # A copied machine configuration can collide with the repo's modules. Fail
@@ -496,18 +634,16 @@ main() {
   if [[ "$should_reboot" == 1 && "${REBOOT:-0}" == 1 ]]; then
     echo "Setup complete. Rebooting now..."
     run_as_root reboot
-  elif [[ "$os_name" == "Darwin" ]]; then
-    echo "Setup complete. Open Docker.app once to finish Docker Desktop setup."
-  elif [[ "$linux_distribution" == "nixos" ]]; then
-    if [[ "$(hostname_name)" == "$machine" ]]; then
-      echo "Setup complete. 'dotfiles' is ready, and applies this machine with no argument."
-    else
-      echo "Setup complete, but this machine's hostname is '$(hostname_name)', not '$machine'." >&2
-      echo "Set the hostname to '$machine' so 'dotfiles' needs no argument (see README.md)." >&2
-    fi
-  else
-    echo "Setup complete. Reboot before using Docker without sudo."
+    return 0
   fi
+
+  echo "Setup complete."
+  if [[ "$os_name" == "Darwin" ]]; then
+    echo "Open Docker.app once to finish Docker Desktop setup."
+  elif [[ "$should_reboot" == 1 ]]; then
+    echo "Reboot before using Docker without sudo."
+  fi
+  report_ready_name "$machine"
 }
 
 main "$@"

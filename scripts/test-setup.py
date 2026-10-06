@@ -58,10 +58,11 @@ class BootstrapTests(unittest.TestCase):
     def run_setup(self, distro="nixos", tools=("nix",), checkout=False,
                   stdin=False, root=False, sudo=True, build_fail=False,
                   clone_fail=False, conflicting_target=False,
-                  dotfiles_dir=None, existing_target=False, machine=None,
+                  dotfiles_dir=None, existing_target=False, machine="nix-desktop",
                   machine_entry=True, machine_hardware=True, nixos_config=True,
                   nixos_config_body="{ }\n", capability=None, repeat=False,
-                  scratch_dir=None, hostname="nix-desktop", test_arch=None):
+                  scratch_dir=None, hostname="nix-desktop", test_arch=None,
+                  flake_machines="nix-desktop macbook nix-server", flake_fail=False):
         scratch_ctx = (tempfile.TemporaryDirectory(prefix="bootstrap-test-")
                        if scratch_dir is None else contextlib.nullcontext(scratch_dir))
         with scratch_ctx as scratch:
@@ -109,9 +110,13 @@ class BootstrapTests(unittest.TestCase):
                 shutil.copytree(skeleton, repo, dirs_exist_ok=True)
             # Not fixtures/etc/nixos, because the rewrite check below rejects a
             # host path that survives as a substring of its own replacement.
+            # /etc/hosts sits beside it: the Linux paths rewrite its 127.0.1.1
+            # line, and this file is what they rewrite.
             etc_nixos = fixtures / "system-etc"
+            etc_hosts = etc_nixos / "hosts"
+            etc_nixos.mkdir(parents=True)
+            etc_hosts.write_text("127.0.0.1\tlocalhost\n127.0.1.1\tinstaller-name\n")
             if nixos_config:
-                etc_nixos.mkdir(parents=True)
                 (etc_nixos / "configuration.nix").write_text(nixos_config_body)
             source = SETUP.read_text()
             # Host paths a test run must not follow, because the tools they point
@@ -123,6 +128,7 @@ class BootstrapTests(unittest.TestCase):
                 "/opt/homebrew/bin/brew": str(base / "no-brew"),
                 "/usr/local/bin/brew": str(base / "no-brew"),
                 "/etc/nixos": str(etc_nixos),
+                "/etc/hosts": str(etc_hosts),
             }
             for host_path, replacement in host_paths.items():
                 source = source.replace(host_path, replacement)
@@ -150,7 +156,17 @@ class BootstrapTests(unittest.TestCase):
             )
             bodies = {
                 "uname": 'if [[ "$1" == -s ]]; then echo "$TEST_OS"; else echo "$TEST_ARCH"; fi\n',
-                "hostname": 'printf "%s\\n" "$TEST_HOSTNAME"\n',
+                # A platform that changes the hostname writes the new name here,
+                # so the script reads back what it set, as it would on the machine.
+                "hostname": '''
+if [[ -s "$TEST_HOSTNAME_FILE" ]]; then cat "$TEST_HOSTNAME_FILE"; else printf "%s\\n" "$TEST_HOSTNAME"; fi
+''',
+                "hostnamectl": '''
+if [[ "$1" == set-hostname ]]; then printf "%s\\n" "$2" > "$TEST_HOSTNAME_FILE"; fi
+''',
+                "scutil": '''
+if [[ "$1" == --set ]]; then printf "%s\\n" "$3" > "$TEST_HOSTNAME_FILE"; fi
+''',
                 "git": '''
 if [[ "$1" == -C ]]; then
   if [[ -d "$2/.git" ]]; then (cd "$2" && pwd); else exit 1; fi
@@ -167,6 +183,10 @@ if [[ "$3" == build ]]; then
   for arg in "$@"; do
     case "$arg" in nixpkgs#*) echo "$TEST_FIXTURES/packages/${arg#nixpkgs#}" ;; esac
   done
+elif [[ "$3" == eval ]]; then
+  # What nix reports for the homeConfigurations attr names the script asks for.
+  [[ "$TEST_FLAKE_FAIL" == 0 ]] || exit 1
+  printf '%s\\n' "$TEST_FLAKE_MACHINES"
 elif [[ "$3" == run ]]; then
   command -v git >/dev/null
   command -v curl >/dev/null
@@ -219,7 +239,17 @@ cat <<GEN
 GEN
 ''',
                 "dpkg": "echo amd64\n",
-                "tee": "cat >/dev/null\n",
+                "tee": '''
+append=0
+if [[ "$1" == -a || "$1" == --append ]]; then append=1; shift; fi
+target="$1"
+case "$target" in
+  # A path inside the scratch tree is a fixture a test wants written. A real
+  # system path stays untouched, because this run is not that system's.
+  "$TEST_FIXTURES"/*) if [[ "$append" == 1 ]]; then cat >> "$target"; else cat > "$target"; fi ;;
+  *) cat > /dev/null ;;
+esac
+''',
                 "gpg": "cat >/dev/null\n",
             }
             for name in ("zsh", "install", "chmod", "systemctl", "usermod", "chsh", "nixos-rebuild"):
@@ -234,13 +264,16 @@ GEN
                 (package_bin / name).symlink_to(fixtures / name)
             available = list(tools) + ["uname", "hostname"]
             if distro == "ubuntu":
-                available += ["apt-get", "dpkg", "install", "chmod", "tee", "systemctl", "usermod", "chsh"]
+                available += ["apt-get", "dpkg", "install", "chmod", "tee", "systemctl",
+                              "usermod", "chsh", "hostnamectl"]
             elif distro == "arch":
-                available += ["pacman", "systemctl", "usermod", "chsh"]
+                available += ["pacman", "systemctl", "usermod", "chsh", "hostnamectl", "tee"]
             elif distro == "nixos":
+                # No hostnamectl and no scutil here: the NixOS system switch sets
+                # the hostname, so the bootstrap must not reach for either.
                 available += ["nixos-generate-config", "nixos-rebuild"]
             elif distro == "macos":
-                available += ["curl", "tee", "chsh"]  # macOS includes curl.
+                available += ["curl", "tee", "chsh", "scutil"]  # macOS includes curl.
             if sudo:
                 available += ["sudo"]
             for name in set(available):
@@ -255,8 +288,9 @@ GEN
                 TEST_BIN=str(commands), TEST_FIXTURES=str(fixtures), TEST_LOG=str(log),
                 TEST_EUID="0" if root else "1000", TEST_BUILD_FAIL=str(int(build_fail)),
                 TEST_CLONE_FAIL=str(int(clone_fail)),
-                MACHINE=machine or "", MACHINE_CAPABILITY=capability or "",
-                TEST_HOSTNAME=hostname,
+                MACHINE=machine, MACHINE_CAPABILITY=capability or "",
+                TEST_HOSTNAME=hostname, TEST_HOSTNAME_FILE=str(base / "synced-hostname"),
+                TEST_FLAKE_MACHINES=flake_machines, TEST_FLAKE_FAIL=str(int(flake_fail)),
                 TEST_REPO_SKELETON=str(skeleton),
             )
             for name in ("DOTFILES_DIR", "REBOOT", "BASH_ENV", "ENV"):
@@ -557,11 +591,100 @@ GEN
         self.assertIn(f"-- switch --flake {repo}#nix-desktop", calls)
         self.assertNotIn("hosts/platform/nixos", calls)
 
-    def test_hostname_resolves_the_machine(self):
-        # macOS reports an mDNS name; the .local suffix is not part of the name.
-        result, calls, repo = self.run_setup(distro="ubuntu", hostname="azzz-mac.local")
+    def test_missing_machine_stops_before_installing_and_applying(self):
+        # The hostname no longer supplies the machine, so an unset MACHINE is an
+        # error on every platform, before a package manager runs.
+        for distro in ("macos", "ubuntu"):
+            with self.subTest(distro=distro):
+                result, calls, _ = self.run_setup(distro=distro, tools=(), machine="")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Set MACHINE", result.stderr)
+                self.assertNotIn("install.sh", calls)
+                self.assertNotIn("apt-get ", calls)
+                self.assertNotIn("home-manager", calls)
+
+    def test_machine_the_repository_does_not_carry_is_fatal_off_nixos(self):
+        for distro, system in (("macos", "aarch64-darwin"), ("ubuntu", "x86_64-linux")):
+            with self.subTest(distro=distro):
+                result, calls, _ = self.run_setup(distro=distro, tools=(), machine="newbox")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Machines in flake.nix: nix-desktop macbook nix-server",
+                              result.stderr)
+                self.assertIn(f'        newbox = {{ system = "{system}"; }};', result.stderr)
+                self.assertNotIn("home-manager", calls)
+
+    def test_nixos_adopts_a_machine_the_repository_does_not_carry_yet(self):
+        result, calls, repo = self.run_setup(
+            existing_target=True, machine_entry=False, machine="newbox", hostname="newbox",
+            nixos_config_body=GUI_CONFIG, scratch_dir=self.persistent_scratch(),
+        )
         self.assert_success(result, calls, repo)
-        self.assertIn(f"-- switch --flake {repo}#azzz-mac", calls)
+        self.assertIn("does not carry 'newbox' yet", result.stdout)
+        machine_dir = Path(repo) / "hosts/platform/nixos/machines/newbox"
+        self.assertIn('networking.hostName = "newbox";',
+                      (machine_dir / "default.nix").read_text())
+        self.assertIn('        newbox = { system = "x86_64-linux"; '
+                      'nixos = ./hosts/platform/nixos/machines/newbox; };',
+                      (Path(repo) / "flake.nix").read_text())
+
+    def test_macos_sets_the_hostname_from_the_machine(self):
+        scratch = self.persistent_scratch()
+        result, calls, repo = self.run_setup(
+            distro="macos", machine="macbook", hostname="azzz-mac.local", scratch_dir=scratch,
+        )
+        self.assert_success(result, calls, repo)
+        self.assertIn(f"-- switch --flake {repo}#macbook", calls)
+        self.assertIn("scutil --set HostName macbook\n", calls)
+        self.assertIn("scutil --set LocalHostName macbook\n", calls)
+        # The run reads the hostname back, so it ends with the two names agreeing.
+        self.assertEqual((Path(scratch) / "synced-hostname").read_text(), "macbook\n")
+        self.assertIn("so 'dotfiles' needs no argument", result.stdout)
+
+    def test_macos_hostname_with_the_mdns_suffix_is_already_the_machine(self):
+        # macOS reports an mDNS name; the .local suffix is not part of the name,
+        # so this Mac is named macbook and nothing needs setting.
+        result, calls, repo = self.run_setup(distro="macos", machine="macbook",
+                                            hostname="macbook.local")
+        self.assert_success(result, calls, repo)
+        self.assertNotIn("scutil", calls)
+        self.assertIn("so 'dotfiles' needs no argument", result.stdout)
+
+    def test_linux_sets_the_hostname_and_the_hosts_entry_from_the_machine(self):
+        for distro in ("ubuntu", "arch"):
+            with self.subTest(distro=distro):
+                scratch = self.persistent_scratch()
+                result, calls, repo = self.run_setup(
+                    distro=distro, machine="nix-desktop", hostname="installer-name",
+                    scratch_dir=scratch,
+                )
+                self.assert_success(result, calls, repo)
+                self.assertIn("hostnamectl set-hostname nix-desktop\n", calls)
+                self.assertEqual((Path(scratch) / "synced-hostname").read_text(),
+                                 "nix-desktop\n")
+                hosts = (Path(scratch) / "fixtures/system-etc/hosts").read_text()
+                self.assertIn("127.0.1.1\tnix-desktop\n", hosts)
+                self.assertNotIn("installer-name", hosts)
+                self.assertIn("so 'dotfiles' needs no argument", result.stdout)
+
+    def test_nixos_leaves_the_hostname_to_the_system_switch(self):
+        result, calls, repo = self.run_setup(
+            machine="nix-desktop", hostname="installer-name", existing_target=True,
+        )
+        self.assert_success(result, calls, repo)
+        self.assertIn("nixos-rebuild switch", calls)
+        self.assertNotIn("hostnamectl", calls)
+        self.assertNotIn("scutil", calls)
+        # The switch applies networking.hostName, so the script asks for no
+        # hostname change and names the file that owns the name.
+        self.assertIn("networking.hostName", result.stderr)
+
+    def test_unreadable_machine_list_lets_home_manager_report_the_name(self):
+        # A flake that cannot be evaluated leaves the name unchecked, and Home
+        # Manager reports the machine in its own words.
+        result, calls, repo = self.run_setup(distro="ubuntu", machine="nix-desktop",
+                                            flake_fail=True)
+        self.assert_success(result, calls, repo)
+        self.assertIn("Could not read the machine list", result.stderr)
 
 
 if __name__ == "__main__":
