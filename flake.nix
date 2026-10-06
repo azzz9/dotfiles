@@ -38,6 +38,7 @@
     # `lefthook install` from a prepare script, which a pi git install cannot
     # satisfy, so it is deliberately not an input here.
     pi-compact-tools = { url = "github:nedleeds/pi-compact-tools"; flake = false; };
+    herdr-auto-title = { url = "github:kryptamine/herdr-auto-title"; flake = false; };
   };
 
   outputs =
@@ -54,25 +55,21 @@
         let configured = builtins.getEnv "DOTFILES_DIR";
         in
         if configured != "" then configured else "${builtins.getEnv "HOME"}/src/github.com/azzz9/dotfiles";
-      # The git packages pi installs. flake.lock records owner, repo, and
-      # revision for every locked input, so one node carries both the identity
-      # pi keys a package and its checkout by (spec) and the revision the pin
-      # sits at. A row in modules/pi.nix names only the input; spec and rev
-      # both come from here, so no module holds a sha or a second spec string.
-      piGitLock = (builtins.fromJSON (builtins.readFile ./flake.lock)).nodes;
-      piGitSource = name:
-        let node = piGitLock.${name}.locked;
+      lockedSources = (builtins.fromJSON (builtins.readFile ./flake.lock)).nodes;
+      lockedSource = name:
+        let node = lockedSources.${name}.locked;
         in {
           inherit (node) owner repo rev;
           spec = "github.com/${node.owner}/${node.repo}";
         };
       piGitSources = {
-        pi-pstack = piGitSource "pi-pstack";
-        i-have-adhd = piGitSource "i-have-adhd";
-        pi-subagents = piGitSource "pi-subagents";
-        pi-web-access = piGitSource "pi-web-access";
-        pi-compact-tools = piGitSource "pi-compact-tools";
+        pi-pstack = lockedSource "pi-pstack";
+        i-have-adhd = lockedSource "i-have-adhd";
+        pi-subagents = lockedSource "pi-subagents";
+        pi-web-access = lockedSource "pi-web-access";
+        pi-compact-tools = lockedSource "pi-compact-tools";
       };
+      herdrAutoTitleSource = lockedSource "herdr-auto-title";
       # One table for every machine, and one name for both layers. The key is
       # the homeConfigurations attribute, and with it the nixosConfigurations
       # attribute for a row that carries a nixos path. The hostname on each
@@ -106,7 +103,7 @@
             ];
           };
           extraSpecialArgs = {
-            inherit repoDir machineNames piGitSources;
+            inherit repoDir machineNames piGitSources herdrAutoTitleSource;
             hunk = hunk;
             llmAgents = llm-agents;
           };

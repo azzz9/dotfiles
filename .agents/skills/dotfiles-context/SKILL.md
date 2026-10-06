@@ -71,22 +71,29 @@ Completion notifications use herdr's system delivery backend with a 15-second
 delay. Herdr's pi integration is
 reinstalled on every activation.
 
-Plugins stay machine-local, the way pi's provider extensions do. `herdr plugin
-install` clones and builds into `~/.config/herdr/plugins/github/` and records
-the entry in `~/.config/herdr/plugins.json`, so a new machine runs the install
-itself. `herdr-auto-title` (kryptamine/herdr-auto-title) names tabs and panes
-after the work in them, and it builds from source with `go build`, which this
-machine only has inside a nix shell. nixpkgs' go exports `CGO_ENABLED=1`, which
-sends that build looking for gcc, so the command that works disables cgo:
+Herdr owns plugin checkouts, builds, and registry entries. Dotfiles pins
+`herdr-auto-title` (kryptamine/herdr-auto-title) in `flake.lock` and installs
+the locked commit in the final Home Manager activation step. The hook runs
+after every other activation entry, but reconciles Herdr only while the
+`dotfiles` CLI holds its lock for this repository. A direct Home Manager switch
+does not change the plugin registry. The pin manifest is read-only. Dotfiles
+never writes under `~/.config/herdr-auto-title/`.
+
+Dotfiles owns the Auto Title enabled state. A manual disable lasts until the
+next `dotfiles apply`, `sync`, or `upgrade`, which enables the plugin again.
+After an install, update, or enable, activation prints this action:
 
 ```sh
-XDG_CACHE_HOME=/tmp/nix-cache nix --extra-experimental-features 'nix-command flakes' shell --impure \
-  "github:NixOS/nixpkgs/nixos-unstable#go" -c env CGO_ENABLED=0 \
-  herdr plugin install kryptamine/herdr-auto-title --yes
 herdr plugin action invoke herdr.auto-title.restart
 ```
 
-A tab or pane renamed by hand is left alone from then on.
+Dotfiles leaves restart to the user. Installation and enablement do not
+replace a running Auto Title process. A tab or pane renamed by hand is left
+alone from then on. An isolated Herdr 0.9.3 test injected a Go build failure
+and confirmed that the prior registration, checkout, binary, and plugin config
+stayed intact. The activation fails when installation fails. `dotfiles upgrade`
+restores source files, not the already activated Home Manager generation; rerun
+`dotfiles apply` after resolving the failure.
 
 ## AI config deployment model
 
