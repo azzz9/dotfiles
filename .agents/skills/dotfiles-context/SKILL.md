@@ -9,10 +9,10 @@ Nix flake + Home Manager repo. Read this before exploring files.
 
 ## Layout
 
-README.md lists every file. The entry points are `flake.nix` (inputs,
-machines, outputs), `hosts/default.nix` (Home Manager entry and skill links),
-`modules/` (one module per capability), `checks/default.nix` (the check set),
-and `scripts/` (the `dotfiles` CLI and the bootstrap).
+The entry points are `flake.nix` (inputs, machines, outputs), `hosts/default.nix`
+(Home Manager entry and skill links), `modules/` (one module per capability),
+`checks/default.nix` (the check set), and `scripts/` (the `dotfiles` CLI, the
+bootstrap, and the check set).
 
 ## Neovim config structure
 
@@ -56,7 +56,7 @@ subagents, and an extension that injects the role-model table and `/poteto-mode`
 `modules/pi.nix` owns the package rows. The five package inputs are
 `flake = false` inputs in `flake.nix`, rendered into `settings.json` as store
 paths, so `flake.lock` is the only pin; `pi_reconcile` installs any npm row whose
-version differs from its spec. README.md has the rest of the pin story.
+version differs from its spec. The pins are below.
 
 Provider extensions, `~/.pi/agent/pstack/models.json`, and the
 `pi-hermes-memory` store are machine-local and deliberately not Nix-managed.
@@ -72,12 +72,116 @@ needed.
 
 `apply`, `sync`, and `upgrade` live in `scripts/dotfiles.sh`, which
 `modules/dotfiles.nix` installs through `writeShellApplication` (so the build
-shellchecks it). README.md owns the command table and the pin story.
+shellchecks it). README.md owns the command table. `apply` and `sync` run a
+gate first: any change outside the three files `upgrade` rewrites makes them
+refuse, because activation would otherwise pick up a half-finished edit.
+
+## Pins
+
+`upgrade` moves every pin this repository has, in one run, and leaves the files
+it moved in the working tree for a commit.
+
+| Pin | Moves with |
+|-----|------------|
+| nixpkgs and every other flake input | `nix flake update`, which rewrites `flake.lock` |
+| the pi packages | `flake.lock` alone, because `modules/pi.nix` hands pi each input's store path |
+| the npm-only pi packages | a registry-queried bump in `modules/pi.nix` plus `pi_reconcile` |
+| `modules/pinned-packages.nix` | `nix-update`, one name at a time |
+
+The npm-only rows are the two `rpiv` packages, which ship from a workspace no
+git source can key, `cc-safety-net`, whose repository builds its extension at
+install time, and `pi-hermes-memory`, which publishes to npm and pulls its
+`better-sqlite3` addon prebuilt. The `nix-update` names are `solhint`, `roots`,
+`prettier-plugin-solidity` and its dist, and `herdr-nvim`.
+
+A `nix-update` run that fails, for example because a release needs a newer Go
+than nixpkgs carries, restores that one file and warns, so one blocked release
+does not stop the run. A failed build or activation restores `flake.lock`, the
+pins file, and `modules/pi.nix`.
+
+`codediff-watcher`'s version is read from nixpkgs' `codediff-nvim` at eval time,
+so the watcher and the plugin never disagree; its per-system release hashes stay
+hand-edited when the plugin itself moves.
 
 Adding a pinned package means giving it `pname`, `version`, and a `src` built
 from `${version}`, listing it in `pin_names`, and exposing it as a flake
-package. codediff-watcher is the exception: its version comes from nixpkgs'
-`vimPlugins.codediff-nvim`, so only its per-system hashes are hand-edited.
+package.
+
+## Machines
+
+One table in `flake.nix` names every machine. The key is the machine's hostname,
+which is also the `homeConfigurations` attribute, and the
+`nixosConfigurations` attribute for a row that carries a `nixos` path. The rows
+are `nix-desktop`, `macbook`, and `nix-server`. A row without a `nixos` path has
+a user environment only, which is every non-NixOS machine.
+
+The bootstrap sets the hostname from `MACHINE`: `scutil` on macOS,
+`hostnamectl` and the `127.0.1.1` line of `/etc/hosts` on Ubuntu and Arch, and
+`networking.hostName` through the system switch on NixOS. So the row key, the
+machine name, and the hostname agree, and the CLI needs no argument. The CLI
+reads `hostname` itself and drops a trailing `.local`, which is the suffix
+macOS reports its mDNS name with.
+
+Adding a machine is one bootstrap run with `MACHINE=<name>`. On NixOS the run
+also writes the machine's directory. On macOS, Ubuntu, and Arch it stops and
+prints the row to add instead, because the repository carries the machine's
+settings and the script cannot invent them.
+
+Renaming means the row key, the directory under `hosts/platform/nixos/machines/`
+for a NixOS row, and `networking.hostName`, then a run with `MACHINE=<new name>`.
+Rename the row first. With the old key still in the repository, a NixOS run with
+a new name adopts a second machine rather than renaming the one in front of you.
+
+A machine whose installed `dotfiles` predates a rename still carries the old name
+list, so its first apply runs the checkout's script instead:
+
+```bash
+DOTFILES_DIR=$PWD DOTFILES_MACHINES="nix-desktop macbook nix-server" bash scripts/dotfiles.sh apply <name>
+```
+
+## NixOS system layer
+
+`hosts/platform/nixos/machines/<name>/` is one directory per NixOS machine, and
+the directory name is the machine name. `default.nix` is the entry point,
+`hardware-configuration.nix` comes from `nixos-generate-config` on that machine,
+and anything that fits only one machine, such as its GPU, sits beside them as
+`hardware-<part>.nix`. `configuration.nix` holds the machine's own settings,
+copied from `/etc/nixos` at adoption, and that is where they are edited from then
+on.
+
+`hosts/platform/nixos/modules/` holds the capability modules, and nothing
+device-specific. `common.nix` has what every NixOS machine shares, `desktop.nix`
+the GUI stack, and `headless.nix` the minimum for a machine without a display.
+Every scalar there is a `lib.mkDefault`, so a machine's `configuration.nix` wins.
+Two cannot be defaults: the user's `shell`, which the adoption drops from the
+copy, and `services.displayManager.defaultSession`, which NixOS itself defaults.
+
+`hosts/platform/nixos/` feeds `nixosConfigurations.<machine>` in the same flake.
+No other platform evaluates it. The system configuration is a flake output, so it
+needs no `/etc/nixos` wiring:
+
+```bash
+sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#<machine> --impure
+```
+
+The adoption picks `desktop.nix` when the copied configuration drives a GUI
+(`services.xserver`, `services.displayManager`, `services.desktopManager`,
+`programs.hyprland`, or `programs.plasma`), and `headless.nix` otherwise.
+`MACHINE_CAPABILITY` overrides the pick. When the disk layout changes, regenerate
+the hardware file the same way, drop its three header comment lines and every
+lambda argument the body does not use, so the `deadnix` check passes, and copy it
+in.
+
+## CI and the push guard
+
+`git config core.hooksPath .githooks` runs `scripts/check.sh` before every push.
+CI runs the same set: it evaluates every machine with `scripts/check.sh
+--no-build`, then builds the checks and every activation package for
+`x86_64-linux` and `aarch64-darwin`.
+
+An optional Cachix cache speeds CI up. Set the repository variable `CACHIX_NAME`
+and the secret `CACHIX_AUTH_TOKEN` and the workflow configures the cache. Without
+a token CI uses the public cache only.
 
 ## Checks
 
@@ -116,5 +220,5 @@ Linux home paths. Compare names and keys, not absolute paths.
 ## Supported platforms
 
 `x86_64-linux` (Ubuntu, Arch, NixOS) and `aarch64-darwin` (Apple Silicon).
-README.md covers the bootstrap, the machine table, and the NixOS system layer,
-including how to add a machine.
+README.md covers install and daily use. The bootstrap, the machine table, and the
+NixOS system layer are above.
