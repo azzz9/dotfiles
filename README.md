@@ -45,26 +45,33 @@ GIT_NAME="your-name" GIT_EMAIL="your-noreply@users.noreply.github.com" \
 The script installs system dependencies, installs Nix if needed, configures
 Git/Zsh/Docker, and applies the Home Manager flake for this machine and user.
 
-On NixOS, the script uses the existing Nix installation and applies standalone
-Home Manager. It temporarily provides Git and curl if needed, and Home Manager
-installs Git and Zsh permanently. Set the login shell and enable Docker in your
-NixOS system configuration, merging these options with your existing user
-definition:
+On NixOS, the script needs nothing prepared in the repository. It uses the
+existing Nix installation, applies standalone Home Manager, and then applies
+the system configuration with the command below. It asks for your password
+once to run that step.
 
-```nix
-{ pkgs, ... }: {
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
-  programs.zsh.enable = true;
-  users.users."your-user".shell = pkgs.zsh;
-  virtualisation.docker.enable = true;
-  users.users."your-user".extraGroups = [ "docker" ];
-}
+```bash
+sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#<hostname> --impure
 ```
 
-Apply those system changes with `sudo nixos-rebuild switch`, then log out and
-back in for the shell and Docker group membership to take effect.
+Adoption writes the machine into the flake when the repository does not carry
+it yet: `machines/<hostname>/hardware-configuration.nix` from
+`nixos-generate-config`, a copy of `/etc/nixos/configuration.nix` as
+`machines/<hostname>/configuration.nix`, `default.nix` importing the shared
+modules, and the machine row in `flake.nix`. The copy drops two lines. The row
+owns `networking.hostName`, and the user's `shell` leaves because NixOS gives
+that option the uniq type, where two definitions are an error even when the
+values agree. It stages all four files with `git add`, because Nix sees tracked
+files only. A machine the repository already carries is left alone, so a second
+run changes nothing.
 
-Bootstrap and `dotfiles` enable those Nix features for their subprocesses and
+Git and Zsh come from Home Manager. The script gives the setup process a
+temporary Git and curl when they are missing. Every scalar the shared modules
+set is a `lib.mkDefault`, so what the copied configuration says wins, with two
+exceptions that cannot be defaults: the user's shell, for the reason above, and
+`services.displayManager.defaultSession`, which NixOS itself defaults.
+
+Bootstrap and `dotfiles` enable the Nix features their subprocesses need and
 preserve an existing `NIX_CONFIG`.
 
 Optional overrides:
@@ -73,7 +80,8 @@ Optional overrides:
 |----------|---------|---------|
 | `DOTFILES_DIR` | `~/src/github.com/azzz9/dotfiles` | Checkout to clone or reuse and apply |
 | `DOTFILES_REPO_URL` | `https://github.com/azzz9/dotfiles.git` | Repo URL |
-| `MACHINE` | this machine's hostname | Machine whose Home Manager profile the bootstrap applies, and whose NixOS system configuration it checks (NixOS only) |
+| `MACHINE` | this machine's hostname | Machine whose Home Manager profile the bootstrap applies, and whose NixOS system configuration it adopts and switches (NixOS only) |
+| `MACHINE_CAPABILITY` | picked from the copied configuration | `desktop` or `headless`, the NixOS capability module the adoption imports (NixOS only) |
 | `REBOOT` | `0` | Reboot after setup |
 
 Set `DOTFILES_DIR` to use a different checkout. A checkout outside `~/src` does
@@ -177,7 +185,7 @@ dotfiles/
 +|   +-- nixos/                #   the NixOS platform
 +|       +-- home.nix         #     HM: NixOS differences (add when needed)
 +|       +-- modules/         #     shared NixOS capability modules
-+|       +-- machines/<name>/ #     this machine: default.nix + hardware files
++|       +-- machines/<name>/ #     this machine: default, hardware, configuration
 +-- checks/default.nix         # the check set, wired into checks.<system>
 +-- modules/
 |   +-- dotfiles.nix           # wraps scripts/dotfiles.sh as the `dotfiles` CLI
@@ -232,9 +240,10 @@ wiring:
 sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#nix-desktop --impure
 ```
 
-The bootstrap checks that a machine is complete and prints that command. It
-reads this machine's hostname, unless `MACHINE` names another one (see the
-bootstrap invocation above for `GIT_NAME` and `GIT_EMAIL`):
+The bootstrap adopts the machine and then runs that command, so a machine the
+repository does not carry yet needs no preparation. It reads this machine's
+hostname, unless `MACHINE` names another one (see the bootstrap invocation above
+for `GIT_NAME` and `GIT_EMAIL`):
 
 ```bash
 MACHINE=nix-desktop ~/src/github.com/azzz9/dotfiles/scripts/setup-system.sh
@@ -242,23 +251,26 @@ MACHINE=nix-desktop ~/src/github.com/azzz9/dotfiles/scripts/setup-system.sh
 
 ### Adding a machine
 
-On the new machine, generate the hardware file and copy it back:
+Run the bootstrap on the new machine, as in Quick start. It writes
+`hardware-configuration.nix`, copies `/etc/nixos/configuration.nix` in as
+`configuration.nix`, writes `default.nix`, adds the machine row, and switches the
+system. It picks `desktop.nix` when the copied configuration drives a GUI
+(`services.xserver`, `services.displayManager`, `services.desktopManager`,
+`programs.hyprland`, or `programs.plasma`) and `headless.nix` otherwise, prints
+the pick, and `MACHINE_CAPABILITY=desktop` or `=headless` overrides it.
 
-```bash
-sudo nixos-generate-config --show-hardware-config > /tmp/hardware-configuration.nix
-cp /tmp/hardware-configuration.nix ~/src/github.com/azzz9/dotfiles/hosts/platform/nixos/machines/<name>/hardware-configuration.nix
-```
+Two things the script cannot know:
 
-Remove any argument the generated file does not use, so the `deadnix` check
-passes. In `machines/<name>/default.nix`, set `networking.hostName`, the boot
-loader, and `system.stateVersion` (copy the value from the machine's current
-system). Import either `desktop.nix` or `headless.nix`. Then add the machine to
-`machines` in `flake.nix`, which is what exposes `nixosConfigurations.<name>`
-and gives the machine its one name; the table key has to match
-`networking.hostName`, which is the hostname the CLI reads. Setup stops before
-printing the apply command while the hardware file is missing.
+- The machine's own settings are the ones the installer left in `/etc/nixos`.
+  They arrive as `machines/<name>/configuration.nix`, and that file is where
+  they are edited from then on. Every value the shared modules set is a
+  `lib.mkDefault`, so a setting this file makes wins.
+- A rename still needs the two steps in [Machines](#machines): set the hostname
+  once, then apply once with the checkout's script and the old name list.
 
-When the disk layout changes, regenerate the hardware file the same way.
+When the disk layout changes, regenerate the hardware file the same way and copy
+it in. Drop its three header comment lines and any lambda argument the body does
+not use, so the `deadnix` check passes.
 
 ## Local push guard
 

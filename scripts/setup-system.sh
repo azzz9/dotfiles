@@ -57,17 +57,22 @@ check_supported_platform() {
   esac
 }
 
+# The hostname, minus the .local suffix macOS reports its mDNS name with.
+hostname_name() {
+  local name
+  name="$(hostname)"
+  printf '%s\n' "${name%.local}"
+}
+
 # The one name both layers use. MACHINE names it explicitly; otherwise the
-# hostname does, minus the .local suffix macOS reports its mDNS name with.
+# hostname does.
 machine_name() {
   if [[ -n "$MACHINE" ]]; then
     printf '%s\n' "$MACHINE"
     return
   fi
 
-  local name
-  name="$(hostname)"
-  printf '%s\n' "${name%.local}"
+  hostname_name
 }
 
 load_nix_profile() {
@@ -260,49 +265,180 @@ ensure_dotfiles_repo() {
   git clone "$DOTFILES_REPO_URL" "$repo_dir"
 }
 
-list_nixos_machines() {
-  local repo_dir="$1"
-  local machine
-  local names=""
+# nixos-generate-config writes three header comment lines, and its lambda
+# pattern can name an argument the body never uses. deadnix fails on an unused
+# named argument, so drop both. `...` stays, so the module keeps accepting
+# whatever else the module system passes.
+prune_generated_hardware_config() {
+  local line header="" body="" arg names="" pattern=""
+  local -a params=()
+  local in_header=1 skip_comments=1
 
-  for entry in "$repo_dir"/hosts/platform/nixos/machines/*/default.nix; do
-    [[ -f "$entry" ]] || continue
-    names+="${names:+ }$(basename "$(dirname "$entry")")"
+  while IFS= read -r line; do
+    if [[ "$in_header" == 0 ]]; then
+      body+="$line"$'\n'
+      continue
+    fi
+    if [[ "$skip_comments" == 1 && "$line" == "#"* ]]; then
+      continue
+    fi
+    skip_comments=0
+    if [[ "$line" == *"}:"* ]]; then
+      header="$line"
+      in_header=0
+    fi
   done
 
-  printf '%s' "$names"
+  header="${header#*\{}"
+  header="${header%%\}*}"
+  IFS=',' read -r -a params <<< "$header"
+  for arg in "${params[@]}"; do
+    arg="${arg//[[:space:]]/}"
+    if [[ -z "$arg" || "$arg" == "..." ]]; then
+      continue
+    fi
+    if grep -qw -- "$arg" <<< "$body"; then
+      names+="${names:+, }$arg"
+    fi
+  done
+
+  if [[ -n "$names" ]]; then
+    pattern="{ $names, ... }"
+  else
+    pattern="{ ... }"
+  fi
+
+  printf '%s:\n%s' "$pattern" "$body"
 }
 
-# On NixOS the system configuration is a flake output, so the bootstrap only
-# checks that the machine is complete and prints the command that applies it.
-check_nixos_machine() {
+# A NixOS machine whose system configuration is the repository's needs no
+# /etc/nixos wiring, because nixosConfigurations.<machine> is the flake output.
+# Adoption writes that machine into the repository from the installer's own
+# configuration, so nothing has to be prepared by hand.
+adopt_nixos_machine() {
   local repo_dir="$1"
   local machine="$2"
-  local entry hardware
+  local relative_dir="hosts/platform/nixos/machines/$machine"
+  local machine_dir="$repo_dir/$relative_dir"
+  local capability="" capability_reason="" marker="" generated="" line="" row=""
+  local in_machines=0 inserted=0
+  local in_users=0
 
   if [[ "$linux_distribution" != "nixos" ]]; then
     return 0
   fi
 
-  entry="$repo_dir/hosts/platform/nixos/machines/$machine/default.nix"
-  hardware="$repo_dir/hosts/platform/nixos/machines/$machine/hardware-configuration.nix"
+  if [[ -n "${MACHINE_CAPABILITY:-}" ]]; then
+    case "$MACHINE_CAPABILITY" in
+      desktop | headless)
+        capability="$MACHINE_CAPABILITY"
+        capability_reason="MACHINE_CAPABILITY=$MACHINE_CAPABILITY set it"
+        ;;
+      *)
+        echo "MACHINE_CAPABILITY must be desktop or headless, not '$MACHINE_CAPABILITY'." >&2
+        exit 1
+        ;;
+    esac
+  fi
 
-  if [[ ! -f "$entry" ]]; then
-    echo "No NixOS configuration for machine '$machine'. Available machines: $(list_nixos_machines "$repo_dir")" >&2
-    echo "Set MACHINE=<name> to check a different machine." >&2
+  if [[ -f "$machine_dir/default.nix" && -f "$machine_dir/hardware-configuration.nix" ]]; then
+    echo "Machine '$machine' already has a system configuration. Left $relative_dir alone."
+    return 0
+  fi
+
+  if [[ ! -f /etc/nixos/configuration.nix ]]; then
+    echo "Cannot adopt this machine: /etc/nixos/configuration.nix is missing." >&2
     exit 1
   fi
 
-  if [[ ! -f "$hardware" ]]; then
-    echo "Missing hardware configuration for machine '$machine'." >&2
-    echo "Generate it on this machine and copy it into the repository:" >&2
-    echo "  sudo nixos-generate-config --show-hardware-config > /tmp/hardware-configuration.nix" >&2
-    echo "  cp /tmp/hardware-configuration.nix $hardware" >&2
+  generated="$(run_as_root nixos-generate-config --show-hardware-config)"
+  if [[ -z "$generated" ]]; then
+    echo "nixos-generate-config returned no hardware configuration." >&2
     exit 1
   fi
 
-  echo "System configuration for '$machine' is a flake output. Apply it with:"
-  echo "  sudo nixos-rebuild switch --flake $repo_dir#$machine --impure"
+  mkdir -p "$machine_dir"
+  prune_generated_hardware_config <<< "$generated" > "$machine_dir/hardware-configuration.nix"
+
+  # The generated default.nix owns the name. The user's shell leaves the copy as
+  # well: NixOS gives that option the uniq type, so two definitions of it are an
+  # error even when the values agree, and common.nix already defines it.
+  while IFS= read -r line; do
+    if [[ "$line" == "  users.users."* ]]; then
+      in_users=1
+    elif [[ "$in_users" == 1 && "$line" == "  };" ]]; then
+      in_users=0
+    fi
+    if [[ "$line" =~ ^[[:space:]]*networking\.hostName[[:space:]]*= ]]; then
+      continue
+    fi
+    if [[ "$in_users" == 1 && "$line" =~ ^[[:space:]]*shell[[:space:]]*= ]]; then
+      continue
+    fi
+    printf '%s\n' "$line"
+  done < /etc/nixos/configuration.nix > "$machine_dir/configuration.nix"
+
+  if [[ -z "$capability" ]]; then
+    capability="headless"
+    capability_reason="the copied configuration drives no GUI"
+    for marker in services.xserver services.displayManager services.desktopManager programs.hyprland programs.plasma; do
+      if grep -qF -- "$marker" "$machine_dir/configuration.nix"; then
+        capability="desktop"
+        capability_reason="the copied configuration mentions $marker"
+        break
+      fi
+    done
+  fi
+
+  cat > "$machine_dir/default.nix" <<EOF
+{ ... }:
+
+{
+  imports = [
+    ../../modules/common.nix
+    ../../modules/$capability.nix
+    ./configuration.nix
+  ];
+
+  networking.hostName = "$machine";
+}
+EOF
+
+  # The row exposes nixosConfigurations.<machine>, which the switch below
+  # evaluates. Anchor on the machines block, so the insert lands inside it.
+  row="        $machine = { system = \"$arch-linux\"; nixos = ./$relative_dir; };"
+  if grep -qE "^[[:space:]]*$machine = \\{" "$repo_dir/flake.nix"; then
+    echo "flake.nix already carries the machines.$machine row. Left it alone."
+  else
+    while IFS= read -r line; do
+      if [[ "$in_machines" == 1 && "$line" == "      };"* ]]; then
+        printf '%s\n' "$row"
+        in_machines=0
+        inserted=1
+      fi
+      printf '%s\n' "$line"
+      if [[ "$line" == "      machines = {"* ]]; then
+        in_machines=1
+      fi
+    done < "$repo_dir/flake.nix" > "$repo_dir/flake.nix.new"
+
+    if [[ "$inserted" == 0 ]]; then
+      rm -f "$repo_dir/flake.nix.new"
+      echo "Cannot find the machines block in flake.nix. Add this row to it:" >&2
+      printf '%s\n' "$row" >&2
+      exit 1
+    fi
+    mv "$repo_dir/flake.nix.new" "$repo_dir/flake.nix"
+  fi
+
+  # Nix sees tracked files only, and the system switch below evaluates the flake.
+  git -C "$repo_dir" add -- "$relative_dir" flake.nix
+
+  echo "Adopted machine '$machine'. Wrote:"
+  echo "  $relative_dir/hardware-configuration.nix"
+  echo "  $relative_dir/configuration.nix"
+  echo "  $relative_dir/default.nix, importing $capability.nix because $capability_reason"
+  echo "  flake.nix, with the machines.$machine row, then staged all four with git add"
 }
 
 apply_home_manager() {
@@ -338,8 +474,24 @@ main() {
   configure_zsh
   configure_git
   ensure_dotfiles_repo "$repo_dir"
-  check_nixos_machine "$repo_dir" "$machine"
+  adopt_nixos_machine "$repo_dir" "$machine"
   apply_home_manager "$repo_dir" "$machine"
+
+  if [[ "$linux_distribution" == "nixos" && -d "$repo_dir/hosts/platform/nixos/machines/$machine" ]]; then
+    # A copied machine configuration can collide with the repo's modules. Fail
+    # here, naming the file to edit, rather than inside nixos-rebuild.
+    if ! nix_cmd eval --impure --raw \
+      "$repo_dir#nixosConfigurations.$machine.config.system.build.toplevel.drvPath" >/dev/null; then
+      echo "The system configuration for '$machine' does not evaluate." >&2
+      echo "Resolve the conflict nix reported above in hosts/platform/nixos/machines/$machine/configuration.nix." >&2
+      exit 1
+    fi
+    # sudo resets the environment, so pass the features this script exported to
+    # nixos-rebuild explicitly; a fresh NixOS has flakes off.
+    echo "Applying the NixOS system configuration for '$machine'..."
+    run_as_root env NIX_CONFIG="extra-experimental-features = nix-command flakes" \
+      nixos-rebuild switch --flake "$repo_dir#$machine" --impure
+  fi
 
   if [[ "$should_reboot" == 1 && "${REBOOT:-0}" == 1 ]]; then
     echo "Setup complete. Rebooting now..."
@@ -347,8 +499,12 @@ main() {
   elif [[ "$os_name" == "Darwin" ]]; then
     echo "Setup complete. Open Docker.app once to finish Docker Desktop setup."
   elif [[ "$linux_distribution" == "nixos" ]]; then
-    echo "Setup complete. Git and Zsh are installed through Home Manager."
-    echo "Configure the login shell and Docker in your NixOS configuration (see README.md)."
+    if [[ "$(hostname_name)" == "$machine" ]]; then
+      echo "Setup complete. 'dotfiles' is ready, and applies this machine with no argument."
+    else
+      echo "Setup complete, but this machine's hostname is '$(hostname_name)', not '$machine'." >&2
+      echo "Set the hostname to '$machine' so 'dotfiles' needs no argument (see README.md)." >&2
+    fi
   else
     echo "Setup complete. Reboot before using Docker without sudo."
   fi
