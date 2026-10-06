@@ -29,7 +29,7 @@ let
     # tool call runs. It stays an npm row because the repository builds its
     # extension in a prepare script, so only the published tarball carries the
     # dist.
-    { spec = "npm:cc-safety-net@2.5.2"; }
+    { spec = "npm:cc-safety-net@2.6.0"; }
     # Persistent memory, session search, and a background learning loop. npm is
     # the publisher's install path, and its better-sqlite3 dependency arrives
     # prebuilt, so pi install runs no compiler.
