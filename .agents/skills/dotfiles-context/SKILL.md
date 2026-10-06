@@ -101,7 +101,7 @@ A per-machine Home Manager difference would need `home = [ ... ];` in that
 machine's row. Regenerate the lists instead of grepping for conditionals:
 
 ```bash
-for m in desktop mac; do
+for m in nix-desktop macbook; do
   echo "== $m"
   nix --extra-experimental-features "nix-command flakes" eval --impure \
     --json ".#homeConfigurations.$m.config.xdg.configFile" --apply builtins.attrNames
@@ -110,7 +110,7 @@ for m in desktop mac; do
 done
 ```
 
-Evaluation reads `$HOME`, so the `mac` attribute evaluated on Linux prints
+Evaluation reads `$HOME`, so the `macbook` attribute evaluated on Linux prints
 Linux home paths. Compare names and keys, not absolute paths.
 
 ## Supported platforms

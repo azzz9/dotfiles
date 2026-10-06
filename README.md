@@ -82,10 +82,10 @@ not appear in `ghq list` under the default ghq configuration.
 ### 2. Manual apply (alternative)
 
 ```bash
-nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#desktop --impure -b backup
+nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#nix-desktop --impure -b backup
 
 # Apple Silicon Mac
-nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#mac --impure -b backup
+nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#macbook --impure -b backup
 ```
 
 ## Day-to-day commands
@@ -136,7 +136,7 @@ A machine has one name, and both layers use it. That name is the machine's
 hostname, so nothing has to be passed in. The `machines` row key in
 `flake.nix` is the `homeConfigurations` attribute and, for a row that carries
 an `nixos` path, the `nixosConfigurations` attribute too. The current rows are
-`desktop` and `mac`.
+`nix-desktop`, `macbook`, and `nix-server`.
 
 The installed `dotfiles` CLI reads `hostname`, drops a trailing `.local`
 macOS reports its mDNS name with, and applies that name. An argument names
@@ -145,20 +145,20 @@ does not have fails the same way, so set the hostname once per machine:
 
 ```bash
 # macOS
-sudo scutil --set HostName mac
+sudo scutil --set HostName macbook
 ```
 
 A machine that has not applied since a rename still carries the old name list in
 its installed `dotfiles`, so its first apply runs the checkout's script instead:
 
 ```bash
-DOTFILES_DIR=$PWD DOTFILES_MACHINES="desktop mac" bash scripts/dotfiles.sh apply mac
+DOTFILES_DIR=$PWD DOTFILES_MACHINES="nix-desktop macbook" bash scripts/dotfiles.sh apply macbook
 ```
 
 ```bash
-# Both are the same attribute on a machine named mac.
+# Both are the same attribute on a machine named macbook.
 dotfiles apply
-dotfiles apply mac
+dotfiles apply macbook
 ```
 
 Differences between platforms live in guard clauses inside the modules
@@ -229,7 +229,7 @@ The system configuration is a flake output, so applying it needs no `/etc/nixos`
 wiring:
 
 ```bash
-sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#desktop --impure
+sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#nix-desktop --impure
 ```
 
 The bootstrap checks that a machine is complete and prints that command. It
@@ -237,7 +237,7 @@ reads this machine's hostname, unless `MACHINE` names another one (see the
 bootstrap invocation above for `GIT_NAME` and `GIT_EMAIL`):
 
 ```bash
-MACHINE=desktop ~/src/github.com/azzz9/dotfiles/scripts/setup-system.sh
+MACHINE=nix-desktop ~/src/github.com/azzz9/dotfiles/scripts/setup-system.sh
 ```
 
 ### Adding a machine

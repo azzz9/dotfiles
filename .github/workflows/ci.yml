@@ -38,8 +38,8 @@ jobs:
 
       - name: Evaluate both Home Manager configurations
         run: |
-          nix eval --impure .#homeConfigurations.desktop.activationPackage.drvPath
-          nix eval --impure .#homeConfigurations.mac.activationPackage.drvPath
+          nix eval --impure .#homeConfigurations.nix-desktop.activationPackage.drvPath
+          nix eval --impure .#homeConfigurations.macbook.activationPackage.drvPath
 
   linux:
     name: Build x86_64-linux

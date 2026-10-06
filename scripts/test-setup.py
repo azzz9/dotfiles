@@ -21,7 +21,7 @@ class BootstrapTests(unittest.TestCase):
                   clone_fail=False, conflicting_target=False,
                   dotfiles_dir=None, existing_target=False, machine=None,
                   machine_entry=True, machine_hardware=True, nixos_config=True,
-                  scratch_dir=None, hostname="desktop", test_arch=None):
+                  scratch_dir=None, hostname="nix-desktop", test_arch=None):
         scratch_ctx = (tempfile.TemporaryDirectory(prefix="bootstrap-test-")
                        if scratch_dir is None else contextlib.nullcontext(scratch_dir))
         with scratch_ctx as scratch:
@@ -56,7 +56,7 @@ class BootstrapTests(unittest.TestCase):
             # A clone lands it through the git stub below.
             machine_tree = base / "machine-tree"
             if machine_entry:
-                machine_dir = machine_tree / "hosts/platform/nixos/machines/desktop"
+                machine_dir = machine_tree / "hosts/platform/nixos/machines/nix-desktop"
                 machine_dir.mkdir(parents=True)
                 (machine_dir / "default.nix").write_text("{ }\n")
                 if machine_hardware:
@@ -324,34 +324,34 @@ fi
         self.assertNotIn("nix ", calls)
 
     def test_nixos_machine_reports_the_flake_command(self):
-        result, calls, repo = self.run_setup(machine="desktop", existing_target=True)
+        result, calls, repo = self.run_setup(machine="nix-desktop", existing_target=True)
         self.assert_success(result, calls, repo)
-        self.assertIn(f"sudo nixos-rebuild switch --flake {repo}#desktop --impure", result.stdout)
-        self.assertIn(f"-- switch --flake {repo}#desktop", calls)
+        self.assertIn(f"sudo nixos-rebuild switch --flake {repo}#nix-desktop --impure", result.stdout)
+        self.assertIn(f"-- switch --flake {repo}#nix-desktop", calls)
         self.assertNotIn("ln -sfn", calls)
         self.assertNotIn("mv ", calls)
 
     def test_nixos_unknown_machine_lists_available(self):
         result, calls, _ = self.run_setup(machine="nope", existing_target=True)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("Available machines: desktop", result.stderr)
+        self.assertIn("Available machines: nix-desktop", result.stderr)
         self.assertNotIn("ln -sfn", calls)
         self.assertNotIn("mv ", calls)
 
     def test_nixos_missing_hardware_configuration_is_reported(self):
         result, calls, repo = self.run_setup(
-            machine="desktop", existing_target=True, machine_hardware=False,
+            machine="nix-desktop", existing_target=True, machine_hardware=False,
         )
         self.assertNotEqual(result.returncode, 0)
-        hardware = Path(repo) / "hosts/platform/nixos/machines/desktop/hardware-configuration.nix"
+        hardware = Path(repo) / "hosts/platform/nixos/machines/nix-desktop/hardware-configuration.nix"
         self.assertIn("nixos-generate-config", result.stderr)
         self.assertIn(f"cp /tmp/hardware-configuration.nix {hardware}", result.stderr)
         self.assertNotIn("ln -sfn", calls)
 
     def test_other_distributions_use_the_machine_name(self):
-        result, calls, repo = self.run_setup(distro="ubuntu", machine="desktop")
+        result, calls, repo = self.run_setup(distro="ubuntu", machine="nix-desktop")
         self.assert_success(result, calls, repo)
-        self.assertIn(f"-- switch --flake {repo}#desktop", calls)
+        self.assertIn(f"-- switch --flake {repo}#nix-desktop", calls)
         self.assertNotIn("hosts/platform/nixos", calls)
 
     def test_hostname_resolves_the_machine(self):

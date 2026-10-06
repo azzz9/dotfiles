@@ -64,9 +64,9 @@
       # key is the machine's hostname, so the CLI and the bootstrap resolve a
       # machine with no mapping table of their own.
       machines = {
-        desktop = { system = "x86_64-linux"; nixos = ./hosts/platform/nixos/machines/desktop; };
-        mac = { system = "aarch64-darwin"; };
-        # headless = { system = "x86_64-linux"; nixos = ./hosts/platform/nixos/machines/headless; }; # add once it has its hardware-configuration.nix
+        nix-desktop = { system = "x86_64-linux"; nixos = ./hosts/platform/nixos/machines/nix-desktop; };
+        macbook = { system = "aarch64-darwin"; };
+        nix-server = { system = "x86_64-linux"; nixos = ./hosts/platform/nixos/machines/nix-server; };
       };
       # The names the `dotfiles` CLI and its completion offer.
       machineNames = nixpkgs.lib.attrNames machines;

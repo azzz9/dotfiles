@@ -9,8 +9,8 @@ Verify in this order:
 
 ```bash
 nix-instantiate --parse modules/some-file.nix > /dev/null   # syntax
-nix eval --raw .#homeConfigurations.desktop.activationPackage --impure 2>&1 | head -20
-nix build --dry-run .#homeConfigurations.desktop.activationPackage --impure 2>&1 | tail -20
+nix eval --raw .#homeConfigurations.nix-desktop.activationPackage --impure 2>&1 | head -20
+nix build --dry-run .#homeConfigurations.nix-desktop.activationPackage --impure 2>&1 | tail -20
 ./scripts/check.sh                                          # the whole set
 ```
 
