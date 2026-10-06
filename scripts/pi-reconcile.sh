@@ -3,8 +3,7 @@
 # packages need no reconcile: modules/pi.nix hands pi each flake input's store
 # path, so pi already loads the pinned revision.
 #
-# modules/dotfiles.nix inlines this file into the `dotfiles` CLI;
-# checks.pi-reconcile drives the function with a stub pi.
+# modules/dotfiles.nix inlines this file into the `dotfiles` CLI.
 pi_reconcile() {
   local settings source name expected installed npm_sources
   settings="${HOME}/.pi/agent/settings.json"

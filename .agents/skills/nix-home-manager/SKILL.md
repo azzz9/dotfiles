@@ -33,10 +33,11 @@ nix build --dry-run .#homeConfigurations.desktop.activationPackage --impure 2>&1
 ## Checks
 
 `flake.nix` wires `checks.<system>` and `scripts/check.sh` invokes it.
-`deadnix`, `shellcheck`, and `actionlint` are self-evident. `bootstrap` drives
-`setup-system.sh` against fixture PATHs. `generated-configs` parses every
-emitted TOML, YAML, zsh, and Lua file, plus the activation order and the pi
-package rows. `pi-reconcile` drives `pi_reconcile` with a stub `pi`.
+`deadnix`, `shellcheck`, and `actionlint` are self-evident, and
+`generated-configs` parses every emitted TOML, YAML, zsh, and Lua file.
+`bootstrap` drives `setup-system.sh` against fixture PATHs.
+
+A failed check reads `nix log .#checks.<system>.<check>`.
 
 ## Asserts
 
@@ -44,5 +45,3 @@ package rows. `pi-reconcile` drives `pi_reconcile` with a stub `pi`.
   `luaFiles`.
 - `hosts/default.nix`: every `agents/skills/*` directory holds a `SKILL.md`, and
   a body containing `upstream:` needs a `LICENSE` beside it.
-
-A failed check reads `nix log .#checks.<system>.<check>`.
