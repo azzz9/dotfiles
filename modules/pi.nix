@@ -4,8 +4,11 @@ let
   rpiv = name: "npm:@juicesharp/rpiv-${name}@${rpivVersion}";
 
   # One row per package pi installs. `input` names the flake input whose store
-  # path the row loads; `spec` is an exact npm source; `filter` is the optional
-  # resource narrowing pi accepts on the object form.
+  # path the row loads; `spec` is an exact npm source; `npmDepsHash` marks an
+  # input whose extension imports runtime dependencies, which pi never installs
+  # for a local package (docs/packages.md, "Local packages are not installed or
+  # modified"); `filter` is the optional resource narrowing pi accepts on the
+  # object form.
   #
   # Provider packages stay out of this list: subscriptions, catalogs, and API
   # keys differ per host. Install them per machine as files under
@@ -13,8 +16,8 @@ let
   # would be dropped again, because the merge below replaces the `packages`
   # array on every activation.
   rows = [
-    { input = "pi-subagents"; }
-    { input = "pi-web-access"; }
+    { input = "pi-subagents"; npmDepsHash = "sha256-zPo0Z3IjaSEA74YptOUComiwvQxSMhPw7N6SwtGkveE="; }
+    { input = "pi-web-access"; npmDepsHash = "sha256-BvAI68JpqJKNcg8luJ3d250C/YISUf13EItMgrJVrV4="; }
     # The 23 principle-* skills are poteto-mode's own vocabulary and the agent
     # reads them by path, so the menu lists only skills a person types.
     { input = "pi-pstack"; filter = { skills = [ "!skills/principle-*" ]; }; }
@@ -38,12 +41,33 @@ let
     { input = "pi-compact-tools"; }
   ];
 
-  # Exactly what settings.json records for a row. A package row resolves to the
-  # store path of its flake input, which pi loads in place.
+  # Exactly what settings.json records for a row. A bare package row resolves to
+  # the store path of its flake input, which pi loads in place. A row with
+  # `npmDepsHash` loads a copy of that path carrying its node_modules. The
+  # install phase copies the whole work tree because the pack step that
+  # buildNpmPackage runs by default trims the sources pi loads from here.
   declare = row:
     let
-      source = if row ? input
-        then "${piPackagePaths.${row.input}}"
+      source =
+        if row ? input then
+          let
+            src = piPackagePaths.${row.input};
+            meta = builtins.fromJSON (builtins.readFile "${src}/package.json");
+          in
+          if row ? npmDepsHash then
+            pkgs.buildNpmPackage {
+              pname = meta.name;
+              version = meta.version;
+              inherit src;
+              inherit (row) npmDepsHash;
+              dontNpmBuild = true;
+              # pi installs its npm packages with the same two flags: the
+              # extensions need no dev tree and resolve pi's own packages from
+              # the host.
+              npmFlags = [ "--omit=dev" "--legacy-peer-deps" ];
+              installPhase = "mkdir -p $out; cp -r . $out/";
+            }
+          else src
         else row.spec;
     in
     if row ? filter then { inherit source; } // row.filter else source;
