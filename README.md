@@ -108,7 +108,7 @@ first, so on a clean tree it covers everything `dotfiles sync` does before it
 moves the pins. Packages nixpkgs manages move with `flake.lock`.
 The pi packages move with `flake.lock` alone,
 because `modules/pi.nix` hands pi each input's store path. The npm-only
-packages (the three rpiv ones, which ship from a workspace no git source can
+packages (the two rpiv ones, which ship from a workspace no git source can
 key; `cc-safety-net`,
 whose repository builds its extension at install time; and `pi-hermes-memory`,
 which publishes to npm and pulls its `better-sqlite3` addon prebuilt)
