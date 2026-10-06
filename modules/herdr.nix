@@ -133,14 +133,19 @@ in
 
     [ui.sidebar.agents]
     rows = [
-      ["state_icon", "state_text", "workspace", "$git_branch"],
+      [
+        "state_icon",
+        "state_text",
+        { token = "workspace", bold = false },
+        { token = "$git_branch", fg = "#957fb8" },
+      ],
       [{ token = "$prompt", fg = "#ffffff" }],
     ]
 
     [ui.sidebar.spaces]
     rows = [
-      ["state_icon", "state_text", "workspace"],
-      ["branch", "git_status"],
+      ["state_icon", "state_text", { token = "workspace", bold = false }],
+      [{ token = "branch", fg = "#957fb8" }, "git_status"],
     ]
 
     [ui.toast]
