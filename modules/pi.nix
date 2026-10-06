@@ -25,7 +25,6 @@ let
     { input = "i-have-adhd"; filter = { skills = [ ]; }; }
     # The rpiv packages ship from a 15-package workspace whose root carries no
     # pi manifest, so they stay npm rows.
-    { spec = rpiv "todo"; }
     { spec = rpiv "ask-user-question"; }
     { spec = rpiv "btw"; }
     # Blocks destructive shell commands and secret-file access before the bash

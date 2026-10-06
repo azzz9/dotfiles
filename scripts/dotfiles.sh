@@ -193,14 +193,14 @@ registry_latest() {
 bump_npm_pins() {
   local pinned latest ordering spec name current
 
-  # The three rpiv packages ship under one version, so one line covers them.
+  # The two rpiv packages ship under one version, so one line covers them.
   pinned="$(sed -n 's/^  rpivVersion = "\([0-9][0-9.]*\)";$/\1/p' "$pi_module")"
   if [ -z "$pinned" ]; then
     echo "dotfiles upgrade: no rpivVersion line found in $pi_module; kept the rpiv pin" >&2
   else
-    latest="$(registry_latest "@juicesharp/rpiv-todo" || true)"
+    latest="$(registry_latest "@juicesharp/rpiv-ask-user-question" || true)"
     if [ -z "$latest" ] || [ "$latest" = "null" ]; then
-      echo "dotfiles upgrade: no registry latest for @juicesharp/rpiv-todo; kept the rpiv pin at $pinned" >&2
+      echo "dotfiles upgrade: no registry latest for @juicesharp/rpiv-ask-user-question; kept the rpiv pin at $pinned" >&2
     elif [ "$latest" != "$pinned" ]; then
       ordering="$(printf '%s\n' "$pinned" "$latest" | sort -V | tail -n 1)"
       if [ "$ordering" != "$latest" ]; then
