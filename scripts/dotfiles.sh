@@ -64,6 +64,9 @@ pins_file="modules/pinned-packages.nix"
 # The @juicesharp/rpiv packages stay npm-installed; their shared version lives
 # in one line of modules/pi.nix, which the upgrade rewrites from the registry.
 pi_module="modules/pi.nix"
+# The three paths upgrade rewrites and prints for review. sync reads a dirty
+# path here as this machine's own pin, never as a person's work in progress.
+upgrade_paths=(flake.lock "$pins_file" "$pi_module")
 pin_names=(solhint roots prettier-plugin-solidity prettier-plugin-solidity-dist herdr-nvim)
 trap 'for backup in "${upgrade_backups[@]}"; do rm -f "${backup%%|*}"; done; if [ -n "$pin_scratch" ]; then rm -f "$pin_scratch"; fi; if [ -n "$patched_activate" ]; then rm -f "$patched_activate"; fi; if [ "$have_lock" = 1 ]; then rmdir "$lock_dir" 2>/dev/null || true; fi' EXIT
 if ! mkdir "$lock_dir" 2>/dev/null; then
@@ -88,13 +91,30 @@ fi
 
 cd "$repo"
 
+read_dirty_paths() {
+  local line path
+  own_dirty=()
+  foreign_dirty=()
+  while IFS= read -r line; do
+    path="${line:3}"
+    case " ${upgrade_paths[*]} " in
+      *" $path "*) own_dirty+=("$path") ;;
+      *) foreign_dirty+=("$path") ;;
+    esac
+  done < <(git status --porcelain --untracked-files=normal)
+}
+
+refuse_dirty() {
+  echo "dotfiles $command: local or untracked changes found in $repo; skipping" >&2
+  printf '%s\n' "$@" >&2
+  echo "dotfiles $command: commit, stash, or discard local changes first" >&2
+  exit 0
+}
+
 require_clean_repo() {
-  status="$(git status --porcelain --untracked-files=normal)"
-  if [ -n "$status" ]; then
-    echo "dotfiles $command: local or untracked changes found in $repo; skipping" >&2
-    echo "$status" >&2
-    echo "dotfiles $command: commit, stash, or discard local changes first" >&2
-    exit 0
+  read_dirty_paths
+  if [ "${#own_dirty[@]}" -gt 0 ] || [ "${#foreign_dirty[@]}" -gt 0 ]; then
+    refuse_dirty "${own_dirty[@]}" "${foreign_dirty[@]}"
   fi
 }
 
@@ -242,16 +262,36 @@ case "$command" in
     apply_home_and_reconcile_pi
     ;;
   sync)
-    require_clean_repo
-    git pull --ff-only
+    read_dirty_paths
+    # A person's change must not reach activate half-finished.
+    if [ "${#foreign_dirty[@]}" -gt 0 ]; then
+      refuse_dirty "${foreign_dirty[@]}"
+    fi
+    sync_stash=""
+    if [ "${#own_dirty[@]}" -gt 0 ]; then
+      git stash push -q -m "dotfiles sync: this machine's pins" -- "${own_dirty[@]}"
+      sync_stash="$(git stash list | head -n 1 | cut -d: -f1)"
+    fi
+    if ! git pull --ff-only; then
+      if [ -n "$sync_stash" ]; then
+        git stash pop -q
+        echo "dotfiles sync: restored this machine's pins after the failed pull" >&2
+      fi
+      exit 1
+    fi
     apply_home_and_reconcile_pi
+    # The stash stays on purpose: the pulled pins have to be able to land, or a
+    # pin bump committed on the other machine never takes effect here.
+    if [ -n "$sync_stash" ]; then
+      echo "dotfiles sync: the pins this machine had are in $sync_stash and are no longer active. Drop them with 'git stash drop $sync_stash', or bring them back with 'git stash pop' and another 'dotfiles apply'."
+    fi
     ;;
   upgrade)
     require_clean_repo
     pin_scratch="$(mktemp "$tmp_dir/dotfiles-pin-bump.XXXXXX")"
-    backup_file "$pins_file"
-    backup_file "$pi_module"
-    backup_file flake.lock
+    for upgrade_path in "${upgrade_paths[@]}"; do
+      backup_file "$upgrade_path"
+    done
     if ! nix_cmd flake update; then
       restore_upgrade
       exit 1
@@ -270,7 +310,7 @@ case "$command" in
       exit 1
     fi
     moved_files=""
-    for moved_file in flake.lock "$pins_file" "$pi_module"; do
+    for moved_file in "${upgrade_paths[@]}"; do
       if ! git diff --quiet -- "$moved_file"; then
         moved_files="$moved_files $moved_file"
       fi
