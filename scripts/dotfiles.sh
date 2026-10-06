@@ -3,9 +3,6 @@
 # writeShellApplication and supplies two values from flake.nix:
 #   DOTFILES_DIR       the checkout to build and activate
 #   DOTFILES_MACHINES  the homeConfigurations attributes that exist
-# `apply` also runs pi_reconcile from scripts/pi-reconcile.sh after activation,
-# so a build that moved a pi package pin lands its checkout, or installs the
-# pinned npm version, too.
 set -euo pipefail
 
 # Activation invokes Nix directly, so it needs the same features as the build.
@@ -120,10 +117,9 @@ activate_home() {
   bash "$patched_activate"
 }
 
-apply_home() {
+apply_home_and_reconcile_pi() {
   build_home
   activate_home
-  # Activation writes the new pins into settings.json, so the reconcile follows it.
   pi_reconcile
 }
 
@@ -217,12 +213,12 @@ bump_npm_pins() {
 
 case "$command" in
   apply)
-    apply_home
+    apply_home_and_reconcile_pi
     ;;
   sync)
     require_clean_repo
     git pull --ff-only
-    apply_home
+    apply_home_and_reconcile_pi
     ;;
   upgrade)
     require_clean_repo

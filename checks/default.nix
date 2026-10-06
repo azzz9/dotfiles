@@ -5,8 +5,14 @@
 let
   parseGeneratedConfigs = host:
     let
+      activationConfig = self.homeConfigurations.${host}.config.home.activation;
+      activationNames = builtins.attrNames activationConfig;
+      herdrAutoTitleAfter = activationConfig.herdrAutoTitle.after;
       activationPackage = self.homeConfigurations.${host}.activationPackage;
     in
+    assert builtins.all
+      (name: name == "herdrAutoTitle" || builtins.elem name herdrAutoTitleAfter)
+      activationNames;
     ''
       files=${activationPackage}/home-files
       for f in .config/herdr/config.toml .config/hunk/config.toml; do
@@ -25,6 +31,11 @@ let
       pinned=$(grep -Ec '^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+){2} [0-9a-f]{40}$' "$pins" || true)
       test "$entries" -gt 0
       test "$entries" -eq "$pinned"
+      titlePin="$files/.local/share/dotfiles/herdr-auto-title-pin"
+      grep -Eq '^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+ [0-9a-f]{40}$' "$titlePin"
+      test "$(wc -l < "$titlePin")" -eq 1
+      grep -q 'dotfiles.lockdir' ${activationPackage}/activate
+      grep -q 'herdr-auto-title-reconcile' ${activationPackage}/activate
       # The CLI appends the system directories to PATH, never prepends
       # them: on macOS /usr/bin/sed is BSD sed and /bin/bash is 3.2, so a
       # prefix would shadow the runtime inputs the script needs.
@@ -38,8 +49,9 @@ in
     touch $out
   '';
   shellcheck = pkgs.runCommand "shellcheck" { nativeBuildInputs = [ pkgs.shellcheck ]; } ''
-    shellcheck ${self}/scripts/*.sh ${self}/.githooks/pre-push
-    bash -n ${self}/scripts/*.sh ${self}/.githooks/pre-push
+    cd ${self}
+    shellcheck -x scripts/*.sh .githooks/pre-push
+    bash -n scripts/*.sh .githooks/pre-push
     touch $out
   '';
   # Device facts belong in hosts/platform/nixos/machines/<name>/ next to that
@@ -75,6 +87,12 @@ in
     builtins.concatStringsSep "" (map parseGeneratedConfigs (builtins.attrNames platformMachines))
     + "touch $out"
   );
+  herdr-auto-title-reconcile = pkgs.runCommand "herdr-auto-title-reconcile" {
+    nativeBuildInputs = [ pkgs.bash pkgs.coreutils pkgs.gnugrep pkgs.jq ];
+  } ''
+    ${pkgs.bash}/bin/bash ${self}/scripts/test-herdr-auto-title-reconcile.sh
+    touch $out
+  '';
   pi-reconcile = pkgs.runCommand "pi-reconcile" {
     nativeBuildInputs = [ pkgs.bash pkgs.coreutils pkgs.jq pkgs.git ];
   } ''

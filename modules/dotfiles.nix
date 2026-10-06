@@ -13,7 +13,6 @@
         export DOTFILES_DIR=${lib.escapeShellArg repoDir}
         DOTFILES_MACHINES=${lib.escapeShellArg (lib.concatStringsSep " " machineNames)}
       ''
-      # scripts/pi-reconcile.sh is a leaf the CLI calls, not a second command.
       # Join with a newline so a body without a trailing newline cannot merge
       # its last line into the next file's first line.
       + builtins.replaceStrings [ "#!/usr/bin/env bash\n" ] [ "" ] (builtins.readFile ../scripts/pi-reconcile.sh)
