@@ -1,92 +1,47 @@
 ---
 name: dotfiles-context
-description: "Quick reference for this Nix flake + Home Manager dotfiles repo. Use when working in ~/src/github.com/azzz9/dotfiles to avoid re-exploring the repository structure every session."
+description: "Quick reference for this Nix flake + Home Manager dotfiles repo: entry points, the AI config and herdr integration, the per-platform differences, and how to verify. Use when working in ~/src/github.com/azzz9/dotfiles."
 ---
 
 # dotfiles-context Skill
 
 Nix flake + Home Manager repo. Read this before exploring files.
 
-## Repository layout
+## Layout
 
-```
-dotfiles/
-+-- flake.nix                # inputs, outputs, machines, homeConfigurations, nixosConfigurations
-+-- hosts/default.nix        # HM entry point and skill symlinks
-+-- hosts/platform/          # per-platform settings: linux.nix, darwin.nix, nixos/
-+-- hosts/platform/nixos/    # the NixOS platform: modules/ (shared) + machines/<name>/
-+-- checks/default.nix       # the check set, wired into checks.<system>
-+-- modules/
-|   +-- dotfiles.nix         # wraps scripts/dotfiles.sh as the `dotfiles` CLI
-|   +-- pi.nix               # pi packages and the settings.json merge
-|   +-- git.nix              # git config + ghq + git-wt defaults
-|   +-- gh.nix               # GitHub CLI aliases
-|   +-- shell.nix            # zsh: aliases, plugins, init script ordering
-|   +-- shell/init/          # zsh init scripts sourced by shell.nix
-|   +-- herdr.nix            # herdr multiplexer + notification settings
-|   +-- hunk.nix             # hunk diff review TUI (Linux ld-linux wrapper)
-|   +-- ghostty.nix          # macOS Ghostty configuration (Ghostty external)
-|   +-- nvim.nix             # Neovim via nixvim
-|   +-- nvim/lua/            # Lua configs loaded by nixvim extraConfigLua
-|   +-- packages.nix         # Additional system packages
-|   +-- pinned-packages.nix  # nixpkgs-missing derivations, bumped by nix-update
-|   +-- lazygit.nix          # lazygit config (delta stdin filter)
-+-- agents/
-|   +-- AGENTS.md            # Core rules (turn gate, show-me gate, git rules)
-|   +-- skills/              # Global skills (linked to ~/.agents/skills)
-+-- .agents/skills/          # Project-scoped skills (this repo only)
-+-- scripts/
-|   +-- dotfiles.sh          # the `dotfiles` CLI (apply / sync / upgrade)
-|   +-- check.sh             # runs the flake checks; used by the hook and CI
-|   +-- setup-system.sh      # Bootstrap script
-+-- .githooks/pre-push       # Pre-push checks
-+-- .github/workflows/ci.yml # CI
-```
+README.md lists every file. The entry points are `flake.nix` (inputs,
+machines, outputs), `hosts/default.nix` (Home Manager entry and skill links),
+`modules/` (one module per capability), `checks/default.nix` (the check set),
+and `scripts/` (the `dotfiles` CLI and the bootstrap).
 
 ## Neovim config structure
 
-nvim is managed by **nixvim** (not lazy.nvim). Plugins are declared in
-`modules/nvim.nix` via `programs.nixvim`. Lua overrides live in
-`modules/nvim/lua/` and are loaded via `extraConfigLua` / `extraPlugins`.
-
-Key Lua files:
-- `modules/nvim/lua/core.lua` — core settings
-- `modules/nvim/lua/ui.lua` — UI / diagnostics
-- `modules/nvim/lua/languages.lua` — per-language LSP / formatter / linter
-- `modules/nvim/lua/plugins/*.lua` — individual plugin configs
-- `modules/nvim/lua/plugins/dap/*.lua` — DAP per-language configs
+nvim is managed by nixvim. Plugins are declared in `modules/nvim.nix` via
+`programs.nixvim`; Lua overrides live in `modules/nvim/lua/` (`core.lua`,
+`ui.lua`, `languages.lua` for per-language LSP, formatter, and linter, then
+`plugins/*.lua` and `plugins/dap/*.lua`).
 
 ## herdr config
 
 `modules/herdr.nix` installs herdr and generates `~/.config/herdr/config.toml`
-via HM. Theme: kanagawa (built-in). Splits are prefix ctrl+b with `/` and `-`,
-pane navigation is alt+h/j/k/l, tabs and workspaces are alt+shift+h/j/k/l.
-No agent launcher is bound.
-Completion notifications use herdr's system delivery backend with a 15-second
-delay. Herdr's pi integration is
-reinstalled on every activation.
+via HM: the kanagawa theme, prefix ctrl+b splits, alt+h/j/k/l pane navigation,
+alt+shift+h/j/k/l tabs and workspaces, and no agent launcher. Completion
+notifications use herdr's system delivery backend with a 15-second delay, and
+herdr's pi integration is reinstalled on every activation.
 
-Herdr owns plugin checkouts, builds, and registry entries. Dotfiles pins
-`herdr-auto-title` (kryptamine/herdr-auto-title) in `flake.lock` and installs
-the locked commit in the final Home Manager activation step. The hook runs
-after every other activation entry, but reconciles Herdr only while the
-`dotfiles` CLI holds its lock for this repository. A direct Home Manager switch
-does not change the plugin registry. The pin manifest is read-only. Dotfiles
-never writes under `~/.config/herdr-auto-title/`.
+Herdr owns plugin checkouts, builds, and registry entries. `flake.lock` pins
+`herdr-auto-title`, and the last Home Manager activation entry reconciles it,
+but only while the `dotfiles` CLI holds its lock for this repository, so a
+direct Home Manager switch leaves the registry alone. Dotfiles never writes
+under `~/.config/herdr-auto-title/` and keeps the plugin enabled; a manual
+disable lasts until the next `dotfiles apply`, `sync`, or `upgrade`.
 
-Dotfiles owns the Auto Title enabled state. A manual disable lasts until the
-next `dotfiles apply`, `sync`, or `upgrade`, which enables the plugin again.
-After an install, update, or enable, activation prints this action:
-
-```sh
-herdr plugin action invoke herdr.auto-title.restart
-```
-
-Dotfiles leaves restart to the user. Installation and enablement do not
-replace a running Auto Title process. A tab or pane renamed by hand is left
-alone from then on. A failed installation stops the activation. `dotfiles
-upgrade` restores source files, not the already activated Home Manager
-generation; rerun `dotfiles apply` after resolving the failure.
+After an install, update, or enable, activation prints `herdr plugin action
+invoke herdr.auto-title.restart` and stops there. Restart stays manual because
+installing does not replace a running Auto Title process, and a tab or pane
+renamed by hand is left alone from then on. A failed installation stops the
+activation, and `dotfiles upgrade` restores source files rather than the
+already activated generation.
 
 ## AI config deployment model
 
@@ -103,66 +58,18 @@ into `~/.agents/skills/` and visible in all projects; the link list comes from
 only make sense here sit in `.agents/skills/` at the repo root instead, where pi
 discovers them as project skills once the project is trusted.
 
-pstack is not vendored as a tree. pi consumes the personal fork
-`git:github.com/azzz9/pi-pstack@<sha>` (pinned by `flake.lock`). The fork
-carries the pi-native port plus local
-harness fixes (pi session paths, pi subagent parameters, no Cursor cloud agents,
-review-automation naming, the `todo` tool). It ships the skills, the
-`comment-sicko` and `poteto-agent` subagents through its `pi.subagents.agents`
-manifest, and an extension that injects the role-model table, provides sticky
-`/poteto-mode`, and controls the skill catalog with `/pstack`. The plugins
-`npm:@juicesharp/rpiv-todo` and `npm:@juicesharp/rpiv-ask-user-question` supply
-the `todo` and `ask_user_question` tools the playbooks call.
-`npm:@juicesharp/rpiv-btw` adds the `/btw` side-question overlay. The three are
-pinned to one rpiv release train, so they move together. They stay npm because
-the rpiv workspace ships 15 packages with no `pi` manifest at its root, and pi
-cannot key a monorepo package by a git source.
+pstack (`pi-pstack`) ships the skills, the `comment-sicko` and `poteto-agent`
+subagents, and an extension that injects the role-model table and `/poteto-mode`.
 
-pi's packages (`pi-pstack`, `i-have-adhd`, `pi-subagents`, `pi-web-access`,
-`pi-compact-tools`) are `flake = false` inputs in `flake.nix`, so the revision
-lives in `flake.lock` and no module holds a sha. `modules/pi.nix` renders each
-input's store path into `settings.json`, and pi loads that path in place.
-`cc-safety-net` and `pi-hermes-memory` stay npm rows: the first builds its
-extension in a `prepare` script, so a checkout has no `dist`, and the second
-publishes to npm with a prebuilt `better-sqlite3`. `apply` ends with
-`pi_reconcile`, which installs an npm package whose installed version differs
-from the spec `settings.json` records. `dotfiles upgrade` re-resolves the
-store paths with the rest of `flake.lock` and queries the npm registry for the
-rpiv version; `nix flake update pi-pstack && dotfiles apply` moves one package.
-Commit the `flake.lock` diff to keep the next apply on the same pins.
+`modules/pi.nix` owns the package rows. The five package inputs are
+`flake = false` inputs in `flake.nix`, rendered into `settings.json` as store
+paths, so `flake.lock` is the only pin; `pi_reconcile` installs any npm row whose
+version differs from its spec. README.md has the rest of the pin story.
 
-i-have-adhd is pinned the same way: an object with `skills = []` in
-`settings.json` because the skill is vendored in `agents/skills/i-have-adhd`
-and the package copy would collide. The extension supplies `/i-have-adhd`,
-`--adhd`, and the always-on switch, which is the Home Manager-managed flag file
-`~/.pi/agent/.i-have-adhd-always`. The extension reads the rules from its own
-checkout, not from the vendored skill, so refresh that pin with
-`nix flake update i-have-adhd` when upstream changes the rules.
-
-The fork's bundled scripts (`skills/poteto-mode/scripts`) install their own
-dependencies on first run through `bootstrap.ts`, so no manual `bun install` is
-needed. `bun` also comes from `programs.pi-coding-agent.extraPackages`, which
-puts it on PATH for pi only, and from `modules/packages.nix` for plain shells.
-
-Provider packages are deliberately absent from that list. Subscriptions, model
-catalogs, quotas, and API keys differ per machine, so a provider extension is
-installed locally into `~/.pi/agent/extensions/<name>/` where pi auto-discovers
-it, or with a local `pi install`. The same rule covers model choices. pstack
-role models live in `~/.pi/agent/pstack/models.json`, which is machine-local
-and deliberately not Nix-managed. `~/.pi/agent/pstack/models.md` is the readable
-record of the same choices, including the budget reasoning the JSON cannot
-carry. It sits inside the pstack directory, so the agent dir root matches a
-fresh `/setup-pstack` exactly.
-
-pi-hermes-memory is machine-local on the same principle. It writes under
-`~/.pi/agent/pi-hermes-memory/` and `~/.pi/agent/projects-memory/`, and its
-optional `hermes-memory-config.json` is not Nix-managed, so a fresh machine
-starts with an empty store.
-
-The inline rules that remain in `agents/AGENTS.md` are the turn gate, the
-show-me gate, and the git rules. pi reads them through the symlink at
-`~/.pi/agent/AGENTS.md`, so no separate rule files are needed. The
-`.agents/skills` path is the shared user scope for local skills consumed by pi.
+Provider extensions, `~/.pi/agent/pstack/models.json`, and the
+`pi-hermes-memory` store are machine-local and deliberately not Nix-managed.
+Install a provider extension under `~/.pi/agent/extensions/<name>/`, where pi
+auto-discovers it.
 
 To add a global skill: create `agents/skills/<name>/SKILL.md`; the link list
 is derived, and the build fails if a directory has no `SKILL.md`. To add a
@@ -188,13 +95,7 @@ and the asserts that fail evaluation.
 
 ## OS differences
 
-The two platforms differ in three kinds only: generated files (16
-on Linux, 9 on Darwin), packages (74 against 68), and PATH plus environment
-variables. Shared config content stays identical, and the only differences
-chosen rather than forced by the OS are `modules/ghostty.nix` and
-`modules/hunk.nix`.
-
-Conditionals live in five files, each next to what it configures.
+Conditionals live in the five files below, each next to what it configures.
 
 | File | What it separates |
 |------|-------------------|
@@ -204,11 +105,8 @@ Conditionals live in five files, each next to what it configures.
 | `modules/packages.nix` | unar, xclip, wl-clipboard on Linux, terminal-notifier on Darwin |
 | `modules/pinned-packages.nix` | the per-system codediff-watcher hash and `autoPatchelfHook` on Linux |
 
-Home Manager has no per-machine difference today, only per-platform ones. A
-machine that needs one gains `home = [ ./hosts/machines/<name>.nix ];` in its
-row, which is already wired into `mkHomeConfiguration`.
-
-Regenerate the file and package lists instead of grepping for conditionals.
+A per-machine Home Manager difference would need `home = [ ... ];` in that
+machine's row. Regenerate the lists instead of grepping for conditionals:
 
 ```bash
 for m in desktop mac; do
