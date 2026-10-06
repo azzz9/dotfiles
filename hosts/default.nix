@@ -1,8 +1,8 @@
 { config, lib, repoDir, ... }:
 let
-  # Every directory under config/ai/skills is a global skill, so the list is
+  # Every directory under agents/skills is a global skill, so the list is
   # derived. Skills that only make sense in this repo live in .agents/skills.
-  skillsDir = ../config/ai/skills;
+  skillsDir = ../agents/skills;
   localSkillNames = builtins.attrNames (
     lib.filterAttrs (_: type: type == "directory") (builtins.readDir skillsDir)
   );
@@ -20,12 +20,12 @@ let
   skillLinks = builtins.listToAttrs (
     lib.concatMap (base: map (name: {
       name = "${base}/skills/${name}";
-      value.source = config.lib.file.mkOutOfStoreSymlink "${repoDir}/config/ai/skills/${name}";
+      value.source = config.lib.file.mkOutOfStoreSymlink "${repoDir}/agents/skills/${name}";
     }) localSkillNames) [ ".agents" ]
   );
 in
 assert lib.assertMsg (skillsWithoutSkillFile == [ ])
-  "hosts/default.nix: config/ai/skills entries without SKILL.md: ${toString skillsWithoutSkillFile}";
+  "hosts/default.nix: agents/skills entries without SKILL.md: ${toString skillsWithoutSkillFile}";
 
 assert lib.assertMsg (upstreamSkillsWithoutLicense == [ ])
   "hosts/default.nix: third-party skills without a LICENSE: ${toString upstreamSkillsWithoutLicense}";
@@ -50,7 +50,7 @@ assert lib.assertMsg (upstreamSkillsWithoutLicense == [ ])
   # pi reads ~/.pi/agent/AGENTS.md as its global context file. Out-of-store links
   # keep edits in this repo immediately visible at the target path.
   home.file = skillLinks // {
-    ".pi/agent/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${repoDir}/config/ai/AGENTS.md";
+    ".pi/agent/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${repoDir}/agents/AGENTS.md";
   };
 
   imports = [

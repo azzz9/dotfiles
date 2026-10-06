@@ -147,6 +147,13 @@ does not have fails the same way, so set the hostname once per machine:
 sudo scutil --set HostName mac
 ```
 
+A machine that has not applied since a rename still carries the old name list in
+its installed `dotfiles`, so its first apply runs the checkout's script instead:
+
+```bash
+DOTFILES_DIR=$PWD DOTFILES_MACHINES="desktop mac" bash scripts/dotfiles.sh apply mac
+```
+
 ```bash
 # Both are the same attribute on a machine named mac.
 dotfiles apply
@@ -177,7 +184,7 @@ dotfiles/
 |   +-- git.nix                # Git config + ghq + git-wt defaults
 |   +-- gh.nix                 # GitHub CLI aliases
 |   +-- shell.nix              # Zsh: aliases, plugins, init ordering
-|   +-- shell/init/            # Sourced init scripts (dev/deva, prompt, fzf)
+|   +-- shell/init/            # Sourced init scripts (prompt, fzf)
 |   +-- herdr.nix              # herdr multiplexer and system notifications
 |   +-- hunk.nix               # hunk diff review TUI
 |   +-- ghostty.nix            # macOS Ghostty configuration (Ghostty external)
@@ -185,7 +192,7 @@ dotfiles/
 |   +-- packages.nix           # Additional system packages
 |   +-- pinned-packages.nix   # nixpkgs-missing derivations, bumped by nix-update
 |   +-- lazygit.nix            # lazygit config
-+-- config/ai/                 # AI agent config (pi)
++-- agents/                    # AI agent config (pi)
 |   +-- AGENTS.md              # Core rules (turn gate, show-me gate, git rules)
 |   +-- skills/                # Global skills (linked to ~/.agents/skills)
 +-- scripts/dotfiles.sh        # the `dotfiles` CLI

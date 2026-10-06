@@ -108,7 +108,7 @@ Two asserts guard registries that must stay in step with the filesystem:
 
 - `modules/nvim.nix`: `luaFiles` must equal the `.lua` files under
   `modules/nvim/lua/`. Adding a file without listing it fails evaluation.
-- `hosts/default.nix`: every directory in `config/ai/skills` must contain a
+- `hosts/default.nix`: every directory in `agents/skills` must contain a
   `SKILL.md`; the link list itself is derived, not listed.
 
 ## Common pitfalls
@@ -170,7 +170,7 @@ compatibility (see `scripts/dotfiles.sh`).
 | Type/attr error | `nix eval --raw .#...` to find the issue |
 | Activation fails | Check `profile add` vs `profile install` patch |
 | `luaFiles is out of sync` assert | add the file to `luaFiles` in `modules/nvim.nix` |
-| `without SKILL.md` assert | add `SKILL.md` to that `config/ai/skills/<name>/` directory |
+| `without SKILL.md` assert | add `SKILL.md` to that `agents/skills/<name>/` directory |
 | A flake check fails | `nix log .#checks.<system>.<check>` for the tool output |
 
 ## Useful one-liners

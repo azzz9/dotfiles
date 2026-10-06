@@ -23,7 +23,7 @@ dotfiles/
 |   +-- git.nix              # git config + ghq + git-wt defaults
 |   +-- gh.nix               # GitHub CLI aliases
 |   +-- shell.nix            # zsh: aliases, plugins, init script ordering
-|   +-- shell/init/          # zsh init scripts sourced by shell.nix; dev()/deva() live here
+|   +-- shell/init/          # zsh init scripts sourced by shell.nix
 |   +-- herdr.nix            # herdr multiplexer + notification settings
 |   +-- hunk.nix             # hunk diff review TUI (Linux ld-linux wrapper)
 |   +-- ghostty.nix          # macOS Ghostty configuration (Ghostty external)
@@ -32,7 +32,7 @@ dotfiles/
 |   +-- packages.nix         # Additional system packages
 |   +-- pinned-packages.nix  # nixpkgs-missing derivations, bumped by nix-update
 |   +-- lazygit.nix          # lazygit config (delta stdin filter)
-+-- config/ai/
++-- agents/
 |   +-- AGENTS.md            # Core rules (turn gate, show-me gate, git rules)
 |   +-- skills/              # Global skills (linked to ~/.agents/skills)
 +-- .agents/skills/          # Project-scoped skills (this repo only)
@@ -94,11 +94,11 @@ A tab or pane renamed by hand is left alone from then on.
 edits in this repo are immediately reflected at the target path:
 
 ```
-config/ai/AGENTS.md                  -> ~/.pi/agent/AGENTS.md
-config/ai/skills/<name>              -> ~/.agents/skills/<name>
+agents/AGENTS.md                     -> ~/.pi/agent/AGENTS.md
+agents/skills/<name>                 -> ~/.agents/skills/<name>
 ```
 
-Skills come in two scopes. Every directory under `config/ai/skills` is linked
+Skills come in two scopes. Every directory under `agents/skills` is linked
 into `~/.agents/skills/` and visible in all projects; the link list comes from
 `builtins.readDir`, so there is no list to keep in sync. The two skills that
 only make sense here sit in `.agents/skills/` at the repo root instead, where pi
@@ -145,7 +145,7 @@ after this change lands activates the generation without reconciling
 anything; the one after that reconciles.
 
 i-have-adhd is pinned the same way: an object with `skills = []` in
-`settings.json` because the skill is vendored in `config/ai/skills/i-have-adhd`
+`settings.json` because the skill is vendored in `agents/skills/i-have-adhd`
 and the package copy would collide. The extension supplies `/i-have-adhd`,
 `--adhd`, and the always-on switch, which is the Home Manager-managed flag file
 `~/.pi/agent/.i-have-adhd-always`. The extension reads the rules from its own
@@ -172,12 +172,12 @@ pi-hermes-memory is machine-local on the same principle. It writes under
 optional `hermes-memory-config.json` is not Nix-managed, so a fresh machine
 starts with an empty store.
 
-The inline rules that remain in `config/ai/AGENTS.md` are the turn gate, the
+The inline rules that remain in `agents/AGENTS.md` are the turn gate, the
 show-me gate, and the git rules. pi reads them through the symlink at
 `~/.pi/agent/AGENTS.md`, so no separate rule files are needed. The
 `.agents/skills` path is the shared user scope for local skills consumed by pi.
 
-To add a global skill: create `config/ai/skills/<name>/SKILL.md`; the link list
+To add a global skill: create `agents/skills/<name>/SKILL.md`; the link list
 is derived, and the build fails if a directory has no `SKILL.md`. To add a
 repo-local skill: create `.agents/skills/<name>/SKILL.md`; no Nix change is
 needed.
@@ -266,7 +266,9 @@ and `checks`, which build per platform.
 
 `scripts/setup-system.sh` and the `dotfiles` CLI resolve the name from
 `hostname`, with a trailing `.local` dropped, and the CLI rejects a name with
-no row. `MACHINE` overrides it in the bootstrap. Set the hostname once per
+no row. A machine that has not applied since a rename still carries the old
+name list in its installed `dotfiles`, so its first apply runs
+`bash scripts/dotfiles.sh apply <name>` from the checkout. `MACHINE` overrides it in the bootstrap. Set the hostname once per
 machine:
 
 ```bash
