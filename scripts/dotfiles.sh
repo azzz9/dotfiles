@@ -13,7 +13,7 @@ usage() {
 usage: dotfiles <command> [machine]
 
 commands:
-  apply      apply the current checkout, reconciling pi packages to their pinned revision or version
+  apply      apply the current checkout, installing any pi npm package whose version differs from its pinned spec
   sync       pull latest changes, then apply
   upgrade    update flake.lock inputs, then apply
 

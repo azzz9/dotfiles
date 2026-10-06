@@ -42,7 +42,9 @@
   };
 
   outputs =
-    { self, nixpkgs, nixpkgs-master, home-manager, nixvim, hunk, llm-agents, ... }:
+    { self, nixpkgs, nixpkgs-master, home-manager, nixvim, hunk, llm-agents
+    , pi-pstack, pi-subagents, pi-web-access, pi-compact-tools, i-have-adhd, ...
+    }:
     let
       supportedSystems = [
         "x86_64-linux"
@@ -62,12 +64,11 @@
           inherit (node) owner repo rev;
           spec = "github.com/${node.owner}/${node.repo}";
         };
-      piGitSources = {
-        pi-pstack = lockedSource "pi-pstack";
-        i-have-adhd = lockedSource "i-have-adhd";
-        pi-subagents = lockedSource "pi-subagents";
-        pi-web-access = lockedSource "pi-web-access";
-        pi-compact-tools = lockedSource "pi-compact-tools";
+      # The git packages pi installs, by flake input name. Nix hands pi each
+      # input's store path, so pi loads the exact source flake.lock locked and
+      # nothing has to move that checkout afterwards.
+      piPackagePaths = {
+        inherit pi-pstack i-have-adhd pi-subagents pi-web-access pi-compact-tools;
       };
       herdrAutoTitleSource = lockedSource "herdr-auto-title";
       # One table for every machine, and one name for both layers. The key is
@@ -103,7 +104,7 @@
             ];
           };
           extraSpecialArgs = {
-            inherit repoDir machineNames piGitSources herdrAutoTitleSource;
+            inherit repoDir machineNames piPackagePaths herdrAutoTitleSource;
             hunk = hunk;
             llmAgents = llm-agents;
           };

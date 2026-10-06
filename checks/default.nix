@@ -23,14 +23,16 @@ let
       done
       zsh -n "$files/.zshrc"
       lua -e "assert(loadfile('$files/.config/nvim/init.lua'))"
-      # The reconcile step's manifest: one "<host/owner/repo> <40-hex
-      # rev>" line per git package, and a short sha is the failure this
-      # manifest exists to prevent.
-      pins="$files/.pi/agent/.dotfiles-pi-pins"
-      entries=$(grep -c . "$pins" || true)
-      pinned=$(grep -Ec '^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+){2} [0-9a-f]{40}$' "$pins" || true)
-      test "$entries" -gt 0
-      test "$entries" -eq "$pinned"
+      # Every package row is a store path or an exact npm spec. A row that
+      # regressed to a `git:` spec would leave pi fetching on its own again.
+      # The managed settings file is a build input of the merge script rather
+      # than a home file, so read it through the activation script.
+      merge=$(grep -oh '/nix/store/[^ ]*-pi-settings-managed' ${activationPackage}/activate | head -n 1)
+      settings=$(grep -oh '/nix/store/[^ ]*-pi-managed-settings.json' "$merge" | head -n 1)
+      jq -e '[.packages[] | if type == "object" then .source else . end] as $rows
+             | ($rows | all(startswith("npm:") or startswith("/nix/store/")))
+               and ([$rows[] | select(startswith("/nix/store/"))] | length > 0)' \
+        "$settings" >/dev/null
       titlePin="$files/.local/share/dotfiles/herdr-auto-title-pin"
       grep -Eq '^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+ [0-9a-f]{40}$' "$titlePin"
       test "$(wc -l < "$titlePin")" -eq 1
@@ -82,23 +84,17 @@ in
   # The generated files are only text until a tool parses them, so parse
   # every config this flake emits, for every machine this system builds.
   generated-configs = pkgs.runCommand "generated-configs" {
-    nativeBuildInputs = [ pkgs.python3 pkgs.yq-go pkgs.zsh pkgs.lua5_1 ];
+    nativeBuildInputs = [ pkgs.python3 pkgs.yq-go pkgs.zsh pkgs.lua5_1 pkgs.jq pkgs.gnugrep ];
   } (
     builtins.concatStringsSep "" (map parseGeneratedConfigs (builtins.attrNames platformMachines))
     + "touch $out"
   );
-  herdr-auto-title-reconcile = pkgs.runCommand "herdr-auto-title-reconcile" {
-    nativeBuildInputs = [ pkgs.bash pkgs.coreutils pkgs.gnugrep pkgs.jq ];
-  } ''
-    ${pkgs.bash}/bin/bash ${self}/scripts/test-herdr-auto-title-reconcile.sh
-    touch $out
-  '';
   pi-reconcile = pkgs.runCommand "pi-reconcile" {
-    nativeBuildInputs = [ pkgs.bash pkgs.coreutils pkgs.jq pkgs.git ];
+    nativeBuildInputs = [ pkgs.bash pkgs.coreutils pkgs.jq ];
   } ''
-    export HOME=$TMPDIR/home GIT_CONFIG_NOSYSTEM=1
+    export HOME=$TMPDIR/home
     export PATH=$TMPDIR/bin:$PATH
-    mkdir -p "$HOME/.pi/agent/git/github.com/example" "$HOME/.pi/agent/npm/node_modules" "$TMPDIR/bin"
+    mkdir -p "$HOME/.pi/agent/npm/node_modules" "$TMPDIR/bin"
 
     # Keep the heredoc body at this indentation; nix strips the common
     # indent from the whole string, which is what puts the shebang at
@@ -109,65 +105,49 @@ in
     STUB
     chmod +x "$TMPDIR/bin/pi"
 
-    checkout=$HOME/.pi/agent/git/github.com/example/pkg
-    git init -q "$checkout"
-    git -C "$checkout" -c user.email=check@invalid -c user.name=check \
-      commit -q --allow-empty -m pinned
-    pinned=$(git -C "$checkout" rev-parse HEAD)
-    pinnedRepo=github.com/example/pkg
-    pinnedSpec=git:github.com/example/pkg
     npmName='@example/rpiv-todo'
     npmSource="npm:$npmName@2.12.0"
-    pins=$HOME/.pi/agent/.dotfiles-pi-pins
     settings=$HOME/.pi/agent/settings.json
     source ${self}/scripts/pi-reconcile.sh
 
     npm_dir=$HOME/.pi/agent/npm/node_modules/$npmName
     mkdir -p "$npm_dir"
     printf '{"version":"2.12.0"}\n' > "$npm_dir/package.json"
-    printf '{"packages":["%s","%s"]}\n' "$pinnedSpec" "$npmSource" > "$settings"
+    printf '{"packages":["%s"]}\n' "$npmSource" > "$settings"
 
-    # Off the pinned revision, one scoped update with no @ref. The npm
-    # spec is installed at its version, so it asks pi nothing.
-    printf '%s %040d\n' "$pinnedRepo" 0 > "$pins"
+    # On the pinned version, the next apply asks pi nothing.
     pi_reconcile
-    test "$(cat "$HOME/pi-calls")" = "update $pinnedSpec"
-
-    # On the pinned revision, the next apply asks pi nothing.
-    printf '%s %s\n' "$pinnedRepo" "$pinned" > "$pins"
-    pi_reconcile
-    test "$(wc -l < "$HOME/pi-calls")" = 1
+    test ! -e "$HOME/pi-calls"
 
     # An npm package whose installed version differs is installed once.
     printf '{"version":"2.11.0"}\n' > "$npm_dir/package.json"
     pi_reconcile
-    test "$(sed -n 2p "$HOME/pi-calls")" = "install $npmSource"
-    test "$(wc -l < "$HOME/pi-calls")" = 2
+    test "$(cat "$HOME/pi-calls")" = "install $npmSource"
 
     # On the pinned version, the next apply asks pi nothing.
     printf '{"version":"2.12.0"}\n' > "$npm_dir/package.json"
     pi_reconcile
-    test "$(wc -l < "$HOME/pi-calls")" = 2
+    test "$(wc -l < "$HOME/pi-calls")" = 1
 
     # A package.json that is not there needs the install too.
     rm -rf "$npm_dir"
     pi_reconcile
-    test "$(wc -l < "$HOME/pi-calls")" = 3
+    test "$(wc -l < "$HOME/pi-calls")" = 2
 
-    # With npm converged again, a missing checkout is the only drift.
+    # An unpinned source names no version, so there is nothing to compare.
+    printf '{"packages":["npm:example-unpinned"]}\n' > "$settings"
+    pi_reconcile
+    test "$(wc -l < "$HOME/pi-calls")" = 2
+
+    # No settings file, nothing to converge, and the apply still succeeds.
+    rm -f "$settings"
+    pi_reconcile
+    test "$(wc -l < "$HOME/pi-calls")" = 2
+
+    # A pi that cannot install the package fails the apply.
+    printf '{"packages":["%s"]}\n' "$npmSource" > "$settings"
     mkdir -p "$npm_dir"
-    printf '{"version":"2.12.0"}\n' > "$npm_dir/package.json"
-    rm -rf "$checkout"
-    pi_reconcile
-    test "$(wc -l < "$HOME/pi-calls")" = 4
-
-    # No manifest, nothing to converge, and the apply still succeeds.
-    rm -f "$pins"
-    pi_reconcile
-    test "$(wc -l < "$HOME/pi-calls")" = 4
-
-    # A pi that cannot move the checkout fails the apply.
-    printf '%s %040d\n' "$pinnedRepo" 0 > "$pins"
+    printf '{"version":"2.11.0"}\n' > "$npm_dir/package.json"
     printf '#!/bin/sh\nexit 1\n' > "$TMPDIR/bin/pi"
     chmod +x "$TMPDIR/bin/pi"
     if pi_reconcile 2>/dev/null; then

@@ -127,25 +127,21 @@ pinned to one rpiv release train, so they move together. They stay npm because
 the rpiv workspace ships 15 packages with no `pi` manifest at its root, and pi
 cannot key a monorepo package by a git source.
 
-pi's git packages (`pi-pstack`, `i-have-adhd`, `pi-subagents`, `pi-web-access`)
-are `flake = false` inputs in `flake.nix`, so the revision
-lives in `flake.lock` and no module holds a sha. Each carries its declared
-extension entry at the repo root, which is what lets the repo itself be the git
-source. `cc-safety-net` stays an npm row instead: a pi git install runs the
-repository's `prepare` script, and cc-safety-net's runs `lefthook install`,
-which that install cannot satisfy. Its published tarball carries the built
+pi's git packages (`pi-pstack`, `i-have-adhd`, `pi-subagents`, `pi-web-access`,
+`pi-compact-tools`) are `flake = false` inputs in `flake.nix`, so the revision
+lives in `flake.lock` and no module holds a sha. `modules/pi.nix` renders each
+input's store path into `settings.json`, and pi loads that path in place. There
+is no checkout to move, so no step can leave pi on a stale revision.
+`cc-safety-net` stays an npm row instead: its repository builds the extension
+in a `prepare` script that a checkout alone does not carry out. Its published
+tarball carries the built
 `dist` with no runtime dependencies. `pi-hermes-memory` is an npm row too, and
 its `better-sqlite3` dependency arrives prebuilt, so `pi install` runs no
-compiler. `modules/pi.nix`
-renders each input's repo spec and `rev` into `settings.json` and into
-`~/.pi/agent/.dotfiles-pi-pins`, one `<repo> <rev>` line per git package, and
-`apply` ends with `pi_reconcile`, which moves the git checkouts that no longer
-match the pin and installs an npm package whose installed version differs from
-the version in its `settings.json` spec. The manifest's two-field shape is
-kept deliberately: the CLI that runs the first `apply` after an upgrade is the
-previously installed one, and it parses that file with the same two fields. `dotfiles upgrade` re-resolves the git pins with the rest of
+compiler. `apply` ends with `pi_reconcile`, which installs an npm package whose
+installed version differs from
+the version in its `settings.json` spec. `dotfiles upgrade` re-resolves the git packages with the rest of
 `flake.lock` and queries the npm registry for the rpiv version;
-`nix flake update pi-pstack && dotfiles apply` moves one git pin. Commit the
+`nix flake update pi-pstack && dotfiles apply` moves one package. Commit the
 `flake.lock` diff to keep the next apply on the same pins. The reconcile is
 inlined into the `dotfiles` CLI at build time, so the first `dotfiles apply`
 after this change lands activates the generation without reconciling

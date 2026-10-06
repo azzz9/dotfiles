@@ -1,12 +1,12 @@
-{ lib, pkgs, llmAgents, piGitSources, ... }:
+{ lib, pkgs, llmAgents, piPackagePaths, ... }:
 let
   rpivVersion = "2.12.0";
   rpiv = name: "npm:@juicesharp/rpiv-${name}@${rpivVersion}";
 
-  # One row per package pi installs. `spec` is an exact npm source; `input`
-  # names the locked flake input whose revision a git row carries; `filter`
-  # is the optional resource narrowing pi accepts on the object form. No row
-  # carries a sha, so a pin cannot disagree with what Nix fetched.
+  # One row per package pi installs. `input` names the flake input whose store
+  # path the row loads; `spec` is an exact npm source; `filter` is the optional
+  # resource narrowing pi accepts on the object form. No row carries a
+  # revision, so no pin can disagree with what Nix fetched.
   #
   # Provider packages stay out of this list: subscriptions, catalogs, and API
   # keys differ per host. Install them per machine as files under
@@ -22,14 +22,14 @@ let
     # The skill is vendored in agents/skills, so load the extension only.
     { input = "i-have-adhd"; filter = { skills = [ ]; }; }
     # The rpiv packages ship from a 15-package workspace whose root carries no
-    # pi manifest, so they cannot be git sources and stay npm rows.
+    # pi manifest, so they stay npm rows.
     { spec = rpiv "todo"; }
     { spec = rpiv "ask-user-question"; }
     { spec = rpiv "btw"; }
     # Blocks destructive shell commands and secret-file access before the bash
     # tool call runs. The rule set is the point, so it stays an npm row: its
-    # repository runs `lefthook install` from a prepare script, which a pi git
-    # install cannot satisfy. The published tarball carries the built dist with
+    # repository builds the extension in a prepare script that a plain
+    # checkout does not run. The published tarball carries the built dist with
     # no runtime dependencies.
     { spec = "npm:cc-safety-net@2.5.2"; }
     # Persistent memory, session search, and a background learning loop. npm is
@@ -40,27 +40,15 @@ let
     { input = "pi-compact-tools"; }
   ];
 
-  # Exactly what settings.json records for a row.
+  # Exactly what settings.json records for a row. A package row resolves to the
+  # store path of its flake input, which pi loads in place.
   declare = row:
     let
       source = if row ? input
-        then "git:${piGitSources.${row.input}.spec}@${piGitSources.${row.input}.rev}"
+        then "${piPackagePaths.${row.input}}"
         else row.spec;
     in
     if row ? filter then { inherit source; } // row.filter else source;
-
-  # What scripts/pi-reconcile.sh reads: one "<spec> <rev>" line per git row.
-  # `spec` is also the path pi keys the checkout by under the agent directory.
-  # The two-field shape is deliberately unchanged from before the npm pins
-  # existed: the CLI running the first apply after an upgrade is the previously
-  # installed one, and it parses this file with the same two fields.
-  #
-  # npm rows are absent on purpose. Their pinned version already sits in the
-  # spec that settings.json records, so the reconcile reads it there instead of
-  # holding a second copy that could disagree.
-  pins = lib.concatMapStrings
-    (row: "${piGitSources.${row.input}.spec} ${piGitSources.${row.input}.rev}\n")
-    (builtins.filter (row: row ? input) rows);
 
   # pi writes its startup model and `pi install` packages into
   # ~/.pi/agent/settings.json, which cannot be a read-only store symlink, so the
@@ -113,8 +101,6 @@ in
   # flag exists; a saved choice for the current session still wins, so an
   # explicit "stop adhd mode" survives.
   home.file.".pi/agent/.i-have-adhd-always".text = "";
-  # The reconcile step reads this. A store symlink, so nothing writes to it.
-  home.file.".pi/agent/.dotfiles-pi-pins".text = pins;
   # The compact-tools extension reads this at startup. A store symlink, so the
   # style comes from the repo instead of a local edit.
   home.file.".pi/agent/compact-tools.json".source = compactToolsConfig;

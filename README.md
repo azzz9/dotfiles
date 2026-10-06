@@ -97,26 +97,26 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#m
 
 | Command | Description |
 |---------|-------------|
-| `dotfiles apply` | Build and apply the current checkout, reconciling pi packages to their pinned revision or version |
+| `dotfiles apply` | Build and apply the current checkout, installing any pi npm package whose version differs from its pinned spec |
 | `dotfiles sync` | Pull latest, then apply (requires clean repo) |
 | `dotfiles upgrade` | Bump the pinned derivations with `nix-update` and the npm pins from the registry, then refresh `flake.lock` inputs and apply (requires clean repo; restores `flake.lock`, the pins file, and `modules/pi.nix` on failure) |
 
 `dotfiles upgrade` moves every kind of pin this repo has. Packages nixpkgs
-manages move with `flake.lock`. The git-sourced pi packages move with
-`flake.lock` plus the reconcile step. The npm-only packages (the three rpiv
+manages move with `flake.lock`. The pi packages Nix supplies move with
+`flake.lock` alone, because `modules/pi.nix` hands pi each input's store path.
+The npm-only packages (the three rpiv
 ones, which ship from a workspace no git source can key; `cc-safety-net`,
-whose repository needs `lefthook` at install time; and `pi-hermes-memory`,
+whose repository builds its extension at install time; and `pi-hermes-memory`,
 which publishes to npm and pulls its `better-sqlite3` addon prebuilt)
-move with a registry-queried version bump plus the same reconcile. The
+move with a registry-queried version bump plus the reconcile. The
 derivations pinned in `modules/pinned-packages.nix` (solhint,
 prettier-plugin-solidity and its dist, roots) are bumped by `nix-update`
 with per-name backups, and a failed upgrade restores `flake.lock`, the pins
 file, and `modules/pi.nix`. No pin the upgrade moves needs a hand-typed
 version or hash; a bump that cannot build (for example a new release needs
 a newer Go than nixpkgs ships) keeps its previous pin and warns instead of
-failing the whole upgrade. `apply` moves any pi package that drifted: a git
-checkout lands on its pinned revision, an npm package is installed at its
-pinned version. The reconcile step is baked into the installed CLI at build
+failing the whole upgrade. `apply` installs any npm package whose version
+differs from its pinned spec. The reconcile step is baked into the installed CLI at build
 time, so the first `dotfiles apply` or `dotfiles upgrade` after this change
 lands activates the new generation without reconciling anything; the one
 after that reconciles.
@@ -196,7 +196,7 @@ dotfiles/
 |   +-- AGENTS.md              # Core rules (turn gate, show-me gate, git rules)
 |   +-- skills/                # Global skills (linked to ~/.agents/skills)
 +-- scripts/dotfiles.sh        # the `dotfiles` CLI
-+-- scripts/pi-reconcile.sh    # moves pi packages to their pinned revisions and versions
++-- scripts/pi-reconcile.sh    # installs pi npm packages at their pinned versions
 +-- scripts/check.sh           # the checks the pre-push hook and CI run
 +-- scripts/setup-system.sh    # Bootstrap script
 +-- .agents/skills/            # Project-scoped skills (this repo only)
