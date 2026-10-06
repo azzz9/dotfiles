@@ -94,7 +94,7 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#m
 |---------|-------------|
 | `dotfiles apply` | Build and apply the current checkout, installing any pi npm package whose version differs from its pinned spec |
 | `dotfiles sync` | Pull latest, then apply. Stashes the pins a previous `upgrade` left behind, so the pull can fast-forward, and refuses when any other file is changed |
-| `dotfiles upgrade` | Bump the pinned derivations with `nix-update` and the npm pins from the registry, then refresh `flake.lock` inputs and apply (requires clean repo; restores `flake.lock`, the pins file, and `modules/pi.nix` on failure) |
+| `dotfiles upgrade` | Pull latest, bump the pinned derivations with `nix-update` and the npm pins from the registry, then refresh `flake.lock` inputs and apply (requires clean repo; restores `flake.lock`, the pins file, and `modules/pi.nix` on failure) |
 
 `dotfiles sync` refuses when a file outside the three pins `upgrade` rewrites
 differs, because `apply` would otherwise activate a half-finished edit. It
@@ -103,8 +103,10 @@ machines moved `flake.lock`, and it names the stash in its output. The stashed
 pins stay inactive until you drop the stash, or run `git stash pop` and
 `dotfiles apply` again.
 
-`dotfiles upgrade` moves every kind of pin this repo has. Packages nixpkgs
-manages move with `flake.lock`. The pi packages move with `flake.lock` alone,
+`dotfiles upgrade` moves every kind of pin this repo has. It pulls the checkout
+first, so on a clean tree it covers everything `dotfiles sync` does before it
+moves the pins. Packages nixpkgs manages move with `flake.lock`.
+The pi packages move with `flake.lock` alone,
 because `modules/pi.nix` hands pi each input's store path. The npm-only
 packages (the three rpiv ones, which ship from a workspace no git source can
 key; `cc-safety-net`,

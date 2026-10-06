@@ -15,7 +15,7 @@ usage: dotfiles <command> [machine]
 commands:
   apply      apply the current checkout, installing any pi npm package whose version differs from its pinned spec
   sync       pull latest changes, then apply
-  upgrade    update flake.lock inputs, then apply
+  upgrade    pull latest changes, update flake.lock inputs, then apply
 
 machine: the name of the machine to apply. This machine's hostname is the
          default. An unknown name is listed against the names flake.nix has.
@@ -288,6 +288,11 @@ case "$command" in
     ;;
   upgrade)
     require_clean_repo
+    # Before the bump, so the new lock is computed on top of the newest flake.nix.
+    if ! git pull --ff-only; then
+      echo "dotfiles upgrade: the pull failed; the pins are untouched" >&2
+      exit 1
+    fi
     pin_scratch="$(mktemp "$tmp_dir/dotfiles-pin-bump.XXXXXX")"
     for upgrade_path in "${upgrade_paths[@]}"; do
       backup_file "$upgrade_path"
