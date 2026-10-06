@@ -56,6 +56,13 @@ in
     python3 ${self}/scripts/test-setup.py ${self}/scripts/setup-system.sh
     touch $out
   '';
+  # Drives scripts/dotfiles.sh against fixture git repos with its nix build stubbed.
+  dotfiles-cli = pkgs.runCommand "dotfiles-cli" {
+    nativeBuildInputs = [ pkgs.bash pkgs.coreutils pkgs.git pkgs.gnugrep ];
+  } ''
+    bash ${self}/scripts/test-dotfiles.sh ${self}/scripts/dotfiles.sh
+    touch $out
+  '';
   actionlint = pkgs.runCommand "actionlint" { nativeBuildInputs = [ pkgs.actionlint ]; } ''
     actionlint ${self}/.github/workflows/*.yml
     touch $out
