@@ -133,8 +133,8 @@ in
 
     [ui.sidebar.agents]
     rows = [
-      ["$prompt"],
       ["state_icon", "state_text", "workspace", "$git_branch"],
+      [{ token = "$prompt", fg = "#ffffff" }],
     ]
 
     [ui.sidebar.spaces]
