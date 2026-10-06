@@ -56,6 +56,8 @@ in
     # Use shims in .zshenv so SSH and other non-interactive zsh processes can
     # resolve environment-owned mise tools without relying on prompt hooks.
     envExtra = ''
+      export LC_MESSAGES=en_US.UTF-8
+      export LANGUAGE=en_US:en
       export PATH="${config.home.homeDirectory}/.nix-profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
       eval "$(${pkgs.mise}/bin/mise activate zsh --shims)"
     '';
