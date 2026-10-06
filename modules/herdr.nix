@@ -1,4 +1,4 @@
-{ lib, pkgs, ... }:
+{ config, lib, pkgs, repoDir, ... }:
 let
   toastDelivery = "system";
   isWsl =
@@ -131,6 +131,23 @@ in
     # setting its shape, so nvim's insert-mode bar never renders.
     host_cursor = "native"
 
+    [ui.sidebar.agents]
+    rows = [
+      [
+        "state_icon",
+        "state_text",
+        { token = "workspace", bold = false },
+        { token = "$git_branch", fg = "#957fb8" },
+      ],
+      [{ token = "$prompt", fg = "#ffffff" }],
+    ]
+
+    [ui.sidebar.spaces]
+    rows = [
+      ["state_icon", "state_text", { token = "workspace", bold = false }],
+      [{ token = "branch", fg = "#957fb8" }, "git_status"],
+    ]
+
     [ui.toast]
     # Ghostty suppresses OSC notifications while focused, so completion
     # notifications would be lost. The system backend is unaffected.
@@ -147,4 +164,7 @@ in
     run mkdir -p "$HOME/.pi/agent/extensions"
     run ${pkgs.herdr}/bin/herdr integration install pi >/dev/null
   '';
+
+  home.file.".pi/agent/extensions/prompt-display.ts".source =
+    config.lib.file.mkOutOfStoreSymlink "${repoDir}/modules/herdr/prompt-display.ts";
 }
