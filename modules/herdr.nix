@@ -134,12 +134,12 @@ in
     [ui.sidebar.agents]
     rows = [
       ["$prompt"],
-      ["state_text"],
+      ["state_icon", "state_text", "workspace", "$git_branch"],
     ]
 
     [ui.sidebar.spaces]
     rows = [
-      ["state_text", "workspace"],
+      ["state_icon", "state_text", "workspace"],
       ["branch", "git_status"],
     ]
 
