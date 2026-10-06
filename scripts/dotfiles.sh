@@ -211,6 +211,32 @@ bump_npm_pins() {
   done < <(grep -o 'npm:[A-Za-z0-9@/._-]*@[0-9][0-9A-Za-z.+-]*' "$pi_module" | sort -u)
 }
 
+# Recomputes every npmDepsHash in modules/pi.nix from the package-lock.json of
+# the flake input that flake.lock now pins. `nix flake update` moves those
+# revisions, and a moved lockfile moves the fixed-output hash, so the build
+# would otherwise stop on a hash mismatch. Each row is measured with a
+# deliberately wrong hash and the real one is read back from the error.
+refresh_pi_npm_hashes() {
+  local input got
+  while read -r input; do
+    got="$(nix_cmd build --no-link --impure --expr "
+      let
+        flake = builtins.getFlake \"$repo\";
+        pkgs = import flake.inputs.nixpkgs { system = builtins.currentSystem; };
+      in pkgs.fetchNpmDeps { src = flake.inputs.$input; hash = pkgs.lib.fakeHash; }
+    " 2>&1 | sed -n 's/.*got: *\(sha256-[A-Za-z0-9+/=]*\).*/\1/p' | head -n 1)" || true
+    if [ -z "$got" ]; then
+      echo "dotfiles upgrade: could not measure the $input npmDepsHash; kept its previous value" >&2
+      continue
+    fi
+    if grep -q "{ input = \"$input\"; npmDepsHash = \"$got" "$pi_module"; then
+      continue
+    fi
+    sed -i "s|{ input = \"$input\"; npmDepsHash = \"[^\"]*\"|{ input = \"$input\"; npmDepsHash = \"$got\"|" "$pi_module"
+    echo "dotfiles upgrade: refreshed the $input npmDepsHash"
+  done < <(sed -n 's/.*{ input = "\([^"]*\)"; npmDepsHash.*/\1/p' "$pi_module")
+}
+
 case "$command" in
   apply)
     apply_home_and_reconcile_pi
@@ -234,6 +260,7 @@ case "$command" in
     # than the previous nixpkgs carried can still be bumped in the same run.
     bump_pins
     bump_npm_pins
+    refresh_pi_npm_hashes
     if ! build_home; then
       restore_upgrade
       exit 1
