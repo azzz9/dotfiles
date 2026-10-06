@@ -5,192 +5,66 @@ description: "Guide for editing Nix flake + Home Manager configs. Use when modif
 
 # nix-home-manager Skill
 
-Practical reference for working with Nix flakes and Home Manager in this
-dotfiles repo. Load this skill before editing `.nix` files.
+Reference for working with Nix flakes and Home Manager in this repo. Load this
+skill before editing `.nix` files.
 
-## Always verify syntax before building
+## Verify in this order
 
 ```bash
-# 1. Parse check (fast, no evaluation)
-nix-instantiate --parse modules/some-file.nix > /dev/null
-
-# 2. Eval check (catches type errors, attribute issues)
+nix-instantiate --parse modules/some-file.nix > /dev/null   # syntax
 nix eval --raw .#homeConfigurations.desktop.activationPackage --impure 2>&1 | head -20
-
-# 3. Dry-run build (catches build-time issues without downloading)
 nix build --dry-run .#homeConfigurations.desktop.activationPackage --impure 2>&1 | tail -20
-
-# 4. The full check set (deadnix, shellcheck, actionlint, generated-configs)
-./scripts/check.sh
+./scripts/check.sh                                          # the whole set
 ```
 
-**Order matters**: parse -> eval -> dry-run -> full build. Catch errors
-early to avoid wasting time.
+## Rules this repo enforces
 
-## Common Nix patterns in this repo
+- Pass `--impure` to every Nix command. `repoDir` reads `builtins.getEnv`, so
+  without it the path resolves under an empty `HOME`.
+- `git add` a new file before any Nix command. The flake sees tracked files
+  only, and `scripts/`, `modules/herdr/worktree-layout/`, and the Lua tree are
+  read by name, so an unadded file fails with `path ... does not exist`.
+- `dotfiles sync` and `dotfiles upgrade` need a clean tree. `dotfiles apply`
+  does not check.
+- In the agent sandbox, prefix Nix with `XDG_CACHE_HOME=/tmp/nix-cache`.
+  `~/.cache/nix` is read-only there, and Nix fails with `unable to open
+  database file`.
+- `hosts/default.nix` links `agents/AGENTS.md` and `agents/skills/*` with
+  `mkOutOfStoreSymlink`, so an edit in the checkout takes effect without a
+  rebuild.
+- Activation calls `nix profile add`; `scripts/dotfiles.sh` rewrites
+  `profile install` to `profile add` for Determinate Nix.
 
-### mkOutOfStoreSymlink (out-of-store symlinks)
+## Asserts that fail evaluation
 
-```nix
-config.lib.file.mkOutOfStoreSymlink "${repo}/path/to/source"
-```
+- `modules/nvim.nix`: every `.lua` file under `modules/nvim/lua/` appears in
+  `luaFiles`.
+- `hosts/default.nix`: every directory in `agents/skills` holds a `SKILL.md`,
+  and a skill whose body says `upstream:` holds a `LICENSE` beside it.
 
-Creates a symlink from the HM-managed target to a file **inside** the
-repo checkout. Edits to the repo file are immediately reflected at the
-target. Used for AGENTS.md, rules, and skills deployment.
+## Checks
 
-### flake.nix structure
-
-```nix
-{
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    # ...
-  };
-  outputs = { self, nixpkgs, ... }@inputs:
-    let
-      machines = {
-        desktop = { system = "x86_64-linux"; nixos = ./hosts/platform/nixos/machines/desktop; };
-        mac = { system = "aarch64-darwin"; };
-      };
-      supportedSystems = [ "x86_64-linux" "aarch64-darwin" ];
-      # repoDir, mkHomeConfiguration, mkChecks live here too.
-    in
-    {
-      homeConfigurations = nixpkgs.lib.mapAttrs mkHomeConfiguration machines;
-      checks = nixpkgs.lib.genAttrs supportedSystems mkChecks;
-    };
-}
-```
-
-`flake.nix` also owns `machineNames` (the `machines` keys) and `repoDir`, which
-reach the modules through `extraSpecialArgs`. Do not re-derive either in a
-module.
-
-### Module imports
-
-`hosts/default.nix` imports modules:
-```nix
-imports = [
-  ../modules/dotfiles.nix
-  ../modules/pi.nix
-  ../modules/shell.nix
-  ../modules/herdr.nix
-  ../modules/hunk.nix
-  ../modules/nvim.nix
-  # ...
-];
-```
-
-### lib helpers used in this repo
-
-- `lib.concatMap` flat-maps over lists, used for the skill symlinks.
-- `builtins.listToAttrs` turns a list of name/value pairs into an attrset.
-- `builtins.getEnv "HOME"` reads the home directory at evaluation time.
-- `builtins.elem` checks list membership.
-- `builtins.readDir` derives a registry from disk instead of hand-listing it.
-- `builtins.pathExists` asserts a derived entry is complete.
-- `lib.subtractLists` gives the two directions of a registry diff.
-
-## Checks and asserts
-
-`checks.<system>` in `flake.nix` holds the whole verification layer, and
-`scripts/check.sh` only invokes it. `nix flake check --impure` builds:
+`flake.nix` wires `checks.<system>`, and `scripts/check.sh` only invokes it.
+The pre-push hook and CI build the same set, so they cannot disagree.
 
 | check | catches |
 |-------|---------|
 | `deadnix` | unused let bindings and function arguments |
 | `shellcheck` | script errors in `scripts/` and `.githooks/pre-push` |
 | `actionlint` | workflow errors |
-| `generated-configs` | malformed emitted TOML, YAML, `zsh`, or Lua |
+| `bootstrap` | `setup-system.sh` against fixture PATHs |
+| `generated-configs` | malformed emitted TOML, YAML, `zsh`, or Lua; the activation order; the pi package rows |
+| `pi-reconcile` | `pi_reconcile` against a stub `pi` |
 
-Two asserts guard registries that must stay in step with the filesystem:
-
-- `modules/nvim.nix`: `luaFiles` must equal the `.lua` files under
-  `modules/nvim/lua/`. Adding a file without listing it fails evaluation.
-- `hosts/default.nix`: every directory in `agents/skills` must contain a
-  `SKILL.md`; the link list itself is derived, not listed.
-
-## Common pitfalls
-
-### 1. New files must be `git add`'d
-
-Nix flakes only see files tracked by git. If you create a new `.nix` file,
-Lua file, or script, **you must `git add` it** before `home-manager switch` or
-`nix build` will see it. Untracked files are invisible to the flake. This bites
-for real here: `scripts/dotfiles.sh` and `modules/pi.nix` are read by name, so an
-unadded file fails with `path ... does not exist`.
-
-### 2. --impure is required
-
-This repo uses `builtins.getEnv "HOME"`, `"USER"`, and `"DOTFILES_DIR"`,
-which are impure operations. Always pass `--impure`, including to
-`nix flake check`, or `repoDir` resolves to a path under an empty HOME:
-
-```bash
-nix build .#homeConfigurations.desktop.activationPackage --impure
-```
-
-### 3. Dirty tree warnings
-
-`dotfiles sync` and `dotfiles upgrade` require a clean git tree. Use
-`dotfiles apply` when you have uncommitted changes (it does not check).
-
-### 4. Sandbox nix cache workaround
-
-Network access is enabled (`network_access = true`), but `~/.cache/nix`
-is on a read-only filesystem in the sandbox. Prefix nix commands with
-`XDG_CACHE_HOME=/tmp/nix-cache` to redirect the cache to a writable
-temp directory:
-
-```bash
-XDG_CACHE_HOME=/tmp/nix-cache nix build .#homeConfigurations.desktop.activationPackage --impure
-XDG_CACHE_HOME=/tmp/nix-cache nix search nixpkgs <package>
-```
-
-Without this, nix fails with `unable to open database file
-(fetcher-cache-v4.sqlite)`.
-
-### 5. Home Manager activation
-
-After `nix build`, the `activate` script runs `nix profile add/install`.
-This repo patches `profile install` -> `profile add` for Determinate Nix
-compatibility (see `scripts/dotfiles.sh`).
-
-## Debugging checklist
+## Debugging
 
 | Symptom | Check |
 |---------|-------|
-| File not found in flake | `git add` the file, then retry |
-| `error: impure` | Add `--impure` flag |
-| `index.lock` error | `.git` is read-only in sandbox; escalate |
-| `nix flake show` fails | `~/.cache/nix` unwritable; use `XDG_CACHE_HOME=/tmp/nix-cache` |
-| Build hangs | First download may be slow; ensure `XDG_CACHE_HOME` is set |
-| Syntax error | `nix-instantiate --parse <file>` first |
-| Type/attr error | `nix eval --raw .#...` to find the issue |
-| Activation fails | Check `profile add` vs `profile install` patch |
-| `luaFiles is out of sync` assert | add the file to `luaFiles` in `modules/nvim.nix` |
-| `without SKILL.md` assert | add `SKILL.md` to that `agents/skills/<name>/` directory |
-| A flake check fails | `nix log .#checks.<system>.<check>` for the tool output |
-
-## Useful one-liners
-
-```bash
-# Quick syntax check on all .nix files
-find . -name '*.nix' -exec nix-instantiate --parse {} > /dev/null \;
-
-# Eval a specific attribute
-nix eval --raw .#homeConfigurations.desktop.activationPackage --impure
-
-# The whole check set, the same one CI builds
-./scripts/check.sh
-
-# Build and activate (inside the sandbox, needs the XDG_CACHE_HOME workaround)
-XDG_CACHE_HOME=/tmp/nix-cache dotfiles apply
-
-# Build and activate (outside the sandbox)
-dotfiles apply
-
-# Update flake inputs
-dotfiles upgrade
-```
+| File not found in flake | `git add` the file |
+| `error: impure` | add `--impure` |
+| `index.lock` error | `.git` is read-only in the sandbox; escalate |
+| Syntax error | `nix-instantiate --parse <file>` |
+| Type or attribute error | `nix eval --raw .#... --impure` |
+| A flake check fails | `nix log .#checks.<system>.<check>` |
+| `luaFiles is out of sync` | add the file to `luaFiles` in `modules/nvim.nix` |
+| `without SKILL.md` | add `SKILL.md` to that `agents/skills/<name>/` |

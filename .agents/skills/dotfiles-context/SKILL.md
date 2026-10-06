@@ -5,8 +5,7 @@ description: "Quick reference for this Nix flake + Home Manager dotfiles repo. U
 
 # dotfiles-context Skill
 
-This is a Nix flake + Home Manager dotfiles repository. Read this skill
-before exploring files so you start with full context.
+Nix flake + Home Manager repo. Read this before exploring files.
 
 ## Repository layout
 
@@ -43,10 +42,6 @@ dotfiles/
 +-- .githooks/pre-push       # Pre-push checks
 +-- .github/workflows/ci.yml # CI
 ```
-
-Per-platform differences live in guard clauses inside the modules
-(`pkgs.stdenv.hostPlatform.isDarwin` / `isLinux`), not in per-machine files. The installed `dotfiles` CLI
-resolves this machine's name from `hostname` and applies it.
 
 ## Neovim config structure
 
@@ -95,8 +90,7 @@ generation; rerun `dotfiles apply` after resolving the failure.
 
 ## AI config deployment model
 
-`hosts/default.nix` deploys AI config using out-of-store symlinks so
-edits in this repo are immediately reflected at the target path:
+`hosts/default.nix` links AI config out of store, so an edit here is live:
 
 ```
 agents/AGENTS.md                     -> ~/.pi/agent/AGENTS.md
@@ -107,8 +101,7 @@ Skills come in two scopes. Every directory under `agents/skills` is linked
 into `~/.agents/skills/` and visible in all projects; the link list comes from
 `builtins.readDir`, so there is no list to keep in sync. The two skills that
 only make sense here sit in `.agents/skills/` at the repo root instead, where pi
-discovers them as project skills once the project is trusted. Neither is linked
-globally, so neither costs tokens in other projects.
+discovers them as project skills once the project is trusted.
 
 pstack is not vendored as a tree. pi consumes the personal fork
 `git:github.com/azzz9/pi-pstack@<sha>` (pinned by `flake.lock`). The fork
@@ -178,37 +171,20 @@ needed.
 
 ## dotfiles CLI commands
 
-`apply`, `sync`, and `upgrade` are implemented in `scripts/dotfiles.sh`, which
+`apply`, `sync`, and `upgrade` live in `scripts/dotfiles.sh`, which
 `modules/dotfiles.nix` installs through `writeShellApplication` (so the build
-shellchecks it). The command table lives in `README.md`.
+shellchecks it). README.md owns the command table and the pin story.
 
-Pin story: nixpkgs-managed things move with `flake.lock`; pi's git packages
-move with `flake.lock` plus the reconcile; the npm-only rpiv trio moves with
-the registry bump plus the reconcile; the pinned nix derivations move with
-nix-update. Nothing needs a hand-typed version or hash. The derivations in
-`modules/pinned-packages.nix` (solhint, prettier-plugin-solidity plus its
-dist, roots) move when the same command's bump stage runs `nix-update --flake
-<name>` against the flake's `packages`
-output; that stage backs each bump per name, warns and keeps the previous pin
-when one release cannot build, and a wholesale failure restores `flake.lock`,
-the pins file, and `modules/pi.nix`. codediff-watcher is not in the bump list: its version is
-derived from nixpkgs' `vimPlugins.codediff-nvim` (`watcher.lua` contains a
-`local VERSION` line), so the watcher cannot drift from the plugin; its
-per-system release hashes are the only hand-edited pin in the repo. To add a
-pinned package: give it `pname`, `version`, and a `src` built from
-`${version}`, list it in `pin_names`, and expose it as a flake package.
+Adding a pinned package means giving it `pname`, `version`, and a `src` built
+from `${version}`, listing it in `pin_names`, and exposing it as a flake
+package. codediff-watcher is the exception: its version comes from nixpkgs'
+`vimPlugins.codediff-nvim`, so only its per-system hashes are hand-edited.
 
 ## Checks
 
-`checks/default.nix` defines `checks.<system>`: deadnix, shellcheck (scripts
-and the pre-push hook), no-device-config (device facts stay in
-`hosts/platform/nixos/machines/<name>/`), bootstrap (drives
-`scripts/setup-system.sh` against fixture
-PATHs), actionlint, generated-configs (parses the emitted TOML, YAML, zsh, and
-Lua), and pi-reconcile. The pre-push hook and CI both run `scripts/check.sh`, so
-the check set has one definition. Registry drift is caught by asserts instead:
-`modules/nvim.nix` compares `luaFiles` with `modules/nvim/lua/`, and
-`hosts/default.nix` requires a `SKILL.md` in every skill directory.
+`checks/default.nix` holds the check set and `flake.nix` wires it into
+`checks.<system>`. The `nix-home-manager` skill lists what each check covers
+and the asserts that fail evaluation.
 
 ## OS differences
 
@@ -249,39 +225,6 @@ Linux home paths. Compare names and keys, not absolute paths.
 
 ## Supported platforms
 
-- `x86_64-linux` (Ubuntu / Arch / NixOS)
-- `aarch64-darwin` (Apple Silicon Mac)
-
-A machine has one name, and that name is its hostname. `flake.nix` owns the
-`machines` table: the row key names `homeConfigurations.<name>` and, for a row
-that carries an `nixos` path, `nixosConfigurations.<name>`. The rows are
-`desktop` (NixOS) and `mac`. `supportedSystems` stays for `packages`
-and `checks`, which build per platform.
-
-`scripts/setup-system.sh` and the `dotfiles` CLI resolve the name from
-`hostname`, with a trailing `.local` dropped, and the CLI rejects a name with
-no row. A machine that has not applied since a rename still carries the old
-name list in its installed `dotfiles`, so its first apply runs
-`bash scripts/dotfiles.sh apply <name>` from the checkout. `MACHINE` overrides it in the bootstrap. Set the hostname once per
-machine:
-
-```bash
-# macOS
-sudo scutil --set HostName mac
-```
-
-On NixOS the system layer is `nixosConfigurations.<machine>`, built from
-`hosts/platform/nixos/machines/<machine>/` and listed in that same `machines`
-table. Apply it
-with `sudo nixos-rebuild switch --flake <repo>#<machine> --impure`. The
-bootstrap checks that the machine is complete and prints that command.
-Device-specific files, such as `hardware-nvidia.nix`, sit in the machine
-directory so `hosts/platform/nixos/modules/` stays portable.
-
-Bootstrap runs as a standalone downloaded script or from stdin, without
-preinstalled Git or development tools. System setup installs curl for the Nix
-installer on Ubuntu and Arch, macOS includes curl, and NixOS provides Nix. The
-script fetches a missing Git or curl with Nix, adds it to PATH for this run, and
-reuses any command that already exists before detecting or cloning the
-checkout. Home Manager then installs Git and Zsh permanently. On NixOS the
-system configuration owns the login shell and Docker, not bootstrap.
+`x86_64-linux` (Ubuntu, Arch, NixOS) and `aarch64-darwin` (Apple Silicon).
+README.md covers the bootstrap, the machine table, and the NixOS system layer,
+including how to add a machine.

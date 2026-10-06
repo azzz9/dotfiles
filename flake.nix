@@ -27,16 +27,14 @@
     # Pi is packaged by numtide/llm-agents.nix. Keep its nixpkgs pin separate
     # so its binary cache stays usable.
     llm-agents.url = "github:numtide/llm-agents.nix";
-    # Pi installs these as git packages. Nix locks their revisions, so
-    # `nix flake update <name>` is what moves a pin and flake.lock is what
-    # records it. Nothing reads the input trees, so none of these builds.
+    # Pi loads these from the store paths Nix fetches for them. flake.lock
+    # records the revision, so `nix flake update <name>` is what moves a pin.
     pi-pstack = { url = "github:azzz9/pi-pstack"; flake = false; };
     i-have-adhd = { url = "github:ayghri/i-have-adhd"; flake = false; };
     pi-subagents = { url = "github:nicobailon/pi-subagents"; flake = false; };
     pi-web-access = { url = "github:nicobailon/pi-web-access"; flake = false; };
-    # `cc-safety-net` stays an npm row (see modules/pi.nix): its repository runs
-    # `lefthook install` from a prepare script, which a pi git install cannot
-    # satisfy, so it is deliberately not an input here.
+    # `cc-safety-net` stays an npm row (see modules/pi.nix), so it is not an
+    # input here.
     pi-compact-tools = { url = "github:nedleeds/pi-compact-tools"; flake = false; };
     herdr-auto-title = { url = "github:kryptamine/herdr-auto-title"; flake = false; };
   };
@@ -51,8 +49,8 @@
         "aarch64-darwin"
       ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
-      # Resolved once. hosts/default.nix and modules/dotfiles.nix both need the
-      # checkout path, and HOME matches the home.homeDirectory those modules set.
+      # hosts/default.nix and modules/dotfiles.nix both need the checkout path,
+      # and it has to match the home.homeDirectory those modules set.
       repoDir =
         let configured = builtins.getEnv "DOTFILES_DIR";
         in
@@ -70,12 +68,10 @@
         inherit pi-pstack i-have-adhd pi-subagents pi-web-access pi-compact-tools;
       };
       herdrAutoTitleSource = lockedSource "herdr-auto-title";
-      # One table for every machine, and one name for both layers. The key is
-      # the homeConfigurations attribute, and with it the nixosConfigurations
-      # attribute for a row that carries a nixos path. The hostname on each
-      # machine is the key, so the CLI and the bootstrap need no
-      # platform-to-attribute mapping. The NixOS platform directory holds that
-      # machine's own system files next to the shared modules it imports.
+      # One table for every machine. The key names homeConfigurations.<name>,
+      # and nixosConfigurations.<name> for a row that carries a nixos path. The
+      # key is the machine's hostname, so the CLI and the bootstrap resolve a
+      # machine with no mapping table of their own.
       machines = {
         desktop = { system = "x86_64-linux"; nixos = ./hosts/platform/nixos/machines/desktop; };
         mac = { system = "aarch64-darwin"; };
@@ -113,8 +109,7 @@
           ] ++ home;
         };
       # The NixOS system layer. Each machine directory imports the shared
-      # modules and its own hardware-configuration.nix, so the flake owns the
-      # system configuration the same way it owns the user profiles.
+      # modules and its own hardware-configuration.nix.
       mkNixosSystem = _: { system, nixos, ... }:
         nixpkgs.lib.nixosSystem {
           inherit system;

@@ -31,10 +31,8 @@ you run the script. This matches the configured ghq root, `~/src`, so
 `ghq list` includes `github.com/azzz9/dotfiles` after setup. ghq finds
 repository directories under its root. No separate registration is needed.
 
-The script reuses an existing Git checkout at the selected path instead of
-cloning again. Running from a checkout elsewhere does not move or change that
-checkout. Without `DOTFILES_DIR`, the script still clones or reuses the default
-path and applies that checkout.
+The script reuses an existing checkout at the selected path and never moves it,
+and it reuses any command that already exists.
 
 If Git is already available, cloning first is also supported:
 
@@ -66,9 +64,8 @@ definition:
 Apply those system changes with `sudo nixos-rebuild switch`, then log out and
 back in for the shell and Docker group membership to take effect.
 
-Bootstrap and `dotfiles` enable the required Nix features for their subprocesses
-automatically, preserving existing `NIX_CONFIG` settings. The system option
-above also enables them for Nix commands you run directly.
+Bootstrap and `dotfiles` enable those Nix features for their subprocesses and
+preserve an existing `NIX_CONFIG`.
 
 Optional overrides:
 
@@ -79,10 +76,8 @@ Optional overrides:
 | `MACHINE` | this machine's hostname | Machine whose Home Manager profile the bootstrap applies, and whose NixOS system configuration it checks (NixOS only) |
 | `REBOOT` | `0` | Reboot after setup |
 
-Set `DOTFILES_DIR` to use a different checkout. This override may be outside
-`~/src`, in which case `ghq list` does not include that checkout under the
-default ghq configuration. An unset or empty `DOTFILES_DIR` uses the default
-path.
+Set `DOTFILES_DIR` to use a different checkout. A checkout outside `~/src` does
+not appear in `ghq list` under the default ghq configuration.
 
 ### 2. Manual apply (alternative)
 
@@ -269,8 +264,7 @@ once in `checks/default.nix`, which `flake.nix` wires into `checks.<system>`.
 
 CI evaluates every machine attribute with `scripts/check.sh --no-build`, then
 builds the checks and every activation package for `x86_64-linux` and
-`aarch64-darwin`. Because the checks live in `flake.nix`, a local run, the
-pre-push hook, and CI cannot disagree.
+`aarch64-darwin`.
 
 ### Binary cache (optional)
 
@@ -292,8 +286,6 @@ for build caching. Without it, only the public nixpkgs cache is used.
 - Ghostty is configured by Home Manager only on macOS; the application itself
   is installed outside Nix and the UDEV Gothic NF font is installed by the
   macOS bootstrap.
-- AI agent rules are linked into pi through out-of-store links;
-  `show-me` is used for implementation-first explanations and `explain` for
-  structured technical explanations.
-- `dotfiles-context` and `nix-home-manager` are project-scoped pi skills under
-  `.agents/skills/`, so they load only in this repo.
+- AI agent rules and skills deploy from `agents/` and `.agents/skills/` through
+  out-of-store links. `show-me` explains implementations first and `explain`
+  writes structured technical explanations.
