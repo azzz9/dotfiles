@@ -275,6 +275,44 @@ expect_eq 'upgrade leaves the foreign edit alone' 'nvim v2-mine' "$(cat "$machin
 expect_origin_unmoved 'upgrade leaves the origin branch alone'
 scenario_end
 
+scenario 'upgrade pulls before it bumps'
+fixture
+machine_clone
+push_from_other modules/nvim.nix 'nvim v2-other' 'chore(nvim): other'
+run_cli upgrade
+# The stub refuses every nix call but the build. Reaching that refusal in the
+# run that also moved HEAD to the pulled commit pins the pull ahead of the bump.
+expect_eq 'upgrade exits 1 when the bump fails' 1 "$cli_rc"
+expect_out_has 'the stub refused the bump' 'nix stub: refusing'
+expect_out_has 'the bump was reached' 'flake update'
+expect_out_has 'the failed bump restores the pins' 'restored flake.lock after failure'
+expect_eq 'upgrade leaves HEAD on the pulled commit' "$(git -C "$origin" rev-parse main)" "$(git -C "$machine" rev-parse HEAD)"
+expect_eq 'upgrade lands the pulled worktree' 'nvim v2-other' "$(cat "$machine/modules/nvim.nix")"
+expect_eq 'upgrade leaves a clean tree' '' "$(git -C "$machine" status --porcelain)"
+expect_origin_unmoved 'upgrade leaves the origin branch alone'
+scenario_end
+
+scenario 'upgrade leaves the pins alone when the pull cannot fast-forward'
+fixture
+machine_clone
+printf 'nvim v2-mine\n' > "$machine/modules/nvim.nix"
+git -C "$machine" commit -qam 'chore(nvim): mine'
+push_from_other modules/pi.nix 'pi v2-other' 'chore(pi): other'
+run_cli upgrade
+# The branch diverged, so the pull fails before pin_scratch exists and before
+# any backup is taken. The three paths upgrade rewrites stay as they were.
+expect_eq 'upgrade exits 1 when the pull cannot fast-forward' 1 "$cli_rc"
+expect_out_has 'upgrade reports the pins are untouched' 'dotfiles upgrade: the pull failed; the pins are untouched'
+expect_out_lacks 'upgrade never reaches the bump' 'flake update'
+expect_eq 'upgrade leaves flake.lock alone' 'lock v1' "$(cat "$machine/flake.lock")"
+expect_eq 'upgrade leaves the pinned-packages file alone' 'pins v1' "$(cat "$machine/modules/pinned-packages.nix")"
+expect_eq 'upgrade leaves modules/pi.nix alone' 'pi v1' "$(cat "$machine/modules/pi.nix")"
+expect_eq 'upgrade stashes nothing' '' "$(git -C "$machine" stash list)"
+expect_eq 'upgrade leaves the branch where it was' "$head_before" "$(git -C "$machine" rev-parse HEAD)"
+expect_eq 'upgrade leaves a clean tree' '' "$(git -C "$machine" status --porcelain)"
+expect_origin_unmoved 'upgrade leaves the origin branch alone'
+scenario_end
+
 if [ "$failures" -gt 0 ]; then
   printf '\n%s assertion(s) failed\n' "$failures"
   exit 1
