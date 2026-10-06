@@ -21,8 +21,9 @@ nix build --dry-run .#homeConfigurations.desktop.activationPackage --impure 2>&1
 - `git add` a new file before any Nix command. The flake sees tracked files
   only, and `scripts/`, `modules/herdr/worktree-layout/`, and the Lua tree are
   read by name, so an unadded file fails with `path ... does not exist`.
-- `dotfiles sync` and `dotfiles upgrade` need a clean tree; `dotfiles apply`
-  does not check.
+- `dotfiles upgrade` needs a clean tree. `dotfiles sync` refuses only on a
+  change outside the pins (`upgrade_paths` in `scripts/dotfiles.sh`), then
+  stashes the pins and pulls. `dotfiles apply` does not check.
 - In the agent sandbox, prefix Nix with `XDG_CACHE_HOME=/tmp/nix-cache`, or Nix
   fails with `unable to open database file`.
 - `hosts/default.nix` links `agents/AGENTS.md` and `agents/skills/*` out of
@@ -35,7 +36,9 @@ nix build --dry-run .#homeConfigurations.desktop.activationPackage --impure 2>&1
 `flake.nix` wires `checks.<system>` and `scripts/check.sh` invokes it.
 `deadnix`, `shellcheck`, and `actionlint` are self-evident, and
 `generated-configs` parses every emitted TOML, YAML, zsh, and Lua file.
-`bootstrap` drives `setup-system.sh` against fixture PATHs.
+`bootstrap` drives `setup-system.sh` against fixture PATHs, and
+`dotfiles-cli` drives `scripts/dotfiles.sh` against fixture git repositories,
+with the nix build and the activation it feeds stubbed.
 
 A failed check reads `nix log .#checks.<system>.<check>`.
 
