@@ -64,9 +64,8 @@
           inherit (node) owner repo rev;
           spec = "github.com/${node.owner}/${node.repo}";
         };
-      # The git packages pi installs, by flake input name. Nix hands pi each
-      # input's store path, so pi loads the exact source flake.lock locked and
-      # nothing has to move that checkout afterwards.
+      # The pi packages, by flake input name. A row hands pi that input's store
+      # path, so pi loads the source flake.lock locked.
       piPackagePaths = {
         inherit pi-pstack i-have-adhd pi-subagents pi-web-access pi-compact-tools;
       };

@@ -89,11 +89,9 @@ herdr plugin action invoke herdr.auto-title.restart
 
 Dotfiles leaves restart to the user. Installation and enablement do not
 replace a running Auto Title process. A tab or pane renamed by hand is left
-alone from then on. An isolated Herdr 0.9.3 test injected a Go build failure
-and confirmed that the prior registration, checkout, binary, and plugin config
-stayed intact. The activation fails when installation fails. `dotfiles upgrade`
-restores source files, not the already activated Home Manager generation; rerun
-`dotfiles apply` after resolving the failure.
+alone from then on. A failed installation stops the activation. `dotfiles
+upgrade` restores source files, not the already activated Home Manager
+generation; rerun `dotfiles apply` after resolving the failure.
 
 ## AI config deployment model
 
@@ -127,25 +125,18 @@ pinned to one rpiv release train, so they move together. They stay npm because
 the rpiv workspace ships 15 packages with no `pi` manifest at its root, and pi
 cannot key a monorepo package by a git source.
 
-pi's git packages (`pi-pstack`, `i-have-adhd`, `pi-subagents`, `pi-web-access`,
+pi's packages (`pi-pstack`, `i-have-adhd`, `pi-subagents`, `pi-web-access`,
 `pi-compact-tools`) are `flake = false` inputs in `flake.nix`, so the revision
 lives in `flake.lock` and no module holds a sha. `modules/pi.nix` renders each
-input's store path into `settings.json`, and pi loads that path in place. There
-is no checkout to move, so no step can leave pi on a stale revision.
-`cc-safety-net` stays an npm row instead: its repository builds the extension
-in a `prepare` script that a checkout alone does not carry out. Its published
-tarball carries the built
-`dist` with no runtime dependencies. `pi-hermes-memory` is an npm row too, and
-its `better-sqlite3` dependency arrives prebuilt, so `pi install` runs no
-compiler. `apply` ends with `pi_reconcile`, which installs an npm package whose
-installed version differs from
-the version in its `settings.json` spec. `dotfiles upgrade` re-resolves the git packages with the rest of
-`flake.lock` and queries the npm registry for the rpiv version;
-`nix flake update pi-pstack && dotfiles apply` moves one package. Commit the
-`flake.lock` diff to keep the next apply on the same pins. The reconcile is
-inlined into the `dotfiles` CLI at build time, so the first `dotfiles apply`
-after this change lands activates the generation without reconciling
-anything; the one after that reconciles.
+input's store path into `settings.json`, and pi loads that path in place.
+`cc-safety-net` and `pi-hermes-memory` stay npm rows: the first builds its
+extension in a `prepare` script, so a checkout has no `dist`, and the second
+publishes to npm with a prebuilt `better-sqlite3`. `apply` ends with
+`pi_reconcile`, which installs an npm package whose installed version differs
+from the spec `settings.json` records. `dotfiles upgrade` re-resolves the
+store paths with the rest of `flake.lock` and queries the npm registry for the
+rpiv version; `nix flake update pi-pstack && dotfiles apply` moves one package.
+Commit the `flake.lock` diff to keep the next apply on the same pins.
 
 i-have-adhd is pinned the same way: an object with `skills = []` in
 `settings.json` because the skill is vendored in `agents/skills/i-have-adhd`

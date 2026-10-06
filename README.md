@@ -102,10 +102,10 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#m
 | `dotfiles upgrade` | Bump the pinned derivations with `nix-update` and the npm pins from the registry, then refresh `flake.lock` inputs and apply (requires clean repo; restores `flake.lock`, the pins file, and `modules/pi.nix` on failure) |
 
 `dotfiles upgrade` moves every kind of pin this repo has. Packages nixpkgs
-manages move with `flake.lock`. The pi packages Nix supplies move with
-`flake.lock` alone, because `modules/pi.nix` hands pi each input's store path.
-The npm-only packages (the three rpiv
-ones, which ship from a workspace no git source can key; `cc-safety-net`,
+manages move with `flake.lock`. The pi packages move with `flake.lock` alone,
+because `modules/pi.nix` hands pi each input's store path. The npm-only
+packages (the three rpiv ones, which ship from a workspace no git source can
+key; `cc-safety-net`,
 whose repository builds its extension at install time; and `pi-hermes-memory`,
 which publishes to npm and pulls its `better-sqlite3` addon prebuilt)
 move with a registry-queried version bump plus the reconcile. The
@@ -116,10 +116,7 @@ file, and `modules/pi.nix`. No pin the upgrade moves needs a hand-typed
 version or hash; a bump that cannot build (for example a new release needs
 a newer Go than nixpkgs ships) keeps its previous pin and warns instead of
 failing the whole upgrade. `apply` installs any npm package whose version
-differs from its pinned spec. The reconcile step is baked into the installed CLI at build
-time, so the first `dotfiles apply` or `dotfiles upgrade` after this change
-lands activates the new generation without reconciling anything; the one
-after that reconciles.
+differs from its pinned spec.
 
 codediff-watcher's version is read from nixpkgs' codediff-nvim at eval time,
 so the watcher and the plugin never disagree; the per-system release hashes

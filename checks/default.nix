@@ -23,10 +23,9 @@ let
       done
       zsh -n "$files/.zshrc"
       lua -e "assert(loadfile('$files/.config/nvim/init.lua'))"
-      # Every package row is a store path or an exact npm spec. A row that
-      # regressed to a `git:` spec would leave pi fetching on its own again.
-      # The managed settings file is a build input of the merge script rather
-      # than a home file, so read it through the activation script.
+      # Every package row is a store path or an exact npm spec. The managed
+      # settings file is a build input of the merge script, not a home file, so
+      # read it through the activation script.
       merge=$(grep -oh '/nix/store/[^ ]*-pi-settings-managed' ${activationPackage}/activate | head -n 1)
       settings=$(grep -oh '/nix/store/[^ ]*-pi-managed-settings.json' "$merge" | head -n 1)
       jq -e '[.packages[] | if type == "object" then .source else . end] as $rows

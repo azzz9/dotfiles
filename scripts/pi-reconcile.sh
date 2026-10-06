@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Moves pi's npm packages to the versions the current generation pins. The git
 # packages need no reconcile: modules/pi.nix hands pi each flake input's store
-# path, so the code pi loads is the code flake.lock locked.
+# path, so pi already loads the pinned revision.
 #
 # modules/dotfiles.nix inlines this file into the `dotfiles` CLI;
 # checks.pi-reconcile drives the function with a stub pi.
@@ -14,9 +14,7 @@ pi_reconcile() {
 
   # `pi install` with a versioned source is the only command that moves an
   # installed npm package, and the installed version is readable from the
-  # package itself. The pinned version comes from the spec in settings.json
-  # rather than a second manifest, so there is nothing that could fall out of
-  # sync with it.
+  # package itself. The pinned version comes from the spec in settings.json.
   #
   # Read the list before any install runs: pi rewrites settings.json, and a
   # streamed read would race that write.

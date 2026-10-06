@@ -5,8 +5,7 @@ let
 
   # One row per package pi installs. `input` names the flake input whose store
   # path the row loads; `spec` is an exact npm source; `filter` is the optional
-  # resource narrowing pi accepts on the object form. No row carries a
-  # revision, so no pin can disagree with what Nix fetched.
+  # resource narrowing pi accepts on the object form.
   #
   # Provider packages stay out of this list: subscriptions, catalogs, and API
   # keys differ per host. Install them per machine as files under
@@ -27,10 +26,9 @@ let
     { spec = rpiv "ask-user-question"; }
     { spec = rpiv "btw"; }
     # Blocks destructive shell commands and secret-file access before the bash
-    # tool call runs. The rule set is the point, so it stays an npm row: its
-    # repository builds the extension in a prepare script that a plain
-    # checkout does not run. The published tarball carries the built dist with
-    # no runtime dependencies.
+    # tool call runs. It stays an npm row because the repository builds its
+    # extension in a prepare script, so only the published tarball carries the
+    # dist.
     { spec = "npm:cc-safety-net@2.5.2"; }
     # Persistent memory, session search, and a background learning loop. npm is
     # the publisher's install path, and its better-sqlite3 dependency arrives
