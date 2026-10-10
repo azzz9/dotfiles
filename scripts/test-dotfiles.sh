@@ -37,6 +37,13 @@ cat > "$work/bin/nix" <<STUB
 case " \$* " in
   *" build --no-link --print-out-paths "*) printf '%s\n' "$work/fakeout" ;;
   *" path-info -r "*) cat "$work/stores" ;;
+  # The declared audit reads package names through nix eval.
+  *" eval "*--apply*) printf '%s\n' '["fixturepkg-1.2.3","otherpkg-4.5.6"]' ;;
+  # upgrade's flake update is refused unless a scenario asks for it, so a
+  # scenario that strays into the bump cannot pass silently.
+  *" flake update "*)
+    if [ -f "$work/allow-flake-update" ]; then exit 0; fi
+    printf 'nix stub: refusing %s\n' "\$*" >&2; exit 99 ;;
   *) printf 'nix stub: refusing %s\n' "\$*" >&2; exit 99 ;;
 esac
 STUB
@@ -83,6 +90,10 @@ fixture() {
   git clone -q "$origin" "$other"
   git -C "$other" config user.name other
   git -C "$other" config user.email other@example.invalid
+  # The stubs read these, so a scenario never sees the previous one's answers.
+  printf '[]\n' > "$work/issues.json"
+  printf '{}\n' > "$work/advisories.json"
+  rm -f "$work/allow-flake-update"
 }
 
 machine_clone() {
@@ -353,10 +364,11 @@ fixture
 machine_clone
 printf '[{"number":111,"title":"fixturepkg: security issues < 1.2.4"}]\n' > "$work/issues.json"
 printf 'npm:fixturepkg@1.0.0\n' > "$machine/modules/pi.nix"
-printf 'nixpkgs 111 fixturepkg # 1.2.3\n' > "$machine/scripts/audit-baseline.txt"
+printf 'nixpkgs 111 fixturepkg # 1.2.3\nnixpkgs 999 ghostpkg # 1.0\n' > "$machine/scripts/audit-baseline.txt"
 run_cli audit
 expect_eq 'audit exits 0 when the baseline holds the match' 0 "$cli_rc"
 expect_out_has 'audit marks the held match as known' 'known #111 fixturepkg'
+expect_out_has 'audit reports a line the store no longer matches' '1 recorded match(es) no longer apply'
 expect_out_has 'audit reports ok' 'dotfiles audit: ok'
 scenario_end
 
@@ -385,6 +397,35 @@ expect_eq 'audit exits 1 on an npm advisory' 1 "$cli_rc"
 expect_out_has 'audit names the advisory range' 'new   fixturepkg 1.0.0 high <1.0.1'
 expect_out_has 'audit names the advisory title' 'Command Injection'
 expect_out_has 'audit names the npm pin that is behind' 'behind fixturepkg 1.0.0 -> 9.9.9'
+scenario_end
+
+scenario 'upgrade reads the audit after it moves the pins'
+fixture
+machine_clone
+printf '[{"number":111,"title":"fixturepkg: security issues < 1.2.4"}]\n' > "$work/issues.json"
+touch "$work/allow-flake-update"
+run_cli upgrade
+expect_eq 'upgrade exits 0 when the audit finds a match' 0 "$cli_rc"
+expect_out_has 'upgrade reaches the audit' 'dotfiles audit: store -'
+expect_out_has 'upgrade names the new match' 'new   #111 fixturepkg 1.2.3'
+expect_out_has 'upgrade says the audit did not fail the upgrade' 'the audit above exited non-zero; the upgrade itself is applied'
+scenario_end
+
+scenario 'audit --declared reads the flake instead of the store'
+fixture
+machine_clone
+printf '[{"number":111,"title":"fixturepkg: security issues < 1.2.4"}]\n' > "$work/issues.json"
+printf 'nixpkgs 999 ghostpkg # 1.0\n' > "$machine/scripts/audit-baseline.txt"
+run_cli audit --declared
+expect_eq 'audit --declared exits 1 on a new match' 1 "$cli_rc"
+expect_out_has 'audit --declared names its source' 'declared - 2 packages'
+expect_out_has 'audit --declared matches a declared name' 'new   #111 fixturepkg 1.2.3'
+expect_out_has 'audit --declared points at --update' 'record them with dotfiles audit --update'
+expect_out_lacks 'audit --declared does not call a store-only line stale' 'no longer apply'
+run_cli audit --declared --update
+expect_eq 'audit --declared refuses --update' 1 "$cli_rc"
+expect_out_has 'audit --declared says why' 'reads a subset of it'
+expect_eq 'audit --declared leaves the baseline alone' 'nixpkgs 999 ghostpkg # 1.0' "$(cat "$machine/scripts/audit-baseline.txt")"
 scenario_end
 
 if [ "$failures" -gt 0 ]; then

@@ -80,9 +80,15 @@ refuse, because activation would otherwise pick up a half-finished edit.
 closure of the running system and of the Home Manager generation, matches those
 package names against the open issues NixOS/nixpkgs labels
 `1.severity: security`, and reads the npm advisories for the rows
-`modules/pi.nix` pins. `scripts/audit-baseline.txt` holds what was already read,
-and only a match outside it fails the command, so the file is part of the
-working tree like the pins `upgrade` moves.
+`modules/pi.nix` pins. `--declared` reads the packages flake.nix names for the
+machine instead, which is a subset of the closure and all a runner without a
+store can read. `scripts/audit-baseline.txt` holds what was already read, and
+only a match outside it fails the command, so the file is part of the working
+tree like the pins `upgrade` moves. Only the store audit reads or prunes that
+file.
+
+`upgrade` reads the audit as its last step and treats it as a report, because
+the pins it just moved are where a nixpkgs fix lands.
 
 ## Pins
 
@@ -190,6 +196,10 @@ CI runs the same set: it evaluates every machine with `scripts/check.sh
 An optional Cachix cache speeds CI up. Set the repository variable `CACHIX_NAME`
 and the secret `CACHIX_AUTH_TOKEN` and the workflow configures the cache. Without
 a token CI uses the public cache only.
+
+A second workflow, `Audit`, runs weekly and on demand. It is not in the push
+path: it needs the network, and upstream issue churn must not fail an unrelated
+push.
 
 ## Checks
 

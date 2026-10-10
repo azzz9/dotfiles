@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
-# The package audit. modules/dotfiles.nix inlines this file into the `dotfiles`
-# CLI, which passes five arguments and supplies two helpers, nix_cmd and
-# registry_latest:
+# The package audit. dotfiles-cli.nix inlines this file into the `dotfiles` CLI,
+# which passes arguments and supplies two helpers, nix_cmd and registry_latest:
 #
-#   audit_packages <repo> <machine> <tmp_dir> <pi_module> <update>
+#   audit_packages <repo> <machine> <tmp_dir> <pi_module> <update> <declared>
+#
+# It reports by return code, so `dotfiles upgrade` can read it as a report and
+# still call the upgrade applied.
 #
 # Two sources are checked, because they are pinned in different ways.
 #
 #   the store   what this machine has, read from the closure of the running
 #               system and of its Home Manager generation, against the open
-#               issues NixOS/nixpkgs labels "1.severity: security"
+#               issues NixOS/nixpkgs labels "1.severity: security". With
+#               <declared> set it reads the packages the flake names for the
+#               machine instead, because a runner has no store and realising
+#               one there costs gigabytes.
 #   npm rows    the versions modules/pi.nix pins, against the npm registry's
 #               advisories
 #
@@ -36,6 +41,17 @@ audit_store_paths() {
     return 1
   fi
   nix_cmd path-info -r "$generation"
+}
+
+# The packages the flake names for this machine, in the same "<name>-<version>"
+# shape the store paths are reduced to. A machine with no nixosConfigurations
+# row contributes only its Home Manager packages.
+audit_declared_names() {
+  local kind
+  for kind in "homeConfigurations.$2.config.home.packages" \
+    "nixosConfigurations.$2.config.environment.systemPackages"; do
+    nix_cmd eval --impure --json "$1#$kind" --apply 'ps: map (p: p.name) ps' 2>/dev/null || true
+  done | jq -r '.[]' | tr '[:upper:]' '[:lower:]' | LC_ALL=C sort -u
 }
 
 # One "<issue number>\t<title>" line per open security issue, every page until
@@ -149,39 +165,54 @@ audit_npm_advisories() {
 }
 
 audit_packages() {
-  local repo="$1" machine="$2" tmp_dir="$3" pi_module="$4" update="$5"
+  local repo="$1" machine="$2" tmp_dir="$3" pi_module="$4" update="$5" declared="$6"
   local baseline="$repo/scripts/audit-baseline.txt"
   local issues_file="$tmp_dir/dotfiles-audit-issues.tsv"
   local matches_file="$tmp_dir/dotfiles-audit-matches.tsv"
   local current_file="$tmp_dir/dotfiles-audit-current.txt"
   local accepted_file="$tmp_dir/dotfiles-audit-accepted.txt"
-  local specs advisories versions findings newest behind
-  local paths issues matches newest_count stale_count
+  local specs advisories versions findings newest behind source
+  local names issues matches newest_count stale_count
+
+  # The baseline is the store audit's record, and the declared set is a subset of
+  # what the store holds, so a declared run must not rewrite it.
+  if [ "$declared" = 1 ] && [ "$update" = 1 ]; then
+    printf 'dotfiles audit: --update records the store audit; --declared reads a subset of it\n' >&2
+    return 1
+  fi
 
   if ! audit_nixpkgs_issues > "$issues_file"; then
     # Reporting "no matches" from a failed fetch is the one wrong answer this
     # audit must never give.
     printf 'dotfiles audit: could not read the nixpkgs security issues from GitHub\n' >&2
     printf 'dotfiles audit: check the network, or wait a minute if the search API rate limit was hit\n' >&2
-    exit 1
+    return 1
   fi
   issues="$(wc -l < "$issues_file")"
 
-  if ! paths="$(audit_store_paths "$repo" "$machine" | sed -E 's#.*/##; s#^[a-z0-9]{32}-##' | LC_ALL=C sort -u)"; then
+  source=store
+  if [ "$declared" = 1 ]; then
+    source=declared
+    if ! names="$(audit_declared_names "$repo" "$machine")"; then
+      printf 'dotfiles audit: could not read the declared packages for %s\n' "$machine" >&2
+      return 1
+    fi
+  elif ! names="$(audit_store_paths "$repo" "$machine" | sed -E 's#.*/##; s#^[a-z0-9]{32}-##')"; then
     printf 'dotfiles audit: could not read the store closure for %s\n' "$machine" >&2
-    exit 1
+    return 1
   fi
-  if [ -z "$paths" ]; then
-    printf 'dotfiles audit: the store closure for %s is empty\n' "$machine" >&2
-    exit 1
+  names="$(printf '%s\n' "$names" | LC_ALL=C sort -u)"
+  if [ -z "$names" ]; then
+    printf 'dotfiles audit: read no %s packages for %s\n' "$source" "$machine" >&2
+    return 1
   fi
-  printf '%s\n' "$paths" | audit_match_issues "$issues_file" | LC_ALL=C sort > "$matches_file"
+  printf '%s\n' "$names" | audit_match_issues "$issues_file" | LC_ALL=C sort > "$matches_file"
   matches="$(wc -l < "$matches_file")"
 
   specs="$(audit_npm_specs "$pi_module")"
   if ! advisories="$(audit_npm_advisories "$pi_module")"; then
     printf 'dotfiles audit: could not read the npm advisories from the registry\n' >&2
-    exit 1
+    return 1
   fi
   versions="$(printf '%s\n' "$specs" | jq -R -s '
     split("\n") | map(select(length > 0) | split("\t") | {(.[0]): .[1]}) | add // {}')"
@@ -216,10 +247,15 @@ audit_packages() {
     : > "$accepted_file"
   fi
   newest_count="$(LC_ALL=C comm -13 "$accepted_file" "$current_file" | wc -l)"
-  stale_count="$(LC_ALL=C comm -23 "$accepted_file" "$current_file" | wc -l)"
+  # Only the store audit can say that a recorded match no longer applies. A line
+  # missing from the declared set says nothing, because that set is smaller.
+  stale_count=0
+  if [ "$declared" = 0 ]; then
+    stale_count="$(LC_ALL=C comm -23 "$accepted_file" "$current_file" | wc -l)"
+  fi
 
-  printf 'dotfiles audit: store - %s packages, %s open issues, %s matches (%s new)\n' \
-    "$(printf '%s\n' "$paths" | wc -l)" "$issues" "$matches" "$newest_count"
+  printf 'dotfiles audit: %s - %s packages, %s open issues, %s matches (%s new)\n' \
+    "$source" "$(printf '%s\n' "$names" | wc -l)" "$issues" "$matches" "$newest_count"
   while IFS=$'\t' read -r number name version title; do
     if LC_ALL=C comm -13 "$accepted_file" "$current_file" | grep -qxF "nixpkgs $number $name"; then
       printf 'dotfiles audit:   new   #%s %s %s\n' "$number" "$name" "$version"
@@ -256,12 +292,12 @@ audit_packages() {
       "$(wc -l < "$baseline")" "$stale_count"
     printf 'dotfiles audit: review and commit %s to keep the next audit on this set\n' \
       "scripts/audit-baseline.txt"
-    exit 0
+    return 0
   fi
 
   if [ "$newest_count" -gt 0 ]; then
     printf 'dotfiles audit: %s new match(es); read them, then record them with dotfiles audit --update\n' "$newest_count"
-    exit 1
+    return 1
   fi
   if [ "$stale_count" -gt 0 ]; then
     printf 'dotfiles audit: %s recorded match(es) no longer apply; prune them with dotfiles audit --update\n' "$stale_count"

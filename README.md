@@ -65,6 +65,10 @@ The machine's name is its hostname and its row key, so none of these needs an
 argument. An argument names another machine, which is also the only reason to
 give one.
 
+`audit` also runs without being asked. `dotfiles upgrade` reads it on the
+machine right after the pins move, and the `Audit` workflow reads what the flake
+declares every week, because a runner has no store to read.
+
 `sync` parks the three files `upgrade` rewrites in a stash before it pulls, so a
 machine that has not committed its own pins still takes the other machine's
 commits. It refuses to run while any other file differs, because `apply` would

@@ -14,9 +14,13 @@ usage: dotfiles <command> [machine]
 
 commands:
   apply      apply the current checkout, installing any pi npm package whose version differs from its pinned spec
-  audit      check this machine's store and its npm pins against open security issues; --update records what it found instead of failing on it
+  audit      check this machine's packages against open security issues
   sync       pull latest changes, then apply
   upgrade    pull latest changes, update flake.lock inputs, then apply
+
+audit reads this machine's store. --declared reads the packages flake.nix names
+for it instead, which is what a runner without a store can do. --update records
+what it found in scripts/audit-baseline.txt instead of failing on it.
 
 machine: the name of the machine to apply. This machine's hostname is the
          default. An unknown name is listed against the names flake.nix has.
@@ -33,12 +37,19 @@ if [ -z "$command" ] || [ "$command" = "-h" ] || [ "$command" = "--help" ]; then
 fi
 shift
 
-# audit is the only command that takes a flag. Read it before the machine
+# audit is the only command that takes flags. Read them before the machine
 # argument, so `dotfiles audit --update` does not read --update as a machine.
 audit_update=0
-if [ "$command" = "audit" ] && [ "${1:-}" = "--update" ]; then
-  audit_update=1
-  shift
+audit_declared=0
+if [ "$command" = "audit" ]; then
+  while [ "${1:-}" = "--update" ] || [ "${1:-}" = "--declared" ]; do
+    if [ "$1" = "--update" ]; then
+      audit_update=1
+    else
+      audit_declared=1
+    fi
+    shift
+  done
 fi
 
 # A machine argument names the attribute to apply. Otherwise this machine's
@@ -273,7 +284,7 @@ case "$command" in
     apply_home_and_reconcile_pi
     ;;
   audit)
-    audit_packages "$repo" "$machine" "$tmp_dir" "$pi_module" "$audit_update"
+    audit_packages "$repo" "$machine" "$tmp_dir" "$pi_module" "$audit_update" "$audit_declared"
     ;;
   sync)
     read_dirty_paths
@@ -338,6 +349,12 @@ case "$command" in
       echo "dotfiles upgrade: these files moved; review and commit them to keep the next apply on these pins:$moved_files"
     fi
     pi_reconcile
+    # The pins just moved, which is when a nixpkgs fix lands and when a new
+    # issue can start matching, so read the audit here. It stays a report: the
+    # pins are already applied, and failing the run would call a finished
+    # upgrade broken.
+    audit_packages "$repo" "$machine" "$tmp_dir" "$pi_module" 0 0 ||
+      echo "dotfiles upgrade: the audit above exited non-zero; the upgrade itself is applied" >&2
     ;;
   *)
     echo "dotfiles: unknown command: $command" >&2
