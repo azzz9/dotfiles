@@ -31,12 +31,20 @@
     extraGroups = [ "networkmanager" "wheel" ];
   };
 
+  # mise installs tools as unpatched binaries, and so do plugin releases from
+  # GitHub. Without this stub they exit 127 pointing at nix.dev/permalink/stub-ld.
+  programs.nix-ld.enable = lib.mkDefault true;
+
   # zsh as the login shell. zsh-autocomplete runs compinit itself, so the
   # global compinit (which would run before the plugin loads) stays off.
   programs.zsh = {
     enable = lib.mkDefault true;
     enableGlobalCompInit = lib.mkDefault false;
   };
+
+  # /etc/nix/nix.conf is generated from here, and a hand-typed
+  # `sudo nixos-rebuild switch --flake` fails without both features.
+  nix.settings.experimental-features = lib.mkDefault [ "nix-command" "flakes" ];
 
   nixpkgs.config.allowUnfree = lib.mkDefault true;
 }
