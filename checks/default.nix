@@ -57,8 +57,9 @@ in
     touch $out
   '';
   # Drives scripts/dotfiles.sh against fixture git repos with its nix build stubbed.
+  # jq is here for the audit's reads, which the same fixture stubs.
   dotfiles-cli = pkgs.runCommand "dotfiles-cli" {
-    nativeBuildInputs = [ pkgs.bash pkgs.coreutils pkgs.git pkgs.gnugrep ];
+    nativeBuildInputs = [ pkgs.bash pkgs.coreutils pkgs.git pkgs.gnugrep pkgs.jq ];
   } ''
     bash ${self}/scripts/test-dotfiles.sh ${self}/scripts/dotfiles.sh
     touch $out

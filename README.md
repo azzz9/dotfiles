@@ -57,6 +57,7 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#<
 | Command            | Description                          |
 | ------------------ | ------------------------------------ |
 | `dotfiles apply`   | Build and apply the current checkout |
+| `dotfiles audit`   | Check this machine's packages against open security issues |
 | `dotfiles sync`    | Pull, then apply                     |
 | `dotfiles upgrade` | Pull, move every pin, then apply     |
 

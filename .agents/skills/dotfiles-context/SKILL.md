@@ -70,11 +70,19 @@ needed.
 
 ## dotfiles CLI commands
 
-`apply`, `sync`, and `upgrade` live in `scripts/dotfiles.sh`, which
+`apply`, `audit`, `sync`, and `upgrade` live in `scripts/dotfiles.sh`, which
 `modules/dotfiles.nix` installs through `writeShellApplication` (so the build
 shellchecks it). README.md owns the command table. `apply` and `sync` run a
 gate first: any change outside the three files `upgrade` rewrites makes them
 refuse, because activation would otherwise pick up a half-finished edit.
+
+`audit` is the only command that reaches the network. It reads the store
+closure of the running system and of the Home Manager generation, matches those
+package names against the open issues NixOS/nixpkgs labels
+`1.severity: security`, and reads the npm advisories for the rows
+`modules/pi.nix` pins. `scripts/audit-baseline.txt` holds what was already read,
+and only a match outside it fails the command, so the file is part of the
+working tree like the pins `upgrade` moves.
 
 ## Pins
 
