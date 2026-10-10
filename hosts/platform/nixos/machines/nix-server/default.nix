@@ -14,8 +14,7 @@
 
   # Carried over from this machine's installer configuration, which this file
   # replaces. Dropping them would stop the docker daemon, take azzz out of the
-  # docker group, turn flakes off system-wide, and remove the zram swap.
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  # docker group, and remove the zram swap.
   virtualisation.docker.enable = true;
   users.users.azzz.extraGroups = [ "docker" ];
   zramSwap.enable = true;

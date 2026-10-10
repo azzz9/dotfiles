@@ -42,5 +42,9 @@
     enableGlobalCompInit = lib.mkDefault false;
   };
 
+  # /etc/nix/nix.conf is generated from here, and a hand-typed
+  # `sudo nixos-rebuild switch --flake` fails without both features.
+  nix.settings.experimental-features = lib.mkDefault [ "nix-command" "flakes" ];
+
   nixpkgs.config.allowUnfree = lib.mkDefault true;
 }
