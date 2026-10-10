@@ -14,12 +14,10 @@
 
   # Carried over from this machine's installer configuration, which this file
   # replaces. Dropping them would stop the docker daemon, take azzz out of the
-  # docker group, turn flakes off system-wide, remove the zram swap, and stop
-  # non-Nix binaries from running.
+  # docker group, turn flakes off system-wide, and remove the zram swap.
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   virtualisation.docker.enable = true;
   users.users.azzz.extraGroups = [ "docker" ];
-  programs.nix-ld.enable = true;
   zramSwap.enable = true;
 
   # This option defines the first version of NixOS you have installed on this particular machine,

@@ -31,6 +31,10 @@
     extraGroups = [ "networkmanager" "wheel" ];
   };
 
+  # mise installs tools as unpatched binaries, and so do plugin releases from
+  # GitHub. Without this stub they exit 127 pointing at nix.dev/permalink/stub-ld.
+  programs.nix-ld.enable = lib.mkDefault true;
+
   # zsh as the login shell. zsh-autocomplete runs compinit itself, so the
   # global compinit (which would run before the plugin loads) stays off.
   programs.zsh = {
