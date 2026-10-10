@@ -14,6 +14,7 @@ usage: dotfiles <command> [machine]
 
 commands:
   apply      apply the current checkout, installing any pi npm package whose version differs from its pinned spec
+  audit      check this machine's store and its npm pins against open security issues; --update records what it found instead of failing on it
   sync       pull latest changes, then apply
   upgrade    pull latest changes, update flake.lock inputs, then apply
 
@@ -31,6 +32,14 @@ if [ -z "$command" ] || [ "$command" = "-h" ] || [ "$command" = "--help" ]; then
   exit 0
 fi
 shift
+
+# audit is the only command that takes a flag. Read it before the machine
+# argument, so `dotfiles audit --update` does not read --update as a machine.
+audit_update=0
+if [ "$command" = "audit" ] && [ "${1:-}" = "--update" ]; then
+  audit_update=1
+  shift
+fi
 
 # A machine argument names the attribute to apply. Otherwise this machine's
 # hostname does, minus the .local suffix macOS reports its mDNS name with.
@@ -84,7 +93,9 @@ nix_cmd() {
   nix --extra-experimental-features "nix-command flakes" "$@"
 }
 
-if [ ! -d "$repo/.git" ]; then
+# A linked worktree has a .git file rather than a .git directory, and
+# DOTFILES_DIR may point at one, so test for existence and not for a directory.
+if [ ! -e "$repo/.git" ]; then
   echo "dotfiles: $repo not found" >&2
   exit 1
 fi
@@ -260,6 +271,9 @@ refresh_pi_npm_hashes() {
 case "$command" in
   apply)
     apply_home_and_reconcile_pi
+    ;;
+  audit)
+    audit_packages "$repo" "$machine" "$tmp_dir" "$pi_module" "$audit_update"
     ;;
   sync)
     read_dirty_paths

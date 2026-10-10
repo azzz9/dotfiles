@@ -17,6 +17,8 @@
       # its last line into the next file's first line.
       + builtins.replaceStrings [ "#!/usr/bin/env bash\n" ] [ "" ] (builtins.readFile ../scripts/pi-reconcile.sh)
       + "\n"
+      + builtins.replaceStrings [ "#!/usr/bin/env bash\n" ] [ "" ] (builtins.readFile ../scripts/audit.sh)
+      + "\n"
       + builtins.replaceStrings [ "#!/usr/bin/env bash\n" ] [ "" ] (builtins.readFile ../scripts/dotfiles.sh);
     })
   ];
