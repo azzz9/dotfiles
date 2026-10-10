@@ -67,6 +67,13 @@ in
     actionlint ${self}/.github/workflows/*.yml
     touch $out
   '';
+  # A secret committed here is public forever, and a Nix string reaches the
+  # world-readable store, so one scan covers both. This reads the tree only,
+  # because a flake copy carries no .git for a history scan.
+  gitleaks = pkgs.runCommand "gitleaks" { nativeBuildInputs = [ pkgs.gitleaks ]; } ''
+    gitleaks dir ${self} --redact --no-banner
+    touch $out
+  '';
   # The generated files are only text until a tool parses them, so parse
   # every config this flake emits, for every machine this system builds.
   generated-configs = pkgs.runCommand "generated-configs" {
