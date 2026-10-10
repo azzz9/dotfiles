@@ -64,7 +64,11 @@
       # key is the machine's hostname, so the CLI and the bootstrap resolve a
       # machine with no mapping table of their own.
       machines = {
-        nix-desktop = { system = "x86_64-linux"; nixos = ./hosts/platform/nixos/machines/nix-desktop; };
+        nix-desktop = {
+          system = "x86_64-linux";
+          nixos = ./hosts/platform/nixos/machines/nix-desktop;
+          home = [ ./modules/niri.nix ./modules/ime.nix ];
+        };
         macbook = { system = "aarch64-darwin"; };
         nix-server = { system = "x86_64-linux"; nixos = ./hosts/platform/nixos/machines/nix-server; };
       };
