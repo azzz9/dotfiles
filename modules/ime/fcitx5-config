@@ -13,11 +13,6 @@ ModifierOnlyKeyTimeout=250
 [Hotkey/TriggerKeys]
 0=Control+space
 1=Hangul
-# CapsLock, through the imecaps layout. fcitx5 shows the input method
-# information at the cursor on this switch, which is the only mode feedback a
-# niri session has: fcitx5's own panel is X11 only, and Meltype keeps its
-# direct flag inside the engine without publishing it.
-2=Zenkaku_Hankaku
 
 [Hotkey/ActivateKeys]
 0=Hangul_Hanja
