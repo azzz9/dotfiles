@@ -641,6 +641,11 @@ binds {
     Ctrl+Print { screenshot-screen; }
     Alt+Print { screenshot-window; }
 
+    // CapsLock reports the input mode and flips it. Meltype keeps its own mode
+    // inside the engine where nothing outside can read it, so the key drives
+    // fcitx5's active state instead and the script says what it landed in.
+    Zenkaku_Hankaku { spawn-sh "~/.config/niri/ime-toggle.sh"; }
+
     // Applications such as remote-desktop clients and software KVM switches may
     // request that niri stops processing the keyboard shortcuts defined here
     // so they may, for example, forward the key presses as-is to a remote machine.

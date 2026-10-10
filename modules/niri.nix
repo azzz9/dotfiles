@@ -11,4 +11,10 @@
     source = config.lib.file.mkOutOfStoreSymlink "${repoDir}/modules/niri/imecaps";
     force = true;
   };
+  # The layout turns CapsLock into Zenkaku_Hankaku, and this script owns what
+  # that key does.
+  home.file.".config/niri/ime-toggle.sh" = {
+    source = config.lib.file.mkOutOfStoreSymlink "${repoDir}/modules/niri/ime-toggle.sh";
+    force = true;
+  };
 }
