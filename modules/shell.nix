@@ -58,6 +58,9 @@ in
     envExtra = ''
       export LC_MESSAGES=en_US.UTF-8
       export LANGUAGE=en_US:en
+      # mise compiles Node and Python from source on NixOS by default, and node
+      # fails there without a C++ compiler. Precompiled builds work with nix-ld.
+      export MISE_ALL_COMPILE=false
       export PATH="${config.home.homeDirectory}/.nix-profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
       eval "$(${pkgs.mise}/bin/mise activate zsh --shims)"
     '';
