@@ -83,6 +83,9 @@ let
     # Hidden because the conclusion already appears in the answer.
     hideThinkingBlock = true;
     defaultThinkingLevel = "xhigh";
+    # pi reads a list of only `+name` entries as a change to the inherited
+    # selection, so a plain "codemode" here would replace read/bash/edit/write.
+    defaultTools = [ "+codemode" ];
   };
   # Every other key is carried over untouched: objects are merged, scalars
   # replaced. The file stays a regular file so pi can keep writing it.
