@@ -147,6 +147,18 @@ pi and herdr are installed by this flake. Provider packages, model choices,
 and the pi-hermes-memory memory store are machine-local; see the
 `dotfiles-context` skill.
 
+Hermes Agent comes from the `hermes-agent` flake input and runs as a Home
+Manager user service on `nix-server` only, through `modules/hermes.nix`. That
+is not the `pi-hermes-memory` pi extension. The service keeps the state it
+already had, and `~/.hermes/config.yaml`, `~/.hermes/.env` and
+`~/.hermes/auth.json` stay hand-managed, so the module leaves `environment` and
+`environmentFiles` empty and never rewrites `.env`. The PATH of the generated
+unit holds store paths only, unlike the installer's unit, so a command the
+agent shells out to belongs in `services.hermes-agent.extraPackages`. The
+input moves with `nix flake update`, which `dotfiles upgrade` runs, and the
+package builds from source, so an upgrade that moves it rebuilds the sealed
+venv and both frontends.
+
 ### Machines
 
 A machine has one name, and both layers use it. The `machines` row key in
@@ -212,6 +224,7 @@ dotfiles/
 |   +-- shell/init/            # Sourced init scripts (prompt, fzf)
 |   +-- herdr.nix              # herdr multiplexer and system notifications
 |   +-- hunk.nix               # hunk diff review TUI
+|   +-- hermes.nix            # Hermes Agent user service (nix-server only)
 |   +-- ghostty.nix            # macOS Ghostty configuration (Ghostty external)
 |   +-- nvim.nix               # Neovim (via nixvim)
 |   +-- packages.nix           # Additional system packages

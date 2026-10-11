@@ -27,13 +27,17 @@ nvim is managed by nixvim. Plugins are declared in `modules/nvim.nix` via
 via HM: the kanagawa theme, prefix ctrl+b splits, alt+h/j/k/l pane navigation,
 alt+shift+h/j/k/l tabs and workspaces, and no agent launcher. Completion
 notifications use herdr's system delivery backend with a 15-second delay, and
-herdr's pi integration is reinstalled on every activation.
+`modules/herdr.nix` reinstalls the pi integration on every activation. The
+hermes integration is installed the same way by `modules/hermes.nix`, which
+only nix-server imports.
 
 The `herdr.auto-title` plugin stays machine-local, like the pi provider
 extensions. Install it by hand with `herdr plugin install
 kryptamine/herdr-auto-title --yes`, and Herdr updates it. Dotfiles links the
 local `worktree-layout` plugin and reinstalls the pi integration on every
-activation, and it never writes under `~/.config/herdr-auto-title/`.
+activation, and it never writes under `~/.config/herdr-auto-title/`. The hermes
+integration, which reports a hermes session to herdr so a pane can be resumed,
+comes from `modules/hermes.nix` and exists on nix-server alone.
 
 ## AI config deployment model
 
@@ -98,10 +102,13 @@ Conditionals live in the five files below, each next to what it configures.
 | `modules/pinned-packages.nix` | the per-system codediff-watcher hash and `autoPatchelfHook` on Linux |
 
 A per-machine Home Manager difference would need `home = [ ... ];` in that
-machine's row. Regenerate the lists instead of grepping for conditionals:
+machine's row. The `nix-server` row's list carries `modules/hermes.nix`, the
+Hermes Agent user service, whose state directory is `~/.hermes` (config.yaml,
+.env, auth.json, all hand-managed). Regenerate the lists instead of grepping
+for conditionals:
 
 ```bash
-for m in nix-desktop macbook; do
+for m in nix-desktop macbook nix-server; do
   echo "== $m"
   nix --extra-experimental-features "nix-command flakes" eval --impure \
     --json ".#homeConfigurations.$m.config.xdg.configFile" --apply builtins.attrNames
