@@ -36,6 +36,8 @@ nix build --dry-run .#homeConfigurations.nix-desktop.activationPackage --impure 
 `flake.nix` wires `checks.<system>` and `scripts/check.sh` invokes it.
 `deadnix`, `shellcheck`, and `actionlint` are self-evident, and
 `generated-configs` parses every emitted TOML, YAML, zsh, and Lua file.
+`gitleaks` scans the committed tree for secrets and reads no history, because a
+flake copy carries no `.git`.
 `bootstrap` drives `setup-system.sh` against fixture PATHs, and
 `dotfiles-cli` drives `scripts/dotfiles.sh` against fixture git repositories,
 with the nix build and the activation it feeds stubbed.

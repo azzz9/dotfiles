@@ -70,7 +70,11 @@
       # key is the machine's hostname, so the CLI and the bootstrap resolve a
       # machine with no mapping table of their own.
       machines = {
-        nix-desktop = { system = "x86_64-linux"; nixos = ./hosts/platform/nixos/machines/nix-desktop; };
+        nix-desktop = {
+          system = "x86_64-linux";
+          nixos = ./hosts/platform/nixos/machines/nix-desktop;
+          home = [ ./modules/niri.nix ./modules/ime.nix ];
+        };
         macbook = { system = "aarch64-darwin"; };
         # The gateway is a systemd user service, so only this machine asks for
         # the module.
@@ -131,6 +135,15 @@
           pinned = import ./modules/pinned-packages.nix { inherit pkgs; };
         in
         {
+          # The CI audit runs the CLI from here, so it is the script the
+          # machines install. Its runtime inputs come from the plain package
+          # set, not the home configuration's overlay, which carries only herdr
+          # and tuios.
+          dotfiles = import ./dotfiles-cli.nix {
+            inherit (nixpkgs) lib;
+            inherit pkgs repoDir machineNames;
+            llmAgents = llm-agents;
+          };
           solhint = pinned.solhint;
           "prettier-plugin-solidity" = pinned.prettierPluginSolidity;
           "prettier-plugin-solidity-dist" = pinned.prettierPluginSolidityDist;

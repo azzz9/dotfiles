@@ -1,4 +1,4 @@
-{ lib, pkgs, llmAgents, piPackagePaths, ... }:
+{ lib, pkgs, config, repoDir, llmAgents, piPackagePaths, ... }:
 let
   rpivVersion = "2.12.0";
   rpiv = name: "npm:@juicesharp/rpiv-${name}@${rpivVersion}";
@@ -38,6 +38,10 @@ let
     { spec = "npm:pi-hermes-memory@0.9.10"; }
     # Compact, expandable TUI tool rows, with its own bundled theme.
     { input = "pi-compact-tools"; }
+  ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+    # pi_reconcile installs this row. The API key stays machine-local in
+    # ~/.pi/agent/ollama_cloud.json.
+    { spec = "npm:pi-ollama-cloud-link@1.1.0"; }
   ];
 
   # Exactly what settings.json records for a row. A bare package row resolves to
@@ -79,6 +83,9 @@ let
     # Hidden because the conclusion already appears in the answer.
     hideThinkingBlock = true;
     defaultThinkingLevel = "xhigh";
+    # pi reads a list of only `+name` entries as a change to the inherited
+    # selection, so a plain "codemode" here would replace read/bash/edit/write.
+    defaultTools = [ "+codemode" ];
   };
   # Every other key is carried over untouched: objects are merged, scalars
   # replaced. The file stays a regular file so pi can keep writing it.
@@ -125,6 +132,12 @@ in
   # The compact-tools extension reads this at startup. A store symlink, so the
   # style comes from the repo instead of a local edit.
   home.file.".pi/agent/compact-tools.json".source = compactToolsConfig;
+  # The visible-model rules are hand-written for the providers the Linux
+  # machines carry; the macOS row keeps its own provider set.
+  home.file.".pi/agent/extensions/openai-model-visibility.ts" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+    source = config.lib.file.mkOutOfStoreSymlink "${repoDir}/modules/pi/openai-model-visibility.ts";
+    force = true;
+  };
   # Runs before linkGeneration so the first switch can still read the old store
   # symlink and carry the local keys into the regular file.
   home.activation.piSettings = lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''

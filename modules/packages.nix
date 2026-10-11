@@ -1,17 +1,6 @@
 { lib, pkgs, ... }:
 let
   pinned = import ./pinned-packages.nix { inherit pkgs; };
-  graphify = pkgs.writeShellApplication {
-    name = "graphify";
-    runtimeInputs = [ pkgs.uv ];
-    text = ''
-      # graphify refreshes ~/.agents/skills/graphify on every run. That path is
-      # a Nix-managed symlink into this repo, so the refresh would overwrite
-      # tracked skill files with the generic agents variant.
-      export GRAPHIFY_NO_AUTO_REFRESH=1
-      exec uvx --from graphifyy==0.9.73 graphify "$@"
-    '';
-  };
 in
 {
   home.packages =
@@ -97,5 +86,5 @@ in
     ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin (with pkgs; [
       terminal-notifier
     ])
-    ++ [ graphify pinned.roots ];
+    ++ [ pinned.roots ];
 }

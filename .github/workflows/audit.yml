@@ -1,0 +1,50 @@
+# The package audit needs a package list and the network, not a machine. This
+# reads what flake.nix names for each machine, because a runner has no store and
+# realising a closure there costs gigabytes: 13.6 GiB for a system and 5.9 GiB
+# for a home generation on this repository.
+#
+# The full closure is what `dotfiles audit` reads on the machine itself, and
+# `dotfiles upgrade` runs that there as soon as the pins move. This job is the
+# clock for the case where nothing gets upgraded for a while.
+name: Audit
+
+on:
+  schedule:
+    # Sunday 22:00 UTC, Monday 07:00 JST.
+    - cron: "0 22 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Audit ${{ matrix.machine }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The darwin home configuration evaluates here as well and only its
+        # package names are read, so every machine fits on one runner.
+        machine: [nix-desktop, macbook, nix-server]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            accept-flake-config = true
+            experimental-features = nix-command flakes
+
+      - name: Audit the declared packages
+        env:
+          # flake.nix reads this back through builtins.getEnv, and the CLI
+          # refuses a checkout it cannot find.
+          DOTFILES_DIR: ${{ github.workspace }}
+          # An anonymous reader gets 60 requests an hour, which nine pages of
+          # issues can exhaust. The job's own token lifts that.
+          GH_TOKEN: ${{ github.token }}
+        run: nix run --impure .#dotfiles -- audit --declared ${{ matrix.machine }}

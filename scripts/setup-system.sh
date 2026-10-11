@@ -71,7 +71,12 @@ hostname_name() {
 # nothing passed in.
 machine_name() {
   if [[ -z "$MACHINE" ]]; then
+    local known=""
     echo "Set MACHINE to this machine's name, one of the machines rows in flake.nix." >&2
+    # A checkout that is already on disk can say which names exist.
+    if command_exists nix && [[ -d "$(dotfiles_dir)/.git" ]] && known="$(flake_machines "$(dotfiles_dir)")" && [[ -n "$known" ]]; then
+      echo "Machines in flake.nix: $known" >&2
+    fi
     echo "Example: MACHINE=macbook ./scripts/setup-system.sh" >&2
     exit 1
   fi
