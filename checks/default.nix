@@ -17,6 +17,17 @@ let
       done
       zsh -n "$files/.zshrc"
       lua -e "assert(loadfile('$files/.config/nvim/init.lua'))"
+      # The hermes unit gets a PATH of store paths, so a command the agent
+      # shells out to is absent unless modules/hermes.nix lists it. systemd-run
+      # scopes each cron worker into its own transient unit, and without it on
+      # PATH every worker drops to an unscoped subprocess with no message.
+      hermes_unit="$files/.config/systemd/user/hermes-agent.service"
+      if [ -e "$hermes_unit" ]; then
+        grep -q '${pkgs.systemd}/bin' "$hermes_unit" || {
+          echo "generated-configs: $host hermes-agent.service has no systemd-run on PATH" >&2
+          exit 1
+        }
+      fi
       # The CLI appends the system directories to PATH, never prepends
       # them: on macOS /usr/bin/sed is BSD sed and /bin/bash is 3.2, so a
       # prefix would shadow the runtime inputs the script needs.
