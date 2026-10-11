@@ -36,11 +36,17 @@
     # `cc-safety-net` stays an npm row (see modules/pi.nix), so it is not an
     # input here.
     pi-compact-tools = { url = "github:nedleeds/pi-compact-tools"; flake = false; };
+    # The Hermes Agent CLI, its Home Manager module, and its package. Its own
+    # nixpkgs pin stays separate, like llm-agents' does: the package is a
+    # uv2nix venv plus npm frontends resolved against the nixpkgs revision
+    # upstream tests against, so following ours would risk that resolution.
+    hermes-agent = { url = "github:NousResearch/hermes-agent"; };
   };
 
   outputs =
     { self, nixpkgs, nixpkgs-master, home-manager, nixvim, hunk, llm-agents
-    , pi-pstack, pi-subagents, pi-web-access, pi-compact-tools, i-have-adhd, ...
+    , pi-pstack, pi-subagents, pi-web-access, pi-compact-tools, i-have-adhd
+    , hermes-agent, ...
     }:
     let
       supportedSystems = [
@@ -70,7 +76,13 @@
           home = [ ./modules/niri.nix ./modules/ime.nix ];
         };
         macbook = { system = "aarch64-darwin"; };
-        nix-server = { system = "x86_64-linux"; nixos = ./hosts/platform/nixos/machines/nix-server; };
+        # The gateway is a systemd user service, so only this machine asks for
+        # the module.
+        nix-server = {
+          system = "x86_64-linux";
+          nixos = ./hosts/platform/nixos/machines/nix-server;
+          home = [ ./modules/hermes.nix ];
+        };
       };
       # The names the `dotfiles` CLI and its completion offer.
       machineNames = nixpkgs.lib.attrNames machines;
@@ -97,6 +109,8 @@
             inherit repoDir machineNames piPackagePaths;
             hunk = hunk;
             llmAgents = llm-agents;
+            # modules/hermes.nix imports this input's Home Manager module.
+            hermesAgent = hermes-agent;
           };
           modules = [
             ./hosts/default.nix
