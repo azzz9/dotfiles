@@ -18,6 +18,13 @@ in
     fcitx5.waylandFrontend = lib.mkDefault true;
   };
 
+  # The addon dlopens its core from a path compiled into it. The default is
+  # /opt/meltype and the package cannot move it, so point that path at the store
+  # instead of threading an environment variable into whatever starts fcitx5.
+  systemd.tmpfiles.rules = [
+    "L+ /opt/meltype - - - - ${meltype}/share/meltype"
+  ];
+
   services.xserver.enable = lib.mkDefault true;
 
   services.displayManager.sddm.enable = lib.mkDefault true;
