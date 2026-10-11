@@ -289,7 +289,7 @@ spawn-at-startup "noctalia"
 // Start the polkit authentication agent for GUI privilege prompts.
 spawn-at-startup "/run/current-system/sw/libexec/polkit-kde-authentication-agent-1"
 
-// Start XWayland for X11 apps (Discord needs the x11 backend under NVIDIA).
+// Start XWayland for X11 apps (Steam and other X11 clients).
 spawn-at-startup "xwayland-satellite"
 
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:

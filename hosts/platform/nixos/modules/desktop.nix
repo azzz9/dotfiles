@@ -46,7 +46,6 @@
   programs.steam.enable = lib.mkDefault true;
   environment.systemPackages = with pkgs; [
     ghostty
-    discord
     # The Wayland-native Discord client, from outside nixpkgs via the flake input.
     serein
     noctalia
