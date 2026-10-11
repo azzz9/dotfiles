@@ -57,12 +57,17 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#<
 | Command            | Description                          |
 | ------------------ | ------------------------------------ |
 | `dotfiles apply`   | Build and apply the current checkout |
+| `dotfiles audit`   | Check this machine's packages against open security issues |
 | `dotfiles sync`    | Pull, then apply                     |
 | `dotfiles upgrade` | Pull, move every pin, then apply     |
 
 The machine's name is its hostname and its row key, so none of these needs an
 argument. An argument names another machine, which is also the only reason to
 give one.
+
+`audit` also runs without being asked. `dotfiles upgrade` reads it on the
+machine right after the pins move, and the `Audit` workflow reads what the flake
+declares every week, because a runner has no store to read.
 
 `sync` parks the three files `upgrade` rewrites in a stash before it pulls, so a
 machine that has not committed its own pins still takes the other machine's

@@ -26,6 +26,9 @@ jobs:
 
       # Optional: set CACHIX_AUTH_TOKEN in repo secrets to enable binary cache.
       # Without a token this step is skipped and builds use the public cache only.
+      # Set the token only after pinning every action in this file to a commit
+      # SHA. A moved action tag reaches the token, and a writable cache can serve
+      # a tampered store path to every machine that pulls from it.
       - name: Configure Cachix
         if: ${{ vars.CACHIX_NAME != '' }}
         uses: cachix/cachix-action@v16

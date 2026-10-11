@@ -24,18 +24,44 @@ other="$work/other"
 machine="$work/machine"
 runner="$work/runner.sh"
 
-# Answers only the build the CLI performs, naming a directory that holds an
-# activate script. Every other invocation fails, so a scenario that strays
-# into upgrade's `nix flake update` cannot pass silently. The shebang names this
-# bash, because a Nix sandbox has no /usr/bin/env for the stub to exec.
+# Answers the two nix calls the CLI makes, and refuses every other one, so a
+# scenario that strays into upgrade's `nix flake update` cannot pass silently.
+# The shebang names this bash, because a Nix sandbox has no /usr/bin/env for the
+# stub to exec.
+cat > "$work/stores" <<'STUB'
+/nix/store/00000000000000000000000000000000-fixturepkg-1.2.3
+/nix/store/00000000000000000000000000000000-otherpkg-4.5.6
+STUB
 cat > "$work/bin/nix" <<STUB
 #!$BASH
 case " \$* " in
   *" build --no-link --print-out-paths "*) printf '%s\n' "$work/fakeout" ;;
+  *" path-info -r "*) cat "$work/stores" ;;
+  # The declared audit reads package names through nix eval.
+  *" eval "*--apply*) printf '%s\n' '["fixturepkg-1.2.3","otherpkg-4.5.6"]' ;;
+  # upgrade's flake update is refused unless a scenario asks for it, so a
+  # scenario that strays into the bump cannot pass silently.
+  *" flake update "*)
+    if [ -f "$work/allow-flake-update" ]; then exit 0; fi
+    printf 'nix stub: refusing %s\n' "\$*" >&2; exit 99 ;;
   *) printf 'nix stub: refusing %s\n' "\$*" >&2; exit 99 ;;
 esac
 STUB
 chmod +x "$work/bin/nix"
+
+# Answers the audit's two reads. The scenarios overwrite the two files.
+printf '[]\n' > "$work/issues.json"
+printf '{}\n' > "$work/advisories.json"
+cat > "$work/bin/curl" <<STUB
+#!$BASH
+case " \$* " in
+  *"api.github.com/repos/NixOS/nixpkgs/issues"*) cat "$work/issues.json" ;;
+  *"advisories/bulk"*) cat "$work/advisories.json" ;;
+  *"registry.npmjs.org/"*) printf '{"dist-tags":{"latest":"9.9.9"}}\n' ;;
+  *) printf 'curl stub: refusing %s\n' "\$*" >&2; exit 99 ;;
+esac
+STUB
+chmod +x "$work/bin/curl"
 
 cat > "$work/fakeout/activate" <<'STUB'
 #!/usr/bin/env bash
@@ -52,6 +78,7 @@ fixture() {
   git -C "$seed" config user.email seed@example.invalid
   git -C "$seed" remote add origin "$origin"
   install -Dm644 "$src" "$seed/scripts/dotfiles.sh"
+  install -Dm644 "$(dirname "$src")/audit.sh" "$seed/scripts/audit.sh"
   mkdir -p "$seed/modules"
   printf 'lock v1\n' > "$seed/flake.lock"
   printf 'pins v1\n' > "$seed/modules/pinned-packages.nix"
@@ -63,6 +90,10 @@ fixture() {
   git clone -q "$origin" "$other"
   git -C "$other" config user.name other
   git -C "$other" config user.email other@example.invalid
+  # The stubs read these, so a scenario never sees the previous one's answers.
+  printf '[]\n' > "$work/issues.json"
+  printf '{}\n' > "$work/advisories.json"
+  rm -f "$work/allow-flake-update"
 }
 
 machine_clone() {
@@ -78,14 +109,16 @@ push_from_other() {
   git -C "$other" push -q
 }
 
-# What modules/dotfiles.nix builds: the two values, then the CLI body with its
-# shebang dropped. The stub replaces scripts/pi-reconcile.sh, which installs
-# npm packages from the network.
+# What modules/dotfiles.nix builds: the two values, then each body with its
+# shebang dropped, in the order modules/dotfiles.nix inlines them. The stub
+# replaces scripts/pi-reconcile.sh, which installs npm packages from the
+# network.
 write_runner() {
   {
     printf 'export DOTFILES_DIR=%s\n' "$machine"
     printf 'DOTFILES_MACHINES=test\n'
     printf 'pi_reconcile() { echo "[stub] pi_reconcile"; }\n'
+    tail -n +2 "$machine/scripts/audit.sh"
     tail -n +2 "$machine/scripts/dotfiles.sh"
   } > "$runner"
 }
@@ -116,7 +149,7 @@ run_cli() {
   local rc=0
   origin_before="$(git -C "$origin" rev-parse main)"
   head_before="$(git -C "$machine" rev-parse HEAD)"
-  cli_out="$(PATH="$work/bin:$PATH" bash "$runner" "$1" test 2>&1)" || rc=$?
+  cli_out="$(PATH="$work/bin:$PATH" bash "$runner" "$@" test 2>&1)" || rc=$?
   cli_rc="$rc"
 }
 
@@ -311,6 +344,88 @@ expect_eq 'upgrade stashes nothing' '' "$(git -C "$machine" stash list)"
 expect_eq 'upgrade leaves the branch where it was' "$head_before" "$(git -C "$machine" rev-parse HEAD)"
 expect_eq 'upgrade leaves a clean tree' '' "$(git -C "$machine" status --porcelain)"
 expect_origin_unmoved 'upgrade leaves the origin branch alone'
+scenario_end
+
+scenario 'audit fails on a store match the baseline does not hold'
+fixture
+machine_clone
+printf '[{"number":111,"title":"fixturepkg: security issues < 1.2.4"}]\n' > "$work/issues.json"
+printf 'npm:fixturepkg@1.0.0\n' > "$machine/modules/pi.nix"
+run_cli audit
+expect_eq 'audit exits 1 on a new store match' 1 "$cli_rc"
+expect_out_has 'audit names the matched package and its version' 'new   #111 fixturepkg 1.2.3'
+expect_out_has 'audit names the issue' 'https://github.com/NixOS/nixpkgs/issues/111'
+expect_out_has 'audit points at --update' 'record them with dotfiles audit --update'
+expect_eq 'audit writes no baseline without --update' '' "$(cat "$machine/scripts/audit-baseline.txt" 2>/dev/null)"
+scenario_end
+
+scenario 'audit passes on a match the baseline holds'
+fixture
+machine_clone
+printf '[{"number":111,"title":"fixturepkg: security issues < 1.2.4"}]\n' > "$work/issues.json"
+printf 'npm:fixturepkg@1.0.0\n' > "$machine/modules/pi.nix"
+printf 'nixpkgs 111 fixturepkg # 1.2.3\nnixpkgs 999 ghostpkg # 1.0\n' > "$machine/scripts/audit-baseline.txt"
+run_cli audit
+expect_eq 'audit exits 0 when the baseline holds the match' 0 "$cli_rc"
+expect_out_has 'audit marks the held match as known' 'known #111 fixturepkg'
+expect_out_has 'audit reports a line the store no longer matches' '1 recorded match(es) no longer apply'
+expect_out_has 'audit reports ok' 'dotfiles audit: ok'
+scenario_end
+
+scenario 'audit --update records the match and a rerun passes'
+fixture
+machine_clone
+printf '[{"number":111,"title":"fixturepkg: security issues < 1.2.4"}]\n' > "$work/issues.json"
+printf 'npm:fixturepkg@1.0.0\n' > "$machine/modules/pi.nix"
+run_cli audit --update
+expect_eq 'audit --update exits 0' 0 "$cli_rc"
+expect_out_has 'audit --update leaves the file for a commit' 'commit scripts/audit-baseline.txt'
+expect_eq 'audit --update records the store match' 'nixpkgs 111 fixturepkg # 1.2.3' "$(cat "$machine/scripts/audit-baseline.txt")"
+run_cli audit
+expect_eq 'a rerun exits 0' 0 "$cli_rc"
+expect_out_has 'a rerun reports ok' 'dotfiles audit: ok'
+scenario_end
+
+scenario 'audit fails on an npm advisory'
+fixture
+machine_clone
+printf '[]\n' > "$work/issues.json"
+printf 'npm:fixturepkg@1.0.0\n' > "$machine/modules/pi.nix"
+printf '{"fixturepkg":[{"id":123,"severity":"high","title":"Command Injection","vulnerable_versions":"<1.0.1"}]}\n' > "$work/advisories.json"
+run_cli audit
+expect_eq 'audit exits 1 on an npm advisory' 1 "$cli_rc"
+expect_out_has 'audit names the advisory range' 'new   fixturepkg 1.0.0 high <1.0.1'
+expect_out_has 'audit names the advisory title' 'Command Injection'
+expect_out_has 'audit names the npm pin that is behind' 'behind fixturepkg 1.0.0 -> 9.9.9'
+scenario_end
+
+scenario 'upgrade reads the audit after it moves the pins'
+fixture
+machine_clone
+printf '[{"number":111,"title":"fixturepkg: security issues < 1.2.4"}]\n' > "$work/issues.json"
+touch "$work/allow-flake-update"
+run_cli upgrade
+expect_eq 'upgrade exits 0 when the audit finds a match' 0 "$cli_rc"
+expect_out_has 'upgrade reaches the audit' 'dotfiles audit: store -'
+expect_out_has 'upgrade names the new match' 'new   #111 fixturepkg 1.2.3'
+expect_out_has 'upgrade says the audit did not fail the upgrade' 'the audit above exited non-zero; the upgrade itself is applied'
+scenario_end
+
+scenario 'audit --declared reads the flake instead of the store'
+fixture
+machine_clone
+printf '[{"number":111,"title":"fixturepkg: security issues < 1.2.4"}]\n' > "$work/issues.json"
+printf 'nixpkgs 999 ghostpkg # 1.0\n' > "$machine/scripts/audit-baseline.txt"
+run_cli audit --declared
+expect_eq 'audit --declared exits 1 on a new match' 1 "$cli_rc"
+expect_out_has 'audit --declared names its source' 'declared - 2 packages'
+expect_out_has 'audit --declared matches a declared name' 'new   #111 fixturepkg 1.2.3'
+expect_out_has 'audit --declared points at --update' 'record them with dotfiles audit --update'
+expect_out_lacks 'audit --declared does not call a store-only line stale' 'no longer apply'
+run_cli audit --declared --update
+expect_eq 'audit --declared refuses --update' 1 "$cli_rc"
+expect_out_has 'audit --declared says why' 'reads a subset of it'
+expect_eq 'audit --declared leaves the baseline alone' 'nixpkgs 999 ghostpkg # 1.0' "$(cat "$machine/scripts/audit-baseline.txt")"
 scenario_end
 
 if [ "$failures" -gt 0 ]; then

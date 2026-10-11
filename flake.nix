@@ -125,6 +125,15 @@
           pinned = import ./modules/pinned-packages.nix { inherit pkgs; };
         in
         {
+          # The CI audit runs the CLI from here, so it is the script the
+          # machines install. Its runtime inputs come from the plain package
+          # set, not the home configuration's overlay, which carries only herdr
+          # and tuios.
+          dotfiles = import ./dotfiles-cli.nix {
+            inherit (nixpkgs) lib;
+            inherit pkgs repoDir machineNames;
+            llmAgents = llm-agents;
+          };
           solhint = pinned.solhint;
           "prettier-plugin-solidity" = pinned.prettierPluginSolidity;
           "prettier-plugin-solidity-dist" = pinned.prettierPluginSolidityDist;
