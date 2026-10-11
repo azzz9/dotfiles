@@ -2,7 +2,7 @@
 # machine lives in hosts/platform/nixos/machines/<name>/ next to its
 # hardware-configuration.nix. Every scalar is a default, so this machine's own
 # configuration.nix can set it; lists and attrsets merge already.
-{ lib, pkgs, ... }:
+{ lib, pkgs, serein, ... }:
 
 {
   i18n.inputMethod = {
@@ -46,7 +46,8 @@
   programs.steam.enable = lib.mkDefault true;
   environment.systemPackages = with pkgs; [
     ghostty
-    discord
+    # The Wayland-native Discord client, from outside nixpkgs via the flake input.
+    serein
     noctalia
     xwayland-satellite
     haruna

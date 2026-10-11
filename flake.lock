@@ -143,6 +143,27 @@
         "type": "github"
       }
     },
+    "flake-parts_5": {
+      "inputs": {
+        "nixpkgs-lib": [
+          "serein",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1788450739,
+        "narHash": "sha256-glZLQlzIn1fXH6PazR2iUmTo7kzzyYSshrWhLS9TqCU=",
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "rev": "31729ca8cbdb4fa927b34e5f4353e6a83f39e993",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "type": "github"
+      }
+    },
     "hermes-agent": {
       "inputs": {
         "flake-parts": "flake-parts",
@@ -376,6 +397,22 @@
         "type": "github"
       }
     },
+    "nixpkgs_5": {
+      "locked": {
+        "lastModified": 1790689126,
+        "narHash": "sha256-ilerN1WLSvF+HMjziC/Wv99J5y02maDH+6hZPwsORKg=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "b4fd65b198c599cbe814fcb9f42d25d021595ec9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "nixvim": {
       "inputs": {
         "flake-parts": "flake-parts_4",
@@ -546,7 +583,27 @@
         "pi-compact-tools": "pi-compact-tools",
         "pi-pstack": "pi-pstack",
         "pi-subagents": "pi-subagents",
-        "pi-web-access": "pi-web-access"
+        "pi-web-access": "pi-web-access",
+        "serein": "serein"
+      }
+    },
+    "serein": {
+      "inputs": {
+        "flake-parts": "flake-parts_5",
+        "nixpkgs": "nixpkgs_5"
+      },
+      "locked": {
+        "lastModified": 1791645576,
+        "narHash": "sha256-yPpHHOeZ6NGW0tn2V+WCFOhKAQlVOhdveT2R34Hk5BE=",
+        "owner": "ViceVerse-cz",
+        "repo": "Serein",
+        "rev": "134e556fb469f3fa72425adf24acb7df56811a59",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ViceVerse-cz",
+        "repo": "Serein",
+        "type": "github"
       }
     },
     "systems": {
