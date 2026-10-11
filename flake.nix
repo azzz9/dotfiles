@@ -27,6 +27,9 @@
     # Pi is packaged by numtide/llm-agents.nix. Keep its nixpkgs pin separate
     # so its binary cache stays usable.
     llm-agents.url = "github:numtide/llm-agents.nix";
+    # Serein, the Wayland-native Discord client, is not in nixpkgs. It keeps its
+    # own locked nixpkgs: a `follows` here would change the derivation.
+    serein.url = "github:ViceVerse-cz/Serein";
     # Pi loads these from the store paths Nix fetches for them. flake.lock
     # records the revision, so `nix flake update <name>` is what moves a pin.
     pi-pstack = { url = "github:azzz9/pi-pstack"; flake = false; };
@@ -44,7 +47,7 @@
   };
 
   outputs =
-    { self, nixpkgs, nixpkgs-master, home-manager, nixvim, hunk, llm-agents
+    { self, nixpkgs, nixpkgs-master, home-manager, nixvim, hunk, llm-agents, serein
     , pi-pstack, pi-subagents, pi-web-access, pi-compact-tools, i-have-adhd
     , hermes-agent, ...
     }:
@@ -122,6 +125,7 @@
       mkNixosSystem = _: { system, nixos, ... }:
         nixpkgs.lib.nixosSystem {
           inherit system;
+          specialArgs = { serein = serein.packages.${system}.serein; };
           modules = [ nixos ];
         };
       # The pinned derivations in modules/pinned-packages.nix, exposed as
