@@ -18,6 +18,11 @@
   virtualisation.docker.enable = true;
   users.users.azzz.extraGroups = [ "docker" ];
   zramSwap.enable = true;
+  # modules/hermes.nix installs the hermes gateway as a systemd user service,
+  # and linger is what keeps that user manager alive with no login session.
+  # loginctl sets it imperatively today, so a rebuild without this line would
+  # lose it.
+  users.users.azzz.linger = true;
 
   # This option defines the first version of NixOS you have installed on this particular machine,
   # and is used to maintain compatibility with application data (e.g. databases) created on older NixOS versions.
