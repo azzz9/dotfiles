@@ -57,14 +57,22 @@ in
     touch $out
   '';
   # Drives scripts/dotfiles.sh against fixture git repos with its nix build stubbed.
+  # jq is here for the audit's reads, which the same fixture stubs.
   dotfiles-cli = pkgs.runCommand "dotfiles-cli" {
-    nativeBuildInputs = [ pkgs.bash pkgs.coreutils pkgs.git pkgs.gnugrep ];
+    nativeBuildInputs = [ pkgs.bash pkgs.coreutils pkgs.git pkgs.gnugrep pkgs.jq ];
   } ''
     bash ${self}/scripts/test-dotfiles.sh ${self}/scripts/dotfiles.sh
     touch $out
   '';
   actionlint = pkgs.runCommand "actionlint" { nativeBuildInputs = [ pkgs.actionlint ]; } ''
     actionlint ${self}/.github/workflows/*.yml
+    touch $out
+  '';
+  # A secret committed here is public forever, and a Nix string reaches the
+  # world-readable store, so one scan covers both. This reads the tree only,
+  # because a flake copy carries no .git for a history scan.
+  gitleaks = pkgs.runCommand "gitleaks" { nativeBuildInputs = [ pkgs.gitleaks ]; } ''
+    gitleaks dir ${self} --redact --no-banner
     touch $out
   '';
   # The generated files are only text until a tool parses them, so parse
