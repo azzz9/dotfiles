@@ -38,9 +38,6 @@ let
     { spec = "npm:pi-hermes-memory@0.9.10"; }
     # Compact, expandable TUI tool rows, with its own bundled theme.
     { input = "pi-compact-tools"; }
-    # Draws a mermaid fence as a PNG image with mermaid-cli, which is on PATH
-    # or reached through the nix-shell fallback inside the extension.
-    { input = "pi-mermaid"; }
   ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
     # pi_reconcile installs this row. The API key stays machine-local in
     # ~/.pi/agent/ollama_cloud.json.
@@ -89,11 +86,11 @@ let
     # pi reads a list of only `+name` entries as a change to the inherited
     # selection, so a plain "codemode" here would replace read/bash/edit/write.
     defaultTools = [ "+codemode" ];
-  } // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
-    # pi-mermaid draws a fence as a PNG, so the built-in Unicode renderer would
-    # draw the same diagram a second time. macOS keeps the built-in one, since
-    # mermaid-cli is not guaranteed there.
-    markdown = { mermaid = "off"; };
+    # pi's own renderer draws a mermaid fence as Unicode in the transcript. The
+    # default did not render in practice, so the value is explicit. "final"
+    # draws once the reply is complete; "streaming" also draws partial diagrams
+    # while the text arrives.
+    markdown = { mermaid = "final"; };
   };
   # Every other key is carried over untouched: objects are merged, scalars
   # replaced. The file stays a regular file so pi can keep writing it.
