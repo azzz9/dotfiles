@@ -459,11 +459,11 @@
     "pi-pstack": {
       "flake": false,
       "locked": {
-        "lastModified": 1791835169,
-        "narHash": "sha256-c4WjKuVHxDveQNFvf0FlFSmT6HF5Wi7296cS6NOHsTw=",
+        "lastModified": 1791836315,
+        "narHash": "sha256-ouNv1XMOsjJExL1A+/UJUJJX/Nz4u6t1pJTOi5zKZSw=",
         "owner": "azzz9",
         "repo": "pi-pstack",
-        "rev": "ac507ba745d1d8d37b404fb27e9aae611cfa97ae",
+        "rev": "8a1678531a7275a32ef65c054d0bc155521e22bf",
         "type": "github"
       },
       "original": {

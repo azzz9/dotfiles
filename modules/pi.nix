@@ -18,7 +18,7 @@ let
   rows = [
     { input = "pi-subagents"; npmDepsHash = "sha256-zPo0Z3IjaSEA74YptOUComiwvQxSMhPw7N6SwtGkveE="; }
     { input = "pi-web-access"; npmDepsHash = "sha256-BvAI68JpqJKNcg8luJ3d250C/YISUf13EItMgrJVrV4="; }
-    # The 23 principle-* skills are poteto-mode's own vocabulary and the agent
+    # The 6 principle-* skills are poteto-mode's own vocabulary and the agent
     # reads them by path, so the menu lists only skills a person types.
     { input = "pi-pstack"; filter = { skills = [ "!skills/principle-*" ]; }; }
     # The rpiv packages ship from a 15-package workspace whose root carries no
