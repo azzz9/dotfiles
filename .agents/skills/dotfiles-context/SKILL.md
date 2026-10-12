@@ -44,9 +44,13 @@ comes from `modules/hermes.nix` and exists on nix-server alone.
 `hosts/default.nix` links AI config out of store, so an edit here is live:
 
 ```
-agents/AGENTS.md                     -> ~/.pi/agent/AGENTS.md
 agents/skills/<name>                 -> ~/.agents/skills/<name>
+<skills checkout>/AGENTS.md          -> ~/.pi/agent/AGENTS.md
 ```
+
+The rules moved to the skills repository, and the `~/.pi/agent/AGENTS.md`
+link follows them. Its target is `skillsCheckout`, defaulting to
+`~/src/github.com/azzz9/skills`.
 
 Skills come in two scopes. Every directory under `agents/skills` is linked
 into `~/.agents/skills/` and visible in all projects; the link list comes from
@@ -54,7 +58,7 @@ into `~/.agents/skills/` and visible in all projects; the link list comes from
 only make sense here sit in `.agents/skills/` at the repo root instead, where pi
 discovers them as project skills once the project is trusted.
 
-pstack (`pi-pstack`) ships the skills, the `comment-sicko` and `poteto-agent`
+The skills repository (`skills`) ships the skills, the `comment-sicko` and `poteto-agent`
 subagents, and an extension that injects the role-model table and `/poteto-mode`.
 
 `modules/pi.nix` owns the package rows. The five package inputs are
@@ -66,7 +70,7 @@ Provider extensions and the `pi-hermes-memory` store are machine-local and
 deliberately not Nix-managed. Install a provider extension under
 `~/.pi/agent/extensions/<name>/`, where pi auto-discovers it.
 
-pstack's role table is the exception. `modules/pi/pstack-models.nix` holds one row
+The role table is the exception. `modules/pi/pstack-models.nix` holds one row
 per machine, and `modules/pi.nix` copies the generated JSON to
 `~/.pi/agent/pstack/models.json` in an activation script. It is copied rather
 than linked, because pstack's `saveConfig` refuses to write through a link, so a
