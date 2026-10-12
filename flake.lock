@@ -249,22 +249,6 @@
         "type": "github"
       }
     },
-    "i-have-adhd": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1789836285,
-        "narHash": "sha256-UExi0k71MOtLwqVaFRGhgvqq6+jxwbQxZZVZxceHGrw=",
-        "owner": "ayghri",
-        "repo": "i-have-adhd",
-        "rev": "839872f9d1cd634fed642b4589ce7226199cc15f",
-        "type": "github"
-      },
-      "original": {
-        "owner": "ayghri",
-        "repo": "i-have-adhd",
-        "type": "github"
-      }
-    },
     "import-tree": {
       "locked": {
         "lastModified": 1763762820,
@@ -575,7 +559,6 @@
         "hermes-agent": "hermes-agent",
         "home-manager": "home-manager_2",
         "hunk": "hunk",
-        "i-have-adhd": "i-have-adhd",
         "llm-agents": "llm-agents",
         "nixpkgs": "nixpkgs_4",
         "nixpkgs-master": "nixpkgs-master",
