@@ -89,7 +89,7 @@
       };
       # The names the `dotfiles` CLI and its completion offer.
       machineNames = nixpkgs.lib.attrNames machines;
-      mkHomeConfiguration = _: { system, home ? [ ], ... }:
+      mkHomeConfiguration = name: { system, home ? [ ], ... }:
         home-manager.lib.homeManagerConfiguration {
           pkgs = import nixpkgs {
             inherit system;
@@ -110,6 +110,8 @@
           };
           extraSpecialArgs = {
             inherit repoDir machineNames piPackagePaths;
+            # modules/pi.nix keys the pstack role table by machine name.
+            machine = name;
             hunk = hunk;
             llmAgents = llm-agents;
             # modules/hermes.nix imports this input's Home Manager module.
