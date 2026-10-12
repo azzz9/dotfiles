@@ -1,4 +1,4 @@
-{ lib, pkgs, config, repoDir, llmAgents, piPackagePaths, ... }:
+{ lib, pkgs, config, repoDir, llmAgents, piPackagePaths, machine, ... }:
 let
   rpivVersion = "2.12.0";
   rpiv = name: "npm:@juicesharp/rpiv-${name}@${rpivVersion}";
@@ -96,7 +96,21 @@ let
   # replaced. The file stays a regular file so pi can keep writing it.
   piManagedSettingsJson = (pkgs.formats.json { }).generate "pi-managed-settings.json" piManagedSettings;
   # Compact-tools reads this at startup; only non-default keys belong here.
-  compactToolsConfig = (pkgs.formats.json { }).generate "compact-tools.json" { style = "compact"; };
+  compactToolsConfig = (pkgs.formats.json { }).generate "compact-tools.json" {
+    style = "compact";
+    mode = "silent";
+  };
+  # Every machine's role table lives in one file, so a typo in one row fails the
+  # eval of the others too.
+  pstackModels = import ./pi/pstack-models.nix { inherit pkgs; };
+  pstackProblems = pstackModels.problemsFor pstackModels.models;
+  # The package owns the role names, and pstack drops one it does not know in
+  # silence. Reading the pinned package text turns an upstream rename into an
+  # evaluation failure instead of a role that quietly stops being injected.
+  pstackPackageSource = builtins.readFile "${piPackagePaths.pi-pstack}/extensions/pstack/config.ts";
+  pstackRoleNameProblems = map
+    (name: "role name missing from the pinned package: ${name}")
+    (builtins.filter (name: !(lib.hasInfix "\"${name}\"" pstackPackageSource)) pstackModels.roleNames);
   piSettingsMerge = pkgs.writeShellScript "pi-settings-managed" ''
     set -euo pipefail
 
@@ -121,6 +135,8 @@ let
     mv -f "$merged" "$settings"
   '';
 in
+assert lib.assertMsg (pstackProblems == [ ] && pstackRoleNameProblems == [ ])
+  "modules/pi.nix: pstack role table: ${lib.concatStringsSep "; " (pstackProblems ++ pstackRoleNameProblems)}";
 {
   programs.pi-coding-agent = {
     enable = true;
@@ -147,5 +163,12 @@ in
   # symlink and carry the local keys into the regular file.
   home.activation.piSettings = lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''
     run ${piSettingsMerge}
+  '';
+  # Copied, not linked: the pinned fork reads through a symlink, but saveConfig
+  # refuses to write through one, so /setup-pstack and /pstack off could not save.
+  # The copy keeps them working, and it means a local edit gives way to this file
+  # on the next switch.
+  home.activation.pstackModels = lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''
+    run ${pstackModels.installFor machine}
   '';
 }
