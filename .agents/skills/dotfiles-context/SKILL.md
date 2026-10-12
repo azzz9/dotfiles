@@ -69,10 +69,12 @@ deliberately not Nix-managed. Install a provider extension under
 pstack's role table is the exception. `modules/pi/pstack-models.nix` holds one row
 per machine, and `modules/pi.nix` copies the generated JSON to
 `~/.pi/agent/pstack/models.json` in an activation script. It is copied rather
-than linked, because pstack reads the file with `lstatSync().isFile()` and a
-store symlink fails that test in silence. A local `/setup-pstack` edit survives
+than linked, because pstack's `saveConfig` refuses to write through a link, so a
+linked file would make `/setup-pstack` fail instead of save. A local edit survives
 only until the next switch, and the assert in `modules/pi.nix` fails evaluation
-on a role name or a slug pstack cannot use.
+on a role name or a slug pstack cannot use. The role names come from the pinned
+package, which the same assert checks, so a rename upstream fails evaluation
+instead of dropping a role on the machines.
 
 The macbook row names explicit `github-copilot/<id>` slugs, which its Copilot
 Enterprise plan allows. Copilot Free and Copilot Student are the plans that

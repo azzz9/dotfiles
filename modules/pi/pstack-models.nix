@@ -3,12 +3,11 @@
 # finds to the system prompt, so a role left out costs no prompt space and just
 # inherits the session model.
 #
-# The table has to arrive as a regular file. pstack's loadConfig rejects anything
-# lstatSync() does not report as a file, so a Home Manager symlink is ignored and
-# every role silently falls back to inherit-parent. modules/pi.nix copies the
-# generated JSON in an activation script for that reason, and the copy is what
-# makes a local /setup-pstack edit, or a `/pstack off`, give way to this file on
-# the next switch.
+# The table arrives as a regular file. The pinned fork reads through a symlink, so
+# a store link would load, but saveConfig refuses to write through one: a local
+# /setup-pstack edit, or a `/pstack off`, could not save at all. modules/pi.nix
+# copies the generated JSON for that reason, and the copy is also what makes those
+# local edits give way to this file on the next switch.
 { pkgs }:
 let
   # nix-desktop and nix-server carry the same two accounts, so they share one
