@@ -472,6 +472,22 @@
         "type": "github"
       }
     },
+    "pi-mermaid": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1791818930,
+        "narHash": "sha256-4i9Sbx3PX7AptcG/zVGK+MwcFiBm2tl+SY+1hFNyPoI=",
+        "owner": "azzz9",
+        "repo": "pi-mermaid",
+        "rev": "6684007480a8b98370ad93affd43c69f7ceedba9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "azzz9",
+        "repo": "pi-mermaid",
+        "type": "github"
+      }
+    },
     "pi-pstack": {
       "flake": false,
       "locked": {
@@ -581,6 +597,7 @@
         "nixpkgs-master": "nixpkgs-master",
         "nixvim": "nixvim",
         "pi-compact-tools": "pi-compact-tools",
+        "pi-mermaid": "pi-mermaid",
         "pi-pstack": "pi-pstack",
         "pi-subagents": "pi-subagents",
         "pi-web-access": "pi-web-access",

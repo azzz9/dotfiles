@@ -39,6 +39,10 @@
     # `cc-safety-net` stays an npm row (see modules/pi.nix), so it is not an
     # input here.
     pi-compact-tools = { url = "github:nedleeds/pi-compact-tools"; flake = false; };
+    # Draws mermaid fences as PNG images through mermaid-cli. The built-in
+    # Unicode renderer is turned off where this row loads, so a fence is drawn
+    # once.
+    pi-mermaid = { url = "github:azzz9/pi-mermaid"; flake = false; };
     # The Hermes Agent CLI, its Home Manager module, and its package. Its own
     # nixpkgs pin stays separate, like llm-agents' does: the package is a
     # uv2nix venv plus npm frontends resolved against the nixpkgs revision
@@ -49,6 +53,7 @@
   outputs =
     { self, nixpkgs, nixpkgs-master, home-manager, nixvim, hunk, llm-agents, serein
     , pi-pstack, pi-subagents, pi-web-access, pi-compact-tools, i-have-adhd
+    , pi-mermaid
     , hermes-agent, ...
     }:
     let
@@ -66,7 +71,7 @@
       # The pi packages, by flake input name. A row hands pi that input's store
       # path, so pi loads the source flake.lock locked.
       piPackagePaths = {
-        inherit pi-pstack i-have-adhd pi-subagents pi-web-access pi-compact-tools;
+        inherit pi-pstack i-have-adhd pi-subagents pi-web-access pi-compact-tools pi-mermaid;
       };
       # One table for every machine. The key names homeConfigurations.<name>,
       # and nixosConfigurations.<name> for a row that carries a nixos path. The
