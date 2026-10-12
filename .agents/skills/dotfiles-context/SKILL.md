@@ -62,10 +62,22 @@ subagents, and an extension that injects the role-model table and `/poteto-mode`
 paths, so `flake.lock` is the only pin; `pi_reconcile` installs any npm row whose
 version differs from its spec. The pins are below.
 
-Provider extensions, `~/.pi/agent/pstack/models.json`, and the
-`pi-hermes-memory` store are machine-local and deliberately not Nix-managed.
-Install a provider extension under `~/.pi/agent/extensions/<name>/`, where pi
-auto-discovers it.
+Provider extensions and the `pi-hermes-memory` store are machine-local and
+deliberately not Nix-managed. Install a provider extension under
+`~/.pi/agent/extensions/<name>/`, where pi auto-discovers it.
+
+pstack's role table is the exception. `modules/pi/pstack-models.nix` holds one row
+per machine, and `modules/pi.nix` copies the generated JSON to
+`~/.pi/agent/pstack/models.json` in an activation script. It is copied rather
+than linked, because pstack reads the file with `lstatSync().isFile()` and a
+store symlink fails that test in silence. A local `/setup-pstack` edit survives
+only until the next switch, and the assert in `modules/pi.nix` fails evaluation
+on a role name or a slug pstack cannot use.
+
+The macbook row names explicit `github-copilot/<id>` slugs, which its Copilot
+Enterprise plan allows. Copilot Free and Copilot Student are the plans that
+cannot name a model (auto selection only), and there an explicit slug is
+answered with 400 `model_not_supported`.
 
 To add a global skill: create `agents/skills/<name>/SKILL.md`; the link list
 is derived, and the build fails if a directory has no `SKILL.md`. To add a

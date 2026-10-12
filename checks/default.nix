@@ -6,6 +6,7 @@ let
   parseGeneratedConfigs = host:
     let
       activationPackage = self.homeConfigurations.${host}.activationPackage;
+      pstackModels = import (self.outPath + "/modules/pi/pstack-models.nix") { inherit pkgs; };
     in
     ''
       files=${activationPackage}/home-files
@@ -37,6 +38,13 @@ let
       # prefix would shadow the runtime inputs the script needs.
       grep -q '^export PATH="\$PATH:' \
         ${activationPackage}/home-path/bin/dotfiles
+      # The pstack role table never reaches home-files: pstack ignores anything
+      # lstatSync() does not call a file, so modules/pi.nix copies it in an
+      # activation script. Run that script against a scratch HOME, because a
+      # symlink or a 0644 file would parse fine and still be ignored.
+      pstack_home=$(mktemp -d)
+      HOME="$pstack_home" ${pstackModels.installFor host}
+      python3 -c 'import json,os,stat,sys; p=sys.argv[1]; s=os.lstat(p); assert stat.S_ISREG(s.st_mode), "not a regular file"; assert stat.S_IMODE(s.st_mode) == 0o600, oct(stat.S_IMODE(s.st_mode)); json.load(open(p))' "$pstack_home/.pi/agent/pstack/models.json"
     '';
 in
 {

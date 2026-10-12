@@ -1,4 +1,4 @@
-{ lib, pkgs, config, repoDir, llmAgents, piPackagePaths, ... }:
+{ lib, pkgs, config, repoDir, llmAgents, piPackagePaths, machine, ... }:
 let
   rpivVersion = "2.12.0";
   rpiv = name: "npm:@juicesharp/rpiv-${name}@${rpivVersion}";
@@ -100,6 +100,10 @@ let
     style = "compact";
     mode = "silent";
   };
+  # Every machine's role table lives in one file, so a typo in one row fails the
+  # eval of the others too.
+  pstackModels = import ./pi/pstack-models.nix { inherit pkgs; };
+  pstackProblems = pstackModels.problemsFor pstackModels.models;
   piSettingsMerge = pkgs.writeShellScript "pi-settings-managed" ''
     set -euo pipefail
 
@@ -124,6 +128,8 @@ let
     mv -f "$merged" "$settings"
   '';
 in
+assert lib.assertMsg (pstackProblems == [ ])
+  "modules/pi.nix: pstack role table: ${lib.concatStringsSep "; " pstackProblems}";
 {
   programs.pi-coding-agent = {
     enable = true;
@@ -150,5 +156,12 @@ in
   # symlink and carry the local keys into the regular file.
   home.activation.piSettings = lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''
     run ${piSettingsMerge}
+  '';
+  # Copied, not linked: pstack reads the table with lstatSync().isFile(), which a
+  # store symlink fails, and that failure is silent. Every role would fall back
+  # to inherit-parent. The copy also means a local /setup-pstack edit is replaced
+  # by this file on the next switch.
+  home.activation.pstackModels = lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''
+    run ${pstackModels.installFor machine}
   '';
 }
