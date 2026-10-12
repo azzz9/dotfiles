@@ -96,7 +96,10 @@ let
   # replaced. The file stays a regular file so pi can keep writing it.
   piManagedSettingsJson = (pkgs.formats.json { }).generate "pi-managed-settings.json" piManagedSettings;
   # Compact-tools reads this at startup; only non-default keys belong here.
-  compactToolsConfig = (pkgs.formats.json { }).generate "compact-tools.json" { style = "compact"; };
+  compactToolsConfig = (pkgs.formats.json { }).generate "compact-tools.json" {
+    style = "compact";
+    mode = "silent";
+  };
   piSettingsMerge = pkgs.writeShellScript "pi-settings-managed" ''
     set -euo pipefail
 
