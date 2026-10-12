@@ -32,6 +32,11 @@ let
     # extension in a prepare script, so only the published tarball carries the
     # dist.
     { spec = "npm:cc-safety-net@2.6.0"; }
+    # Moves the running pi session to another directory or worktree, keeping the
+    # conversation, and creates or removes the worktree through herdr. The
+    # tarball carries the TypeScript pi loads, so the spec pin is the whole pin
+    # and `dotfiles upgrade` bumps it with the other npm rows.
+    { spec = "npm:pi-agent-teleport@0.2.5"; }
     # Persistent memory, session search, and a background learning loop. npm is
     # the publisher's install path, and its better-sqlite3 dependency arrives
     # prebuilt, so pi install runs no compiler.
