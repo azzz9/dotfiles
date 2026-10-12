@@ -21,8 +21,6 @@ let
     # The 23 principle-* skills are poteto-mode's own vocabulary and the agent
     # reads them by path, so the menu lists only skills a person types.
     { input = "pi-pstack"; filter = { skills = [ "!skills/principle-*" ]; }; }
-    # The skill is vendored in agents/skills, so load the extension only.
-    { input = "i-have-adhd"; filter = { skills = [ ]; }; }
     # The rpiv packages ship from a 15-package workspace whose root carries no
     # pi manifest, so they stay npm rows.
     { spec = rpiv "ask-user-question"; }
@@ -151,10 +149,6 @@ assert lib.assertMsg (pstackProblems == [ ] && pstackRoleNameProblems == [ ])
       bun
     ];
   };
-  # The i-have-adhd extension turns the mode on at every new session when this
-  # flag exists; a saved choice for the current session still wins, so an
-  # explicit "stop adhd mode" survives.
-  home.file.".pi/agent/.i-have-adhd-always".text = "";
   # The compact-tools extension reads this at startup. A store symlink, so the
   # style comes from the repo instead of a local edit.
   home.file.".pi/agent/compact-tools.json".source = compactToolsConfig;
