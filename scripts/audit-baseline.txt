@@ -48,6 +48,8 @@ nixpkgs 569829 xdg-dbus-proxy # 0.1.8
 nixpkgs 569832 freetype # 2.14.3
 nixpkgs 570640 expat # 2.8.5
 nixpkgs 571643 cyrus-sasl # 2.1.28
-nixpkgs 571762 zlib # 1.3.2
 nixpkgs 571874 openjpeg # 2.5.4
 nixpkgs 571944 gstreamer # 1.28.7
+nixpkgs 572388 cups # 2.4.19
+nixpkgs 572390 cups # 2.4.19
+nixpkgs 572393 busybox # 1.37.0
