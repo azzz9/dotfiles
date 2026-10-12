@@ -475,11 +475,11 @@
     "pi-mermaid": {
       "flake": false,
       "locked": {
-        "lastModified": 1791818930,
-        "narHash": "sha256-4i9Sbx3PX7AptcG/zVGK+MwcFiBm2tl+SY+1hFNyPoI=",
+        "lastModified": 1791821625,
+        "narHash": "sha256-16wbMb7sEblt7c7J9x1EMYDc4BUpPCzJTuB/a5gr2BI=",
         "owner": "azzz9",
         "repo": "pi-mermaid",
-        "rev": "6684007480a8b98370ad93affd43c69f7ceedba9",
+        "rev": "517e068656c5a1093afb5d8fccd921e39f57c973",
         "type": "github"
       },
       "original": {
