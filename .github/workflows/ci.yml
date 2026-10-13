@@ -22,6 +22,7 @@ jobs:
         with:
           extra_nix_config: |
             accept-flake-config = true
+            access-tokens = github.com=${{ github.token }}
             experimental-features = nix-command flakes
 
       # Optional: set CACHIX_AUTH_TOKEN in repo secrets to enable binary cache.
@@ -52,6 +53,7 @@ jobs:
         with:
           extra_nix_config: |
             accept-flake-config = true
+            access-tokens = github.com=${{ github.token }}
             experimental-features = nix-command flakes
 
       - name: Configure Cachix
@@ -78,6 +80,7 @@ jobs:
         with:
           extra_nix_config: |
             accept-flake-config = true
+            access-tokens = github.com=${{ github.token }}
             experimental-features = nix-command flakes
 
       - name: Configure Cachix
