@@ -456,22 +456,6 @@
         "type": "github"
       }
     },
-    "pi-pstack": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1791835169,
-        "narHash": "sha256-c4WjKuVHxDveQNFvf0FlFSmT6HF5Wi7296cS6NOHsTw=",
-        "owner": "azzz9",
-        "repo": "pi-pstack",
-        "rev": "ac507ba745d1d8d37b404fb27e9aae611cfa97ae",
-        "type": "github"
-      },
-      "original": {
-        "owner": "azzz9",
-        "repo": "pi-pstack",
-        "type": "github"
-      }
-    },
     "pi-subagents": {
       "flake": false,
       "locked": {
@@ -564,10 +548,10 @@
         "nixpkgs-master": "nixpkgs-master",
         "nixvim": "nixvim",
         "pi-compact-tools": "pi-compact-tools",
-        "pi-pstack": "pi-pstack",
         "pi-subagents": "pi-subagents",
         "pi-web-access": "pi-web-access",
-        "serein": "serein"
+        "serein": "serein",
+        "skills": "skills"
       }
     },
     "serein": {
@@ -586,6 +570,22 @@
       "original": {
         "owner": "ViceVerse-cz",
         "repo": "Serein",
+        "type": "github"
+      }
+    },
+    "skills": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1791905961,
+        "narHash": "sha256-GGQI3v3GSjz5coJ/9PEuuTgijhnNTQmJeIGOWuAX5sg=",
+        "owner": "azzz9",
+        "repo": "skills",
+        "rev": "04cfc842c5b91637595154918be0f89eb8f60b16",
+        "type": "github"
+      },
+      "original": {
+        "owner": "azzz9",
+        "repo": "skills",
         "type": "github"
       }
     },

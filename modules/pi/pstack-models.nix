@@ -21,22 +21,16 @@ let
     "bug-fix" = "ollama-cloud/deepseek-v4.1-flash";
     "perf-issue" = "ollama-cloud/deepseek-v4.1-flash";
     "how explorer" = "ollama-cloud/deepseek-v4.1-flash";
-    "reflect tooling" = "ollama-cloud/deepseek-v4.1-flash";
     # A hillclimb loops on one metric, so it stays on the bulk pin and runs as
     # many iterations as it needs.
     "hillclimb" = "ollama-cloud/deepseek-v4.1-flash";
     # Parallel readers, one call per angle.
     "why investigators" = "ollama-cloud/glm-5.3-flash";
-    "swarm workers" = [
-      "ollama-cloud/deepseek-v4.1-flash"
-      "ollama-cloud/glm-5.3-flash"
-    ];
     # Judgment, one call each, where a wrong call is expensive.
     "judgment and prose" = "openai-codex/gpt-6.1-sol";
     "hardest tasks" = "openai-codex/gpt-6.1-sol";
     "why synthesizer" = "openai-codex/gpt-6.1-sol";
     "how explainer" = "openai-codex/gpt-6-luna";
-    "reflect judgment, divergent, synthesizer" = "openai-codex/gpt-6-luna";
     # A bakeoff, a cross-check, or a review wants different lineages, not the
     # strongest model twice.
     "arena runners" = [
@@ -52,7 +46,7 @@ let
       "openai-codex/gpt-6.1-sol"
       "ollama-cloud/deepseek-v4.1-flash"
     ];
-    "interrogate reviewers" = [
+    "reviewers" = [
       "openai-codex/gpt-6.1-sol"
       "ollama-cloud/glm-5.3"
       "ollama-cloud/kimi-k2.7-code"
@@ -74,19 +68,15 @@ let
     "bug-fix" = "github-copilot/gpt-6-luna";
     "perf-issue" = "github-copilot/gpt-6-luna";
     "how explorer" = "github-copilot/gpt-6-luna";
-    "reflect tooling" = "github-copilot/gpt-6-luna";
     # A hillclimb loops on one metric, so it gets the frontier tier.
     "hillclimb" = "github-copilot/gpt-6.1-sol";
     # Parallel readers, one call per angle, so they stay on the cheap pin.
     "why investigators" = "github-copilot/gpt-6-luna";
-    # Many workers run at once, so the pool stays on the cheap pin.
-    "swarm workers" = [ "github-copilot/gpt-6-luna" ];
     # Judgment, one call each, where a wrong call is expensive.
     "judgment and prose" = "github-copilot/claude-opus-5.5";
     "hardest tasks" = "github-copilot/claude-opus-5.5";
     "why synthesizer" = "github-copilot/claude-opus-5.5";
     "how explainer" = "github-copilot/gpt-6-luna";
-    "reflect judgment, divergent, synthesizer" = "github-copilot/gpt-6-luna";
     # A bakeoff, a cross-check, or a review wants different models rather than
     # the strongest one twice. The macbook stays on Claude and GPT, so those two
     # lineages are what separates them.
@@ -103,7 +93,7 @@ let
       "github-copilot/claude-opus-5.5"
       "github-copilot/claude-sonnet-5.5"
     ];
-    "interrogate reviewers" = [
+    "reviewers" = [
       "github-copilot/claude-opus-5.5"
       "github-copilot/gpt-6.1-sol"
       "github-copilot/claude-sonnet-5.5"
@@ -124,13 +114,10 @@ let
     "how explainer"
     "why investigators"
     "why synthesizer"
-    "reflect tooling"
-    "reflect judgment, divergent, synthesizer"
     "arena runners"
     "arena cross-judge pool"
-    "swarm workers"
     "architect runners"
-    "interrogate reviewers"
+    "reviewers"
   ];
 
   isSlug = value:

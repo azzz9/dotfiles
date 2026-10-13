@@ -1,8 +1,8 @@
 # Dotfiles Repo — Project Instructions
 
 Coding agents that work inside this repo read this file. The global rules live
-in `agents/AGENTS.md`, deployed to `~/.pi/agent/AGENTS.md`; that file keeps
-only the turn gate, the show-me gate, and the git rules.
+in the skills repository, whose `AGENTS.md` is linked to `~/.pi/agent/AGENTS.md`; that file
+keeps only the turn gate, the output rules, and the git rules.
 
 ## Repo-local skills
 
