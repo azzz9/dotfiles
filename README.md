@@ -48,7 +48,7 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#<
 | Variable             | Default                                    | Purpose                                                                               |
 | -------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------- |
 | `MACHINE`            | required                                   | This machine's name. The `machines` row to apply, and the hostname the bootstrap sets. The rows today are `nix-desktop`, `macbook`, and `nix-server` |
-| `DOTFILES_DIR`       | `~/src/github.com/azzz9/dotfiles`          | Checkout to clone or reuse                                                            |
+| `DOTFILES_DIR`       | `~/src/github.com/azzz9/dotfiles`          | Checkout to clone or reuse, and the checkout to build. The live links name the machines row's `checkout` instead |
 | `MACHINE_CAPABILITY` | picked from the copied NixOS configuration | `desktop` or `headless`, the capability module a new NixOS machine imports            |
 | `REBOOT`             | `0`                                        | Reboot at the end, where the setup asked for one                                      |
 

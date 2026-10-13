@@ -56,14 +56,10 @@
         "aarch64-darwin"
       ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
-      # hosts/default.nix and modules/dotfiles.nix both need the checkout path,
-      # and it has to match the home.homeDirectory those modules set.
-      repoDir =
-        let configured = builtins.getEnv "DOTFILES_DIR";
-        in
-        if configured != "" then configured else "${builtins.getEnv "HOME"}/src/github.com/azzz9/dotfiles";
+      defaultCheckout = "${builtins.getEnv "HOME"}/src/github.com/azzz9/dotfiles";
       # The skills repository owns the rules, and ~/.pi/agent/AGENTS.md links
-      # to its checkout, which keeps an edit there live without a switch.
+      # to its checkout. Like `checkout`, the path is a machine fact, so it
+      # never follows the checkout that ran the switch.
       defaultSkillsCheckout = "${builtins.getEnv "HOME"}/src/github.com/azzz9/skills";
       # The pi packages, by flake input name. A row hands pi that input's store
       # path, so pi loads the source flake.lock locked.
@@ -91,7 +87,7 @@
       };
       # The names the `dotfiles` CLI and its completion offer.
       machineNames = nixpkgs.lib.attrNames machines;
-      mkHomeConfiguration = name: { system, home ? [ ], skillsCheckout ? defaultSkillsCheckout, ... }:
+      mkHomeConfiguration = name: { system, home ? [ ], checkout ? defaultCheckout, skillsCheckout ? defaultSkillsCheckout, ... }:
         home-manager.lib.homeManagerConfiguration {
           pkgs = import nixpkgs {
             inherit system;
@@ -111,7 +107,8 @@
             ];
           };
           extraSpecialArgs = {
-            inherit repoDir skillsCheckout machineNames piPackagePaths;
+            repoDir = checkout;
+            inherit skillsCheckout machineNames piPackagePaths;
             # modules/pi.nix keys the pstack role table by machine name.
             machine = name;
             hunk = hunk;
@@ -149,7 +146,8 @@
           # and tuios.
           dotfiles = import ./dotfiles-cli.nix {
             inherit (nixpkgs) lib;
-            inherit pkgs repoDir machineNames;
+            inherit pkgs machineNames;
+            checkout = defaultCheckout;
             llmAgents = llm-agents;
           };
           solhint = pinned.solhint;

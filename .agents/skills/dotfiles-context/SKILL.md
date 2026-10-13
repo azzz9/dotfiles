@@ -48,9 +48,17 @@ agents/skills/<name>                 -> ~/.agents/skills/<name>
 <skills checkout>/AGENTS.md          -> ~/.pi/agent/AGENTS.md
 ```
 
+The links name the machines row's `checkout` (default
+`~/src/github.com/azzz9/dotfiles`), never the checkout that ran the switch. A
+worktree activation therefore leaves them on the main checkout, and deleting the
+worktree breaks nothing. To try one file from a worktree live, point that link
+at it with `ln -sfnT <worktree>/agents/skills/<name> ~/.agents/skills/<name>`.
+The next activation puts it back.
+
 The rules moved to the skills repository, and the `~/.pi/agent/AGENTS.md`
 link follows them. Its target is `skillsCheckout`, defaulting to
 `~/src/github.com/azzz9/skills`.
+
 
 Skills come in two scopes. Every directory under `agents/skills` is linked
 into `~/.agents/skills/` and visible in all projects; the link list comes from

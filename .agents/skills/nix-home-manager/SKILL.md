@@ -16,8 +16,8 @@ nix build --dry-run .#homeConfigurations.nix-desktop.activationPackage --impure 
 
 ## Rules
 
-- Pass `--impure`. `repoDir` reads `builtins.getEnv`, so without it the path
-  resolves under an empty `HOME`.
+- Pass `--impure`. `repoDir` and `home.homeDirectory` read
+  `builtins.getEnv "HOME"`, so without it both resolve under an empty `HOME`.
 - `git add` a new file before any Nix command. The flake sees tracked files
   only, and `scripts/`, `modules/herdr/worktree-layout/`, and the Lua tree are
   read by name, so an unadded file fails with `path ... does not exist`.
