@@ -249,22 +249,6 @@
         "type": "github"
       }
     },
-    "i-have-adhd": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1789836285,
-        "narHash": "sha256-UExi0k71MOtLwqVaFRGhgvqq6+jxwbQxZZVZxceHGrw=",
-        "owner": "ayghri",
-        "repo": "i-have-adhd",
-        "rev": "839872f9d1cd634fed642b4589ce7226199cc15f",
-        "type": "github"
-      },
-      "original": {
-        "owner": "ayghri",
-        "repo": "i-have-adhd",
-        "type": "github"
-      }
-    },
     "import-tree": {
       "locked": {
         "lastModified": 1763762820,
@@ -475,11 +459,11 @@
     "pi-pstack": {
       "flake": false,
       "locked": {
-        "lastModified": 1791818666,
-        "narHash": "sha256-rKvsiPX/qM6u2URw4VzNOun9xRXH8q2OeZmcf9DJbww=",
+        "lastModified": 1791835169,
+        "narHash": "sha256-c4WjKuVHxDveQNFvf0FlFSmT6HF5Wi7296cS6NOHsTw=",
         "owner": "azzz9",
         "repo": "pi-pstack",
-        "rev": "eda9e3200c4b43bcfa6641c2535fe174ea1abe69",
+        "rev": "ac507ba745d1d8d37b404fb27e9aae611cfa97ae",
         "type": "github"
       },
       "original": {
@@ -575,7 +559,6 @@
         "hermes-agent": "hermes-agent",
         "home-manager": "home-manager_2",
         "hunk": "hunk",
-        "i-have-adhd": "i-have-adhd",
         "llm-agents": "llm-agents",
         "nixpkgs": "nixpkgs_4",
         "nixpkgs-master": "nixpkgs-master",
