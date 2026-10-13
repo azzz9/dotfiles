@@ -18,8 +18,7 @@ section instead of restating it. A mode may add to these rules; none may contrad
 
 1. Lead with the conclusion, in one or two sentences.
 2. State the reading order: what to read, what to skip.
-3. Show the overall shape as one mermaid diagram of seven nodes or fewer. Larger diagrams wrap
-   and clip in the terminal.
+3. Show the overall shape as one mermaid diagram.
 4. Name the three things most likely to trip someone up.
 5. For a change, add the file-by-file breakdown with a priority column.
 
@@ -52,7 +51,6 @@ read over adding length.
 - End with one concrete next action when anything is open.
 - Suppress tangents. Finish the first point, then offer the second separately.
 - Restate state across turns. The reader cannot hold "step 3 of 5" between messages.
-- Give specific time estimates in concrete units.
 - Show completed work in concrete terms, without a recap.
 - State cause and fix for an error, without alarm.
 - Cap lists at five items per group. This shapes presentation only; analysis, search, and
