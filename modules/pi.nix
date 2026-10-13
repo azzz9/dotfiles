@@ -89,6 +89,11 @@ let
     # pi reads a list of only `+name` entries as a change to the inherited
     # selection, so a plain "codemode" here would replace read/bash/edit/write.
     defaultTools = [ "+codemode" ];
+    # pi's own renderer draws a mermaid fence as Unicode in the transcript. The
+    # default did not render in practice, so the value is explicit. "final"
+    # draws once the reply is complete; "streaming" also draws partial diagrams
+    # while the text arrives.
+    markdown = { mermaid = "final"; };
   };
   # Every other key is carried over untouched: objects are merged, scalars
   # replaced. The file stays a regular file so pi can keep writing it.
