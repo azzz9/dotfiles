@@ -37,6 +37,7 @@ jobs:
         with:
           extra_nix_config: |
             accept-flake-config = true
+            access-tokens = github.com=${{ github.token }}
             experimental-features = nix-command flakes
 
       - name: Audit the declared packages
