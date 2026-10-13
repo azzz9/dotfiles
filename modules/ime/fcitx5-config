@@ -13,6 +13,9 @@ ModifierOnlyKeyTimeout=250
 [Hotkey/TriggerKeys]
 0=Control+space
 1=Hangul
+# The JIS 半角/全角 key: xkeyboard-config's inet rules bind its keycode to F24,
+# so Fcitx has to claim that keysym for the key to toggle the input method.
+2=F24
 
 [Hotkey/ActivateKeys]
 0=Hangul_Hanja
