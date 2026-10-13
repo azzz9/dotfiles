@@ -16,8 +16,8 @@ nix build --dry-run .#homeConfigurations.nix-desktop.activationPackage --impure 
 
 ## Rules
 
-- Pass `--impure`. `repoDir` reads `builtins.getEnv`, so without it the path
-  resolves under an empty `HOME`.
+- Pass `--impure`. `repoDir` and `home.homeDirectory` read
+  `builtins.getEnv "HOME"`, so without it both resolve under an empty `HOME`.
 - `git add` a new file before any Nix command. The flake sees tracked files
   only, and `scripts/`, `modules/herdr/worktree-layout/`, and the Lua tree are
   read by name, so an unadded file fails with `path ... does not exist`.
@@ -26,8 +26,9 @@ nix build --dry-run .#homeConfigurations.nix-desktop.activationPackage --impure 
   stashes the pins and pulls. `dotfiles apply` does not check.
 - In the agent sandbox, prefix Nix with `XDG_CACHE_HOME=/tmp/nix-cache`, or Nix
   fails with `unable to open database file`.
-- `hosts/default.nix` links `agents/AGENTS.md` and `agents/skills/*` out of
-  store, so an edit in the checkout is live without a rebuild.
+- `hosts/default.nix` links `agents/skills/*` out of store, so an edit in the
+  checkout is live without a rebuild. The `~/.pi/agent/AGENTS.md` link points at
+  the skills checkout instead, because the skills repository owns the rules.
 - Activation calls `nix profile add`; `scripts/dotfiles.sh` rewrites
   `profile install` to `profile add` for Determinate Nix.
 

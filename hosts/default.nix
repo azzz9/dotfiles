@@ -1,4 +1,4 @@
-{ config, lib, repoDir, ... }:
+{ config, lib, repoDir, skillsCheckout, ... }:
 let
   # Every directory under agents/skills is a global skill, so the list is
   # derived. Skills that only make sense in this repo live in .agents/skills.
@@ -47,10 +47,11 @@ assert lib.assertMsg (upstreamSkillsWithoutLicense == [ ])
     manpages.enable = false;
   };
 
-  # pi reads ~/.pi/agent/AGENTS.md as its global context file. Out-of-store links
-  # keep edits in this repo immediately visible at the target path.
+  # pi reads ~/.pi/agent/AGENTS.md as its global context file. The file belongs to
+  # the skills repository, which owns the rules, and the out-of-store link to it
+  # keeps an edit there immediately visible at the target path.
   home.file = skillLinks // {
-    ".pi/agent/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${repoDir}/agents/AGENTS.md";
+    ".pi/agent/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${skillsCheckout}/AGENTS.md";
   };
 
   imports = [
