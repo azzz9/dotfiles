@@ -32,7 +32,7 @@
     serein.url = "github:ViceVerse-cz/Serein";
     # Pi loads these from the store paths Nix fetches for them. flake.lock
     # records the revision, so `nix flake update <name>` is what moves a pin.
-    pi-pstack = { url = "github:azzz9/pi-pstack"; flake = false; };
+    skills = { url = "github:azzz9/skills"; flake = false; };
     pi-subagents = { url = "github:nicobailon/pi-subagents"; flake = false; };
     pi-web-access = { url = "github:nicobailon/pi-web-access"; flake = false; };
     # `cc-safety-net` stays an npm row (see modules/pi.nix), so it is not an
@@ -47,7 +47,7 @@
 
   outputs =
     { self, nixpkgs, nixpkgs-master, home-manager, nixvim, hunk, llm-agents, serein
-    , pi-pstack, pi-subagents, pi-web-access, pi-compact-tools
+    , skills, pi-subagents, pi-web-access, pi-compact-tools
     , hermes-agent, ...
     }:
     let
@@ -62,10 +62,13 @@
         let configured = builtins.getEnv "DOTFILES_DIR";
         in
         if configured != "" then configured else "${builtins.getEnv "HOME"}/src/github.com/azzz9/dotfiles";
+      # The skills repository owns the rules, and ~/.pi/agent/AGENTS.md links
+      # to its checkout, which keeps an edit there live without a switch.
+      defaultSkillsCheckout = "${builtins.getEnv "HOME"}/src/github.com/azzz9/skills";
       # The pi packages, by flake input name. A row hands pi that input's store
       # path, so pi loads the source flake.lock locked.
       piPackagePaths = {
-        inherit pi-pstack pi-subagents pi-web-access pi-compact-tools;
+        inherit skills pi-subagents pi-web-access pi-compact-tools;
       };
       # One table for every machine. The key names homeConfigurations.<name>,
       # and nixosConfigurations.<name> for a row that carries a nixos path. The
@@ -88,7 +91,7 @@
       };
       # The names the `dotfiles` CLI and its completion offer.
       machineNames = nixpkgs.lib.attrNames machines;
-      mkHomeConfiguration = name: { system, home ? [ ], ... }:
+      mkHomeConfiguration = name: { system, home ? [ ], skillsCheckout ? defaultSkillsCheckout, ... }:
         home-manager.lib.homeManagerConfiguration {
           pkgs = import nixpkgs {
             inherit system;
@@ -108,7 +111,7 @@
             ];
           };
           extraSpecialArgs = {
-            inherit repoDir machineNames piPackagePaths;
+            inherit repoDir skillsCheckout machineNames piPackagePaths;
             # modules/pi.nix keys the pstack role table by machine name.
             machine = name;
             hunk = hunk;
