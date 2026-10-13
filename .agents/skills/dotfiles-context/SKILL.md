@@ -67,7 +67,9 @@ only make sense here sit in `.agents/skills/` at the repo root instead, where pi
 discovers them as project skills once the project is trusted.
 
 The skills repository (`skills`) ships the skills, the `comment-sicko` and `poteto-agent`
-subagents, and an extension that injects the role-model table and `/poteto-mode`.
+subagents, and the two files that load on every turn: `APPEND_SYSTEM.md`, which pi appends to
+the system prompt, and `AGENTS.md`, which pi reads as a context file. Both are linked out of the
+skills checkout, so an edit there is live.
 
 `modules/pi.nix` owns the package rows. The five package inputs are
 `flake = false` inputs in `flake.nix`, rendered into `settings.json` as store
