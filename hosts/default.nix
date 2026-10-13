@@ -52,6 +52,8 @@ assert lib.assertMsg (upstreamSkillsWithoutLicense == [ ])
   # keeps an edit there immediately visible at the target path.
   home.file = skillLinks // {
     ".pi/agent/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${skillsCheckout}/AGENTS.md";
+    # Pi appends this one to the system prompt on every turn. The rules live there.
+    ".pi/agent/APPEND_SYSTEM.md".source = config.lib.file.mkOutOfStoreSymlink "${skillsCheckout}/APPEND_SYSTEM.md";
   };
 
   imports = [
