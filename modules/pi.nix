@@ -18,9 +18,9 @@ let
   rows = [
     { input = "pi-subagents"; npmDepsHash = "sha256-zPo0Z3IjaSEA74YptOUComiwvQxSMhPw7N6SwtGkveE="; }
     { input = "pi-web-access"; npmDepsHash = "sha256-BvAI68JpqJKNcg8luJ3d250C/YISUf13EItMgrJVrV4="; }
-    # The 23 principle-* skills are poteto-mode's own vocabulary and the agent
+    # The 6 principle-* skills are poteto-mode's own vocabulary and the agent
     # reads them by path, so the menu lists only skills a person types.
-    { input = "pi-pstack"; filter = { skills = [ "!skills/principle-*" ]; }; }
+    { input = "skills"; filter = { skills = [ "!skills/principle-*" ]; }; }
     # The rpiv packages ship from a 15-package workspace whose root carries no
     # pi manifest, so they stay npm rows.
     { spec = rpiv "ask-user-question"; }
@@ -89,6 +89,11 @@ let
     # pi reads a list of only `+name` entries as a change to the inherited
     # selection, so a plain "codemode" here would replace read/bash/edit/write.
     defaultTools = [ "+codemode" ];
+    # pi's own renderer draws a mermaid fence as Unicode in the transcript. The
+    # default did not render in practice, so the value is explicit. "final"
+    # draws once the reply is complete; "streaming" also draws partial diagrams
+    # while the text arrives.
+    markdown = { mermaid = "final"; };
   };
   # Every other key is carried over untouched: objects are merged, scalars
   # replaced. The file stays a regular file so pi can keep writing it.
@@ -105,7 +110,7 @@ let
   # The package owns the role names, and pstack drops one it does not know in
   # silence. Reading the pinned package text turns an upstream rename into an
   # evaluation failure instead of a role that quietly stops being injected.
-  pstackPackageSource = builtins.readFile "${piPackagePaths.pi-pstack}/extensions/pstack/config.ts";
+  pstackPackageSource = builtins.readFile "${piPackagePaths.skills}/extensions/pstack/config.ts";
   pstackRoleNameProblems = map
     (name: "role name missing from the pinned package: ${name}")
     (builtins.filter (name: !(lib.hasInfix "\"${name}\"" pstackPackageSource)) pstackModels.roleNames);

@@ -48,7 +48,7 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#<
 | Variable             | Default                                    | Purpose                                                                               |
 | -------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------- |
 | `MACHINE`            | required                                   | This machine's name. The `machines` row to apply, and the hostname the bootstrap sets. The rows today are `nix-desktop`, `macbook`, and `nix-server` |
-| `DOTFILES_DIR`       | `~/src/github.com/azzz9/dotfiles`          | Checkout to clone or reuse                                                            |
+| `DOTFILES_DIR`       | `~/src/github.com/azzz9/dotfiles`          | Checkout to clone or reuse, and the checkout to build. The live links name the machines row's `checkout` instead |
 | `MACHINE_CAPABILITY` | picked from the copied NixOS configuration | `desktop` or `headless`, the capability module a new NixOS machine imports            |
 | `REBOOT`             | `0`                                        | Reboot at the end, where the setup asked for one                                      |
 
@@ -93,7 +93,7 @@ sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#<machine> --im
 | Editor         | Neovim through nixvim, with the per-language servers, formatters, and linters |
 | Git            | `git`, `gh`, `ghq`, `git-wt`, `delta`, `lazygit`                              |
 | Terminals      | `herdr`, `hunk`, and `tuios`                                                  |
-| Agents         | `pi` with the pstack skills and subagents                                     |
+| Agents         | `pi` with the skills and the subagents                                        |
 | Hermes Agent   | The agent service on `nix-server` only, from the `hermes-agent` flake input   |
 | Tools          | The file, JSON, media, and language toolchains the shell assumes              |
 | Extra packages | The derivations nixpkgs lacks, pinned and bumped by `dotfiles upgrade`        |
@@ -105,7 +105,9 @@ flake.nix             # the machines table, homeConfigurations, nixosConfigurati
 hosts/default.nix     # the Home Manager entry point and the skill links
 hosts/platform/       # the per-platform differences, and the NixOS layer
 modules/              # one module per capability, named for what it configures
-agents/               # the AI agent rules and the global skills
+agents/               # the global skills, one directory per skill
+                      #   the machine skills answer what this host is, a NixOS quirk, a font, an extension
+                      #   the workflow skills answer how to work, and they moved to the skills repository
 scripts/              # the dotfiles CLI, the bootstrap, and the check set
 .agents/skills/       # the skills that only make sense in this repository
 ```

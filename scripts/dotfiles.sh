@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # The `dotfiles` CLI. modules/dotfiles.nix installs this file through
 # writeShellApplication and supplies two values from flake.nix:
-#   DOTFILES_DIR       the checkout to build and activate
+#   DOTFILES_DIR       the checkout to build and activate, defaulted to this
+#                      machine's checkout; the live links name that one regardless
 #   DOTFILES_MACHINES  the homeConfigurations attributes that exist
 set -euo pipefail
 
@@ -27,7 +28,7 @@ machine: the name of the machine to apply. This machine's hostname is the
 EOF
 }
 
-repo="${DOTFILES_DIR:?DOTFILES_DIR is not set; run the installed dotfiles command}"
+repo="${DOTFILES_DIR:-$HOME/src/github.com/azzz9/dotfiles}"
 machines="${DOTFILES_MACHINES:?DOTFILES_MACHINES is not set}"
 
 command="${1:-}"

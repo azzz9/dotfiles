@@ -73,6 +73,19 @@ in
     fi
     touch $out
   '';
+  # A live link that follows the environment points at whatever checkout ran the
+  # switch, and deleting that checkout leaves the target unreadable. The path is
+  # a machine fact, so it comes from the machines row.
+  link-path = pkgs.runCommand "link-path" { nativeBuildInputs = [ pkgs.gnugrep ]; } ''
+    for path in flake.nix hosts modules dotfiles-cli.nix; do
+      test -e "${self}/$path"
+    done
+    if grep -rn 'getEnv "DOTFILES' ${self}/flake.nix ${self}/hosts ${self}/modules ${self}/dotfiles-cli.nix; then
+      echo "a link path reads DOTFILES_* from the environment; name it in the machines row instead" >&2
+      exit 1
+    fi
+    touch $out
+  '';
   bootstrap = pkgs.runCommand "bootstrap" {
     nativeBuildInputs = [ pkgs.python3 pkgs.bash pkgs.coreutils pkgs.gnugrep ];
   } ''
