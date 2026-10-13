@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # The `dotfiles` CLI. modules/dotfiles.nix installs this file through
 # writeShellApplication and supplies two values from flake.nix:
-#   DOTFILES_DIR       the checkout to build and activate; the live links name
-#                      the machines row's checkout, not this
+#   DOTFILES_DIR       the checkout to build and activate, defaulted to this
+#                      machine's checkout; the live links name that one regardless
 #   DOTFILES_MACHINES  the homeConfigurations attributes that exist
 set -euo pipefail
 

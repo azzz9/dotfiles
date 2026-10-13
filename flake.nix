@@ -57,10 +57,6 @@
         "aarch64-darwin"
       ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
-      # The live links and the installed CLI name one checkout per machine, and
-      # its row carries the path. A path from the environment follows whatever
-      # checkout ran the switch, so deleting that checkout leaves the links
-      # dangling. It has to match the home.homeDirectory those modules set.
       defaultCheckout = "${builtins.getEnv "HOME"}/src/github.com/azzz9/dotfiles";
       # The pi packages, by flake input name. A row hands pi that input's store
       # path, so pi loads the source flake.lock locked.
@@ -108,7 +104,6 @@
             ];
           };
           extraSpecialArgs = {
-            # hosts/default.nix and modules/*.nix build the live links from this.
             repoDir = checkout;
             inherit machineNames piPackagePaths;
             # modules/pi.nix keys the pstack role table by machine name.
@@ -149,6 +144,7 @@
           dotfiles = import ./dotfiles-cli.nix {
             inherit (nixpkgs) lib;
             inherit pkgs machineNames;
+            checkout = defaultCheckout;
             llmAgents = llm-agents;
           };
           solhint = pinned.solhint;

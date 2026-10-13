@@ -74,8 +74,8 @@ in
     touch $out
   '';
   # A live link that follows the environment points at whatever checkout ran the
-  # switch. Deleting that checkout leaves the reader on a default config, so the
-  # path is a machine fact and comes from the machines row.
+  # switch, and deleting that checkout leaves the target unreadable. The path is
+  # a machine fact, so it comes from the machines row.
   link-path = pkgs.runCommand "link-path" { nativeBuildInputs = [ pkgs.gnugrep ]; } ''
     for path in flake.nix hosts modules dotfiles-cli.nix; do
       test -e "${self}/$path"

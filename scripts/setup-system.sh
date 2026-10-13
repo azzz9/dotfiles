@@ -501,8 +501,6 @@ apply_home_manager() {
   local repo_dir="$1"
   local machine="$2"
 
-  # The live links name the machines row's checkout, so a clone outside the
-  # default directory has to say so or the links resolve to nothing.
   if [[ "$repo_dir" != "$DEFAULT_DOTFILES_DIR" ]]; then
     echo "The live links name $DEFAULT_DOTFILES_DIR. Add checkout = \"$repo_dir\"; to the machines.$machine row so they resolve." >&2
   fi

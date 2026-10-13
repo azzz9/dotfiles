@@ -1,7 +1,7 @@
 # The `dotfiles` CLI. modules/dotfiles.nix installs it into the profile, and
 # flake.nix exposes it as a package, so the CI audit runs the same script the
 # machines run instead of a copy that can drift from it.
-{ lib, pkgs, llmAgents, machineNames }:
+{ lib, pkgs, llmAgents, machineNames, checkout }:
 pkgs.writeShellApplication {
   name = "dotfiles";
   # writeShellApplication runs shellcheck during the build, so the CLI is
@@ -9,6 +9,9 @@ pkgs.writeShellApplication {
   runtimeInputs = with pkgs; [ nix git coreutils gnugrep gnused bash nix-update jq curl hostname ]
     ++ [ llmAgents.packages.${pkgs.stdenv.hostPlatform.system}.pi ];
   text = ''
+    # A caller's DOTFILES_DIR wins; the default is this machine's checkout, so
+    # `dotfiles apply` and the live links name the same tree without one.
+    export DOTFILES_DIR="''${DOTFILES_DIR:-${lib.escapeShellArg checkout}}"
     # The machine names come from flake.nix; scripts/dotfiles.sh reads them.
     DOTFILES_MACHINES=${lib.escapeShellArg (lib.concatStringsSep " " machineNames)}
   ''
