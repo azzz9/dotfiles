@@ -89,11 +89,10 @@ let
     # pi reads a list of only `+name` entries as a change to the inherited
     # selection, so a plain "codemode" here would replace read/bash/edit/write.
     defaultTools = [ "+codemode" ];
-    # pi's own renderer draws a mermaid fence as Unicode in the transcript. The
-    # default did not render in practice, so the value is explicit. "final"
-    # draws once the reply is complete; "streaming" also draws partial diagrams
-    # while the text arrives.
     markdown = { mermaid = "final"; };
+    # The tier agents carry no model, so the host binds one per tier here. The
+    # merge below adds this key to the local settings.json like any other.
+    subagents = modelTiers.subagentsFor machine;
   };
   # Every other key is carried over untouched: objects are merged, scalars
   # replaced. The file stays a regular file so pi can keep writing it.
@@ -106,6 +105,8 @@ let
   # Every machine's role table lives in one file, so a typo in one row fails the
   # eval of the others too.
   pstackModels = import ./pi/pstack-models.nix { inherit pkgs; };
+  # The per-machine tier pins.
+  modelTiers = import ./pi/model-tiers.nix { inherit pkgs; };
   pstackProblems = pstackModels.problemsFor pstackModels.models;
   # The package owns the role names, and pstack drops one it does not know in
   # silence. Reading the pinned package text turns an upstream rename into an
