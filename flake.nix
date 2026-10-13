@@ -57,12 +57,11 @@
         "aarch64-darwin"
       ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
-      # hosts/default.nix and modules/dotfiles.nix both need the checkout path,
-      # and it has to match the home.homeDirectory those modules set.
-      repoDir =
-        let configured = builtins.getEnv "DOTFILES_DIR";
-        in
-        if configured != "" then configured else "${builtins.getEnv "HOME"}/src/github.com/azzz9/dotfiles";
+      # The live links and the installed CLI name one checkout per machine, and
+      # its row carries the path. A path from the environment follows whatever
+      # checkout ran the switch, so deleting that checkout leaves the links
+      # dangling. It has to match the home.homeDirectory those modules set.
+      defaultCheckout = "${builtins.getEnv "HOME"}/src/github.com/azzz9/dotfiles";
       # The pi packages, by flake input name. A row hands pi that input's store
       # path, so pi loads the source flake.lock locked.
       piPackagePaths = {
@@ -89,7 +88,7 @@
       };
       # The names the `dotfiles` CLI and its completion offer.
       machineNames = nixpkgs.lib.attrNames machines;
-      mkHomeConfiguration = name: { system, home ? [ ], ... }:
+      mkHomeConfiguration = name: { system, home ? [ ], checkout ? defaultCheckout, ... }:
         home-manager.lib.homeManagerConfiguration {
           pkgs = import nixpkgs {
             inherit system;
@@ -109,7 +108,9 @@
             ];
           };
           extraSpecialArgs = {
-            inherit repoDir machineNames piPackagePaths;
+            # hosts/default.nix and modules/*.nix build the live links from this.
+            repoDir = checkout;
+            inherit machineNames piPackagePaths;
             # modules/pi.nix keys the pstack role table by machine name.
             machine = name;
             hunk = hunk;
@@ -147,7 +148,7 @@
           # and tuios.
           dotfiles = import ./dotfiles-cli.nix {
             inherit (nixpkgs) lib;
-            inherit pkgs repoDir machineNames;
+            inherit pkgs machineNames;
             llmAgents = llm-agents;
           };
           solhint = pinned.solhint;

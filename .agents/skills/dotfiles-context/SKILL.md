@@ -48,6 +48,13 @@ agents/AGENTS.md                     -> ~/.pi/agent/AGENTS.md
 agents/skills/<name>                 -> ~/.agents/skills/<name>
 ```
 
+The links name the machines row's `checkout` (default
+`~/src/github.com/azzz9/dotfiles`), never the checkout that ran the switch. A
+worktree activation therefore leaves them on the main checkout, and deleting the
+worktree breaks nothing. To try one file from a worktree live, point that link
+at it with `ln -sfnT <worktree>/agents/AGENTS.md ~/.pi/agent/AGENTS.md`. The
+next activation puts it back.
+
 Skills come in two scopes. Every directory under `agents/skills` is linked
 into `~/.agents/skills/` and visible in all projects; the link list comes from
 `builtins.readDir`, so there is no list to keep in sync. The two skills that
