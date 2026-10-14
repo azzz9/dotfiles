@@ -137,16 +137,9 @@ audit_match_issues() {
   ' "$1" -
 }
 
-# "<name>\t<version>" for every npm row modules/pi.nix pins. The rpiv row is
-# written through the rpiv helper, so its one version line is its pin.
+# "<name>\t<version>" for every npm row modules/pi.nix pins.
 audit_npm_specs() {
-  local rpiv name spec
-  rpiv="$(sed -n 's/^  rpivVersion = "\([0-9][0-9.]*\)";$/\1/p' "$1")"
-  if [ -n "$rpiv" ]; then
-    while read -r name; do
-      printf '%s\t%s\n' "@juicesharp/rpiv-$name" "$rpiv"
-    done < <(sed -n 's/.*rpiv "\([^"]*\)".*/\1/p' "$1" | sort -u)
-  fi
+  local name spec
   while read -r spec; do
     name="${spec#npm:}"
     name="${name%@*}"

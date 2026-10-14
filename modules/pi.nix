@@ -1,8 +1,5 @@
 { lib, pkgs, config, repoDir, llmAgents, piPackagePaths, machine, ... }:
 let
-  rpivVersion = "2.12.0";
-  rpiv = name: "npm:@juicesharp/rpiv-${name}@${rpivVersion}";
-
   # One row per package pi installs. `input` names the flake input whose store
   # path the row loads; `spec` is an exact npm source; `npmDepsHash` marks an
   # input whose extension imports runtime dependencies, which pi never installs
@@ -23,7 +20,7 @@ let
     { input = "skills"; }
     # The rpiv workspace ships from a shared root that carries no pi manifest,
     # so this row stays an npm row.
-    { spec = rpiv "ask-user-question"; }
+    { spec = "npm:@juicesharp/rpiv-ask-user-question@2.12.0"; }
     # The /btw side conversation. The published tarball carries the TypeScript
     # pi loads, so the spec pin is the whole pin.
     { spec = "npm:pi-btw@0.8.0"; }

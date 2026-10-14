@@ -71,7 +71,7 @@ subagents, and the two files that load on every turn: `APPEND_SYSTEM.md`, which 
 the system prompt, and `AGENTS.md`, which pi reads as a context file. Both are linked out of the
 skills checkout, so an edit there is live.
 
-`modules/pi.nix` owns the package rows. The five package inputs are
+`modules/pi.nix` owns the package rows. The four package inputs are
 `flake = false` inputs in `flake.nix`, rendered into `settings.json` as store
 paths, so `flake.lock` is the only pin; `pi_reconcile` installs any npm row whose
 version differs from its spec. The pins are below.
@@ -134,12 +134,11 @@ it moved in the working tree for a commit.
 | the npm-only pi packages | a registry-queried bump in `modules/pi.nix` plus `pi_reconcile` |
 | `modules/pinned-packages.nix` | `nix-update`, one name at a time |
 
-The npm-only rows are the `rpiv` package, which ships from a workspace no git
-source can key, `pi-btw`, which publishes the /btw side conversation to npm,
-`cc-safety-net`, whose repository builds its extension at install time, and
-`pi-hermes-memory`, which publishes to npm and pulls its `better-sqlite3` addon
-prebuilt. The `nix-update` names are `solhint`, `roots`,
-`prettier-plugin-solidity` and its dist, and `herdr-nvim`.
+The npm-source rows are the ones `modules/pi.nix` writes as an `npm:` spec, each
+with its reason recorded on the row. `bump_npm_pins` finds them with one
+`grep -o 'npm:...'` and moves each to the registry's latest. The `nix-update`
+names are `solhint`, `roots`, `prettier-plugin-solidity` and its dist, and
+`herdr-nvim`.
 
 A `nix-update` run that fails, for example because a release needs a newer Go
 than nixpkgs carries, restores that one file and warns, so one blocked release

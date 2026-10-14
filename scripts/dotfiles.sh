@@ -82,8 +82,8 @@ have_lock=0
 # modules/pinned-packages.nix holds every derivation that is not packaged by
 # nixpkgs and carries its own version; `nix-update` bumps the ones named here.
 pins_file="modules/pinned-packages.nix"
-# The @juicesharp/rpiv package stays npm-installed; its version lives in one
-# line of modules/pi.nix, which the upgrade rewrites from the registry.
+# The pi package rows live in modules/pi.nix; the upgrade rewrites their npm
+# specs from the registry.
 pi_module="modules/pi.nix"
 # The three paths upgrade rewrites and prints for review. sync reads a dirty
 # path here as this machine's own pin, never as a person's work in progress.
@@ -209,31 +209,12 @@ registry_latest() {
   curl -fsS --max-time 30 "https://registry.npmjs.org/${encoded}" | jq -r '."dist-tags".latest'
 }
 
-# npm rows cannot be git sources: the rpiv workspace has no pi manifest at its
-# root, and cc-safety-net's repository runs lefthook from a prepare script. They
-# are therefore pinned by a version string in $pi_module, which this moves to
-# the registry's latest, keeping the pin on any registry or ordering doubt.
+# The npm rows carry a literal version in $pi_module, and this moves each one to
+# the registry's latest, keeping the pin on any registry or ordering doubt. Two
+# of them cannot be git sources: the rpiv workspace has no pi manifest at its
+# root, and cc-safety-net's repository runs lefthook from a prepare script.
 bump_npm_pins() {
-  local pinned latest ordering spec name current
-
-  # The rpiv row carries no `npm:` spec, so the rpivVersion line is its pin.
-  pinned="$(sed -n 's/^  rpivVersion = "\([0-9][0-9.]*\)";$/\1/p' "$pi_module")"
-  if [ -z "$pinned" ]; then
-    echo "dotfiles upgrade: no rpivVersion line found in $pi_module; kept the rpiv pin" >&2
-  else
-    latest="$(registry_latest "@juicesharp/rpiv-ask-user-question" || true)"
-    if [ -z "$latest" ] || [ "$latest" = "null" ]; then
-      echo "dotfiles upgrade: no registry latest for @juicesharp/rpiv-ask-user-question; kept the rpiv pin at $pinned" >&2
-    elif [ "$latest" != "$pinned" ]; then
-      ordering="$(printf '%s\n' "$pinned" "$latest" | sort -V | tail -n 1)"
-      if [ "$ordering" != "$latest" ]; then
-        echo "dotfiles upgrade: registry latest $latest is older than the rpiv pin $pinned; kept the pin" >&2
-      else
-        sed -i 's/^  rpivVersion = "[0-9][0-9.]*";$/  rpivVersion = "'"$latest"'";/' "$pi_module"
-        echo "dotfiles upgrade: bumped the rpiv npm pin $pinned -> $latest"
-      fi
-    fi
-  fi
+  local latest ordering spec name current
 
   # npm rows carry their own version, for example `npm:cc-safety-net@2.4.6`.
   while read -r spec; do
