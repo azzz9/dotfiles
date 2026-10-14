@@ -1,7 +1,11 @@
 name: CI
 
+# A branch push and its pull request both fire, and each run is three jobs,
+# about 21 to 27 runner-minutes. Pushes to main keep their run; a branch gets its
+# CI from the pull_request event.
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
