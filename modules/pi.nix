@@ -34,10 +34,6 @@ let
     # tarball carries the TypeScript pi loads, so the spec pin is the whole pin
     # and `dotfiles upgrade` bumps it with the other npm rows.
     { spec = "npm:pi-agent-teleport@0.2.5"; }
-    # Persistent memory, session search, and a background learning loop. npm is
-    # the publisher's install path, and its better-sqlite3 dependency arrives
-    # prebuilt, so pi install runs no compiler.
-    { spec = "npm:pi-hermes-memory@0.9.10"; }
     # Compact, expandable TUI tool rows, with its own bundled theme.
     { input = "pi-compact-tools"; }
   ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
