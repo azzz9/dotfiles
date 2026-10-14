@@ -99,12 +99,10 @@ let
     style = "compact";
     mode = "silent";
   };
-  # Every machine's role table lives in one file, so a typo in one row fails the
-  # eval of the others too.
-  pstackModels = import ./pi/pstack-models.nix { inherit pkgs; };
-  # The per-machine tier pins.
-  modelTiers = import ./pi/model-tiers.nix { inherit pkgs; };
-  pstackProblems = pstackModels.problemsFor pstackModels.models;
+  # The delegation assignment, one row per machine. Every machine's row lives in
+  # the same file, so a typo in one row fails the eval of the others too.
+  modelTiers = import ./pi/model-tiers.nix;
+  assignmentProblems = modelTiers.problemsFor modelTiers.rows;
   piSettingsMerge = pkgs.writeShellScript "pi-settings-managed" ''
     set -euo pipefail
 
@@ -129,8 +127,8 @@ let
     mv -f "$merged" "$settings"
   '';
 in
-assert lib.assertMsg (pstackProblems == [ ])
-  "modules/pi.nix: pstack role table: ${lib.concatStringsSep "; " pstackProblems}";
+assert lib.assertMsg (assignmentProblems == [ ])
+  "modules/pi.nix: delegation assignment: ${lib.concatStringsSep "; " assignmentProblems}";
 {
   programs.pi-coding-agent = {
     enable = true;
@@ -153,12 +151,5 @@ assert lib.assertMsg (pstackProblems == [ ])
   # symlink and carry the local keys into the regular file.
   home.activation.piSettings = lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''
     run ${piSettingsMerge}
-  '';
-  # Copied, not linked: the pinned fork reads through a symlink, but saveConfig
-  # refuses to write through one, so /setup-pstack and /pstack off could not save.
-  # The copy keeps them working, and it means a local edit gives way to this file
-  # on the next switch.
-  home.activation.pstackModels = lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''
-    run ${pstackModels.installFor machine}
   '';
 }

@@ -109,7 +109,7 @@
           extraSpecialArgs = {
             repoDir = checkout;
             inherit skillsCheckout machineNames piPackagePaths;
-            # modules/pi.nix keys the pstack role table by machine name.
+            # modules/pi.nix keys the delegation assignment by machine name.
             machine = name;
             hunk = hunk;
             llmAgents = llm-agents;
