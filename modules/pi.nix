@@ -41,7 +41,7 @@ let
   ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
     # pi_reconcile installs this row. The API key stays machine-local in
     # ~/.pi/agent/ollama_cloud.json.
-    { spec = "npm:pi-ollama-cloud-link@1.1.0"; }
+    { spec = "npm:pi-ollama-cloud-link@1.2.0"; }
   ];
 
   # Exactly what settings.json records for a row. A bare package row resolves to
