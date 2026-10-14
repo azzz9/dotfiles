@@ -24,9 +24,11 @@
       # last branch with x86_64-darwin) instead of following our nixpkgs.
       inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     };
-    # Pi is packaged by numtide/llm-agents.nix. Keep its nixpkgs pin separate
-    # so its binary cache stays usable.
-    llm-agents.url = "github:numtide/llm-agents.nix";
+    # Pi's own flake builds the CLI from source. It tracks main rather than the
+    # ref upstream offers consumers (`stable`): that branch advances only after
+    # a release tag's flake builds on every system, so it lags main whenever the
+    # newest tag does not build.
+    pi.url = "github:earendil-works/pi";
     # Serein, the Wayland-native Discord client, is not in nixpkgs. It keeps its
     # own locked nixpkgs: a `follows` here would change the derivation.
     serein.url = "github:ViceVerse-cz/Serein";
@@ -39,14 +41,14 @@
     # input here.
     pi-compact-tools = { url = "github:nedleeds/pi-compact-tools"; flake = false; };
     # The Hermes Agent CLI, its Home Manager module, and its package. Its own
-    # nixpkgs pin stays separate, like llm-agents' does: the package is a
+    # nixpkgs pin stays separate, like pi's does: the package is a
     # uv2nix venv plus npm frontends resolved against the nixpkgs revision
     # upstream tests against, so following ours would risk that resolution.
     hermes-agent = { url = "github:NousResearch/hermes-agent"; };
   };
 
   outputs =
-    { self, nixpkgs, nixpkgs-master, home-manager, nixvim, hunk, llm-agents, serein
+    { self, nixpkgs, nixpkgs-master, home-manager, nixvim, hunk, pi, serein
     , skills, pi-subagents, pi-web-access, pi-compact-tools
     , hermes-agent, ...
     }:
@@ -111,7 +113,7 @@
             inherit skillsCheckout machineNames piPackagePaths;
             machine = name;
             hunk = hunk;
-            llmAgents = llm-agents;
+            piFlake = pi;
             # modules/hermes.nix imports this input's Home Manager module.
             hermesAgent = hermes-agent;
           };
@@ -147,7 +149,7 @@
             inherit (nixpkgs) lib;
             inherit pkgs machineNames;
             checkout = defaultCheckout;
-            llmAgents = llm-agents;
+            piFlake = pi;
           };
           solhint = pinned.solhint;
           "prettier-plugin-solidity" = pinned.prettierPluginSolidity;
