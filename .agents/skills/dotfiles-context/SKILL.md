@@ -76,7 +76,7 @@ skills checkout, so an edit there is live.
 paths, so `flake.lock` is the only pin; `pi_reconcile` installs any npm row whose
 version differs from its spec. The pins are below.
 
-Provider extensions and the `pi-hermes-memory` store are machine-local and
+Provider extensions are machine-local and
 deliberately not Nix-managed. Install a provider extension under
 `~/.pi/agent/extensions/<name>/`, where pi auto-discovers it.
 

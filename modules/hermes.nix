@@ -1,8 +1,5 @@
 # Hermes Agent, https://github.com/NousResearch/hermes-agent
 #
-# This is the NousResearch agent framework, not the `pi-hermes-memory` pi
-# extension in modules/pi.nix.
-#
 # Only nix-server imports this module (see the machine row in flake.nix).
 # The module is the Home Manager one, because the gateway is a systemd USER
 # service, and because the state, the credentials and the cron jobs belong to
