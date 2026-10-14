@@ -15,10 +15,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
         with:
           extra_nix_config: |
             accept-flake-config = true
@@ -27,12 +27,12 @@ jobs:
 
       # Optional: set CACHIX_AUTH_TOKEN in repo secrets to enable binary cache.
       # Without a token this step is skipped and builds use the public cache only.
-      # Set the token only after pinning every action in this file to a commit
-      # SHA. A moved action tag reaches the token, and a writable cache can serve
-      # a tampered store path to every machine that pulls from it.
+      # Every action in this file is pinned to a commit SHA, which is what the
+      # token requires: a moved action tag reaches the token, and a writable
+      # cache can serve a tampered store path to every machine that pulls from it.
       - name: Configure Cachix
         if: ${{ vars.CACHIX_NAME != '' }}
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@3ba601ff5bbb07c7220846facfa2cd81eeee15a1 # v16
         with:
           name: ${{ vars.CACHIX_NAME }}
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
@@ -46,10 +46,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
         with:
           extra_nix_config: |
             accept-flake-config = true
@@ -58,7 +58,7 @@ jobs:
 
       - name: Configure Cachix
         if: ${{ vars.CACHIX_NAME != '' }}
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@3ba601ff5bbb07c7220846facfa2cd81eeee15a1 # v16
         with:
           name: ${{ vars.CACHIX_NAME }}
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
@@ -73,10 +73,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
         with:
           extra_nix_config: |
             accept-flake-config = true
@@ -85,7 +85,7 @@ jobs:
 
       - name: Configure Cachix
         if: ${{ vars.CACHIX_NAME != '' }}
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@3ba601ff5bbb07c7220846facfa2cd81eeee15a1 # v16
         with:
           name: ${{ vars.CACHIX_NAME }}
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
