@@ -134,10 +134,11 @@ it moved in the working tree for a commit.
 | the npm-only pi packages | a registry-queried bump in `modules/pi.nix` plus `pi_reconcile` |
 | `modules/pinned-packages.nix` | `nix-update`, one name at a time |
 
-The npm-only rows are the two `rpiv` packages, which ship from a workspace no
-git source can key, `cc-safety-net`, whose repository builds its extension at
-install time, and `pi-hermes-memory`, which publishes to npm and pulls its
-`better-sqlite3` addon prebuilt. The `nix-update` names are `solhint`, `roots`,
+The npm-only rows are the `rpiv` package, which ships from a workspace no git
+source can key, `pi-btw`, which publishes the /btw side conversation to npm,
+`cc-safety-net`, whose repository builds its extension at install time, and
+`pi-hermes-memory`, which publishes to npm and pulls its `better-sqlite3` addon
+prebuilt. The `nix-update` names are `solhint`, `roots`,
 `prettier-plugin-solidity` and its dist, and `herdr-nvim`.
 
 A `nix-update` run that fails, for example because a release needs a newer Go

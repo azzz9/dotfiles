@@ -82,8 +82,8 @@ have_lock=0
 # modules/pinned-packages.nix holds every derivation that is not packaged by
 # nixpkgs and carries its own version; `nix-update` bumps the ones named here.
 pins_file="modules/pinned-packages.nix"
-# The @juicesharp/rpiv packages stay npm-installed; their shared version lives
-# in one line of modules/pi.nix, which the upgrade rewrites from the registry.
+# The @juicesharp/rpiv package stays npm-installed; its version lives in one
+# line of modules/pi.nix, which the upgrade rewrites from the registry.
 pi_module="modules/pi.nix"
 # The three paths upgrade rewrites and prints for review. sync reads a dirty
 # path here as this machine's own pin, never as a person's work in progress.
@@ -216,7 +216,7 @@ registry_latest() {
 bump_npm_pins() {
   local pinned latest ordering spec name current
 
-  # The two rpiv packages ship under one version, so one line covers them.
+  # The rpiv row carries no `npm:` spec, so the rpivVersion line is its pin.
   pinned="$(sed -n 's/^  rpivVersion = "\([0-9][0-9.]*\)";$/\1/p' "$pi_module")"
   if [ -z "$pinned" ]; then
     echo "dotfiles upgrade: no rpivVersion line found in $pi_module; kept the rpiv pin" >&2

@@ -137,8 +137,8 @@ audit_match_issues() {
   ' "$1" -
 }
 
-# "<name>\t<version>" for every npm row modules/pi.nix pins. The rpiv packages
-# are written through the rpiv helper, so their one version line covers both.
+# "<name>\t<version>" for every npm row modules/pi.nix pins. The rpiv row is
+# written through the rpiv helper, so its one version line is its pin.
 audit_npm_specs() {
   local rpiv name spec
   rpiv="$(sed -n 's/^  rpivVersion = "\([0-9][0-9.]*\)";$/\1/p' "$1")"

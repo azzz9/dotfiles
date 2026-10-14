@@ -21,10 +21,12 @@ let
     # The rules load from APPEND_SYSTEM.md every turn, so the menu lists only the
     # skills a person types.
     { input = "skills"; }
-    # The rpiv packages ship from a 15-package workspace whose root carries no
-    # pi manifest, so they stay npm rows.
+    # The rpiv workspace ships from a shared root that carries no pi manifest,
+    # so this row stays an npm row.
     { spec = rpiv "ask-user-question"; }
-    { spec = rpiv "btw"; }
+    # The /btw side conversation. The published tarball carries the TypeScript
+    # pi loads, so the spec pin is the whole pin.
+    { spec = "npm:pi-btw@0.8.0"; }
     # Blocks destructive shell commands and secret-file access before the bash
     # tool call runs. It stays an npm row because the repository builds its
     # extension in a prepare script, so only the published tarball carries the
