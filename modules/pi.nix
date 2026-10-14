@@ -99,12 +99,13 @@ let
     style = "compact";
     mode = "silent";
   };
-  # Every machine's role table lives in one file, so a typo in one row fails the
-  # eval of the others too.
-  pstackModels = import ./pi/pstack-models.nix { inherit pkgs; };
-  # The per-machine tier pins.
-  modelTiers = import ./pi/model-tiers.nix { inherit pkgs; };
-  pstackProblems = pstackModels.problemsFor pstackModels.models;
+  # pi-subagents resolves an override by the agent's own name, so a row under a
+  # misspelled name would be silently unused. Both agent packages own names here,
+  # the skills package for the tiers and pi-subagents for the builtins.
+  agentNamesIn = dir: map (lib.removeSuffix ".md") (builtins.attrNames (builtins.readDir dir));
+  pinnedAgents = agentNamesIn "${piPackagePaths.skills}/agents" ++ agentNamesIn "${piPackagePaths.pi-subagents}/agents";
+  modelTiers = import ./pi/model-tiers.nix { knownAgents = pinnedAgents; };
+  assignmentProblems = modelTiers.problemsFor modelTiers.rows;
   piSettingsMerge = pkgs.writeShellScript "pi-settings-managed" ''
     set -euo pipefail
 
@@ -129,8 +130,8 @@ let
     mv -f "$merged" "$settings"
   '';
 in
-assert lib.assertMsg (pstackProblems == [ ])
-  "modules/pi.nix: pstack role table: ${lib.concatStringsSep "; " pstackProblems}";
+assert lib.assertMsg (assignmentProblems == [ ])
+  "modules/pi.nix: delegation assignment: ${lib.concatStringsSep "; " assignmentProblems}";
 {
   programs.pi-coding-agent = {
     enable = true;
@@ -153,12 +154,5 @@ assert lib.assertMsg (pstackProblems == [ ])
   # symlink and carry the local keys into the regular file.
   home.activation.piSettings = lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''
     run ${piSettingsMerge}
-  '';
-  # Copied, not linked: the pinned fork reads through a symlink, but saveConfig
-  # refuses to write through one, so /setup-pstack and /pstack off could not save.
-  # The copy keeps them working, and it means a local edit gives way to this file
-  # on the next switch.
-  home.activation.pstackModels = lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''
-    run ${pstackModels.installFor machine}
   '';
 }
