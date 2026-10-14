@@ -13,7 +13,7 @@ let
       for f in .config/herdr/config.toml .config/hunk/config.toml; do
         python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$files/$f"
       done
-      for f in .config/lazygit/config.yml .config/gh/config.yml; do
+      for f in .config/lazygit/config.yml .config/gh/config.yml .config/gh-dash/config.yml; do
         yq -e '.' "$files/$f" > /dev/null
       done
       zsh -n "$files/.zshrc"

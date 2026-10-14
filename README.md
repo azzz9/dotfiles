@@ -91,7 +91,7 @@ sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#<machine> --im
 | -------------- | ----------------------------------------------------------------------------- |
 | Shell          | Zsh, the prompt, fzf, and the `dotfiles` completion                           |
 | Editor         | Neovim through nixvim, with the per-language servers, formatters, and linters |
-| Git            | `git`, `gh`, `ghq`, `git-wt`, `delta`, `lazygit`                              |
+| Git            | `git`, `gh`, `gh-dash`, `ghq`, `git-wt`, `delta`, `lazygit`                   |
 | Terminals      | `herdr`, `hunk`, and `tuios`                                                  |
 | Agents         | `pi` with the skills and the subagents                                        |
 | Hermes Agent   | The agent service on `nix-server` only, from the `hermes-agent` flake input   |

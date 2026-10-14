@@ -62,6 +62,7 @@ assert lib.assertMsg (upstreamSkillsWithoutLicense == [ ])
     ../modules/dotfiles.nix
     ../modules/pi.nix
     ../modules/gh.nix
+    ../modules/gh-dash.nix
     ../modules/git.nix
     ../modules/hunk.nix
     ../modules/lazygit.nix
