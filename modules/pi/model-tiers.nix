@@ -8,26 +8,29 @@
 # default for a host with no binding.
 let
   # nix-desktop and nix-server carry the same accounts, so they share one row.
+  # glm-5.3 takes the tiers where a wrong call is expensive, and the effort
+  # carries the depth on the two rows that stay on the bulk pin.
   desktop = {
-    fast = { model = "ollama-cloud/deepseek-v4.1-flash"; thinking = "low"; };
-    standard = { model = "ollama-cloud/deepseek-v4.1-flash"; thinking = "medium"; };
-    intent = { model = "openai-codex/gpt-6-luna"; thinking = "medium"; };
-    deep = { model = "openai-codex/gpt-6.1-sol"; thinking = "high"; };
+    fast = { model = "ollama-cloud/deepseek-v4.1-flash"; thinking = "xhigh"; };
+    standard = { model = "ollama-cloud/glm-5.3-flash"; thinking = "xhigh"; };
+    intent = { model = "ollama-cloud/glm-5.3"; thinking = "xhigh"; };
+    deep = { model = "ollama-cloud/glm-5.3"; thinking = "xhigh"; };
     reviewer = { model = "openai-codex/gpt-6.1-sol"; thinking = "high"; };
-    comment-sicko = { model = "ollama-cloud/deepseek-v4.1-flash"; thinking = "medium"; };
+    comment-sicko = { model = "ollama-cloud/deepseek-v4.1-flash"; thinking = "xhigh"; };
   };
 
   # The macbook runs on Copilot Enterprise, which includes model choice, so this
   # row names explicit ids. Copilot Free and Copilot Student cannot name a model
   # and answer an explicit slug with 400 model_not_supported, so the row does not
   # transfer to them. https://docs.github.com/ja/copilot/get-started/plans
+  # Haiku 5.5 is not in pi's catalog, so 4.5 carries the cheap rows.
   macbook = {
-    fast = { model = "github-copilot/gpt-6-luna"; thinking = "low"; };
-    standard = { model = "github-copilot/gpt-6-luna"; thinking = "medium"; };
-    intent = { model = "github-copilot/gpt-6-luna"; thinking = "medium"; };
+    fast = { model = "github-copilot/claude-haiku-4.5"; thinking = "max"; };
+    standard = { model = "github-copilot/claude-sonnet-5.5"; thinking = "medium"; };
+    intent = { model = "github-copilot/claude-opus-5.5"; thinking = "high"; };
     deep = { model = "github-copilot/claude-opus-5.5"; thinking = "high"; };
-    reviewer = { model = "github-copilot/claude-opus-5.5"; thinking = "high"; };
-    comment-sicko = { model = "github-copilot/gpt-6-luna"; thinking = "medium"; };
+    reviewer = { model = "github-copilot/gpt-6.1-sol"; thinking = "high"; };
+    comment-sicko = { model = "github-copilot/claude-haiku-4.5"; thinking = "max"; };
   };
 
   rows = {
