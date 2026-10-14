@@ -256,6 +256,11 @@ configure_zsh() {
 configure_git() {
   git config --global user.name "$GIT_NAME"
   git config --global user.email "$GIT_EMAIL"
+  # `ghq create` fills a bare project name's owner from ghq.user and never
+  # reads user.name, so without this it falls back to $USER and files the
+  # repository under the local account name. This expects GIT_NAME to be the
+  # GitHub login; set ghq.user by hand when it is not.
+  git config --global ghq.user "$GIT_NAME"
 }
 
 ensure_dotfiles_repo() {
