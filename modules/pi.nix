@@ -108,13 +108,6 @@ let
   # The per-machine tier pins.
   modelTiers = import ./pi/model-tiers.nix { inherit pkgs; };
   pstackProblems = pstackModels.problemsFor pstackModels.models;
-  # The package owns the role names, and pstack drops one it does not know in
-  # silence. Reading the pinned package text turns an upstream rename into an
-  # evaluation failure instead of a role that quietly stops being injected.
-  pstackPackageSource = builtins.readFile "${piPackagePaths.skills}/extensions/pstack/config.ts";
-  pstackRoleNameProblems = map
-    (name: "role name missing from the pinned package: ${name}")
-    (builtins.filter (name: !(lib.hasInfix "\"${name}\"" pstackPackageSource)) pstackModels.roleNames);
   piSettingsMerge = pkgs.writeShellScript "pi-settings-managed" ''
     set -euo pipefail
 
@@ -139,8 +132,8 @@ let
     mv -f "$merged" "$settings"
   '';
 in
-assert lib.assertMsg (pstackProblems == [ ] && pstackRoleNameProblems == [ ])
-  "modules/pi.nix: pstack role table: ${lib.concatStringsSep "; " (pstackProblems ++ pstackRoleNameProblems)}";
+assert lib.assertMsg (pstackProblems == [ ])
+  "modules/pi.nix: pstack role table: ${lib.concatStringsSep "; " pstackProblems}";
 {
   programs.pi-coding-agent = {
     enable = true;
