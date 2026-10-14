@@ -69,6 +69,16 @@ in
     width = "80%"
     height = "80%"
 
+    # Session-modal lazygit popup; exiting lazygit closes the popup. The direct
+    # alt row already carries the pane and layout keys, and alt+g is free.
+    [[keys.command]]
+    key = "alt+g"
+    type = "popup"
+    command = "lazygit"
+    description = "lazygit"
+    width = "80%"
+    height = "80%"
+
     # lazygit in a full-tab overlay pane; exiting lazygit closes the pane.
     # prefix+g is the session navigator and prefix+shift+g is new_worktree,
     # both in use, so this uses the alt+shift+ letter row that already carries
