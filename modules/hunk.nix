@@ -107,7 +107,8 @@ in
     # programs.git.settings.core.pager, which only applies when
     # programs.git.enable = true. modules/git.nix sets the pager instead.
     settings = {
-      mode = "auto";
+      # Toggle in the TUI with 1 = unified, 2 = split, 0 = auto.
+      mode = "unified";
       line_numbers = true;
       wrap_lines = false;
     };
