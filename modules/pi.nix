@@ -13,7 +13,9 @@ let
   # would be dropped again, because the merge below replaces the `packages`
   # array on every activation.
   rows = [
-    { input = "pi-subagents"; npmDepsHash = "sha256-zPo0Z3IjaSEA74YptOUComiwvQxSMhPw7N6SwtGkveE="; }
+    { input = "pi-subagents"; npmDepsHash = "sha256-zPo0Z3IjaSEA74YptOUComiwvQxSMhPw7N6SwtGkveE=";
+      filter = { prompts = [ ]; skills = [ "!skills/council-mode" ]; };
+    }
     { input = "pi-web-access"; npmDepsHash = "sha256-BvAI68JpqJKNcg8luJ3d250C/YISUf13EItMgrJVrV4="; }
     # The rules load from APPEND_SYSTEM.md every turn, so the menu lists only the
     # skills a person types.
