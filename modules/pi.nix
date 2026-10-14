@@ -1,8 +1,5 @@
 { lib, pkgs, config, repoDir, llmAgents, piPackagePaths, machine, ... }:
 let
-  rpivVersion = "2.12.0";
-  rpiv = name: "npm:@juicesharp/rpiv-${name}@${rpivVersion}";
-
   # One row per package pi installs. `input` names the flake input whose store
   # path the row loads; `spec` is an exact npm source; `npmDepsHash` marks an
   # input whose extension imports runtime dependencies, which pi never installs
@@ -21,10 +18,12 @@ let
     # The rules load from APPEND_SYSTEM.md every turn, so the menu lists only the
     # skills a person types.
     { input = "skills"; }
-    # The rpiv packages ship from a 15-package workspace whose root carries no
-    # pi manifest, so they stay npm rows.
-    { spec = rpiv "ask-user-question"; }
-    { spec = rpiv "btw"; }
+    # The rpiv workspace ships from a shared root that carries no pi manifest,
+    # so this row stays an npm row.
+    { spec = "npm:@juicesharp/rpiv-ask-user-question@2.12.0"; }
+    # The /btw side conversation. The published tarball carries the TypeScript
+    # pi loads, so the spec pin is the whole pin.
+    { spec = "npm:pi-btw@0.8.0"; }
     # Blocks destructive shell commands and secret-file access before the bash
     # tool call runs. It stays an npm row because the repository builds its
     # extension in a prepare script, so only the published tarball carries the
