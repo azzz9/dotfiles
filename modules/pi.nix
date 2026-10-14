@@ -1,4 +1,4 @@
-{ lib, pkgs, config, repoDir, llmAgents, piPackagePaths, machine, ... }:
+{ lib, pkgs, config, repoDir, piFlake, piPackagePaths, machine, ... }:
 let
   # One row per package pi installs. `input` names the flake input whose store
   # path the row loads; `spec` is an exact npm source; `npmDepsHash` marks an
@@ -135,7 +135,7 @@ assert lib.assertMsg (assignmentProblems == [ ])
 {
   programs.pi-coding-agent = {
     enable = true;
-    package = llmAgents.packages.${pkgs.stdenv.hostPlatform.system}.pi;
+    package = piFlake.packages.${pkgs.stdenv.hostPlatform.system}.pi;
     extraPackages = with pkgs; [
       nodejs
       bun

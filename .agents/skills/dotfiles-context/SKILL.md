@@ -76,6 +76,12 @@ reads as a context file. Both are linked out of the skills checkout, so an edit 
 paths, so `flake.lock` is the only pin; `pi_reconcile` installs any npm row whose
 version differs from its spec. The pins are below.
 
+The CLI itself comes from upstream's own flake, the `pi` input at
+`github:earendil-works/pi`, which builds pi from source. `modules/pi.nix` and
+`dotfiles-cli.nix` take `piFlake.packages.<system>.pi` from it, so the
+derivation is upstream's, built against upstream's nixpkgs pin rather than ours.
+The input tracks main, and `nix flake update pi` moves it.
+
 Provider extensions are machine-local and
 deliberately not Nix-managed. Install a provider extension under
 `~/.pi/agent/extensions/<name>/`, where pi auto-discovers it.
