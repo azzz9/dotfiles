@@ -1,15 +1,13 @@
-# The delegation assignment, one row per machine. pi-subagents ships four tier
-# agents, fast, standard, deep, and intent, and none of them pins a model. This
-# file is where each one gets a model and a thinking effort, so the agent
-# definitions stay provider-free. Two names the ruleset calls directly, the PR
-# reviewer and comment-sicko, take the same two fields.
+# The delegation assignment, one row per machine. The four tier agents and the
+# two names the ruleset calls directly, the PR reviewer and comment-sicko, get
+# their model and their thinking effort here, so the agent definitions in the
+# skills package stay provider-free.
 #
 # An agent with no row runs on the parent session model, which is the safe
 # default for a host with no binding.
+{ knownAgents }:
 let
   # nix-desktop and nix-server carry the same accounts, so they share one row.
-  # glm-5.3 takes the tiers where a wrong call is expensive, and the effort
-  # carries the depth on the two rows that stay on the bulk pin.
   desktop = {
     fast = { model = "ollama-cloud/deepseek-v4.1-flash"; thinking = "xhigh"; };
     standard = { model = "ollama-cloud/glm-5.3-flash"; thinking = "xhigh"; };
@@ -52,15 +50,15 @@ let
   isSlug = value:
     builtins.isString value && builtins.match "[^/[:space:]]+/[^/[:space:]]+" value != null;
 
-  # Every problem in one list, so the assert in modules/pi.nix can print them
-  # together and a row for one machine still fails the evaluation of another.
   problemsFor = table:
     builtins.concatMap
       (machine:
         builtins.concatMap
           (agent:
             let pin = table.${machine}.${agent}; in
-            if !isSlug pin.model then
+            if !(builtins.elem agent knownAgents) then
+              [ "${machine}: unknown agent ${agent}" ]
+            else if !isSlug pin.model then
               [ "${machine}: ${agent} is not a provider/id slug: ${builtins.toJSON pin.model}" ]
             else if !(builtins.elem pin.thinking thinkingLevels) then
               [ "${machine}: ${agent} thinking is not one of ${builtins.concatStringsSep ", " thinkingLevels}: ${builtins.toJSON pin.thinking}" ]

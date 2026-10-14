@@ -66,10 +66,10 @@ into `~/.agents/skills/` and visible in all projects; the link list comes from
 only make sense here sit in `.agents/skills/` at the repo root instead, where pi
 discovers them as project skills once the project is trusted.
 
-The skills repository (`skills`) ships the skills, the `comment-sicko` and `poteto-agent`
-subagents, and the two files that load on every turn: `APPEND_SYSTEM.md`, which pi appends to
-the system prompt, and `AGENTS.md`, which pi reads as a context file. Both are linked out of the
-skills checkout, so an edit there is live.
+The skills repository (`skills`) ships the skills, the `comment-sicko` subagent, and the
+four delegation tiers (`fast`, `standard`, `deep`, `intent`), plus the two files that load on
+every turn: `APPEND_SYSTEM.md`, which pi appends to the system prompt, and `AGENTS.md`, which pi
+reads as a context file. Both are linked out of the skills checkout, so an edit there is live.
 
 `modules/pi.nix` owns the package rows. The four package inputs are
 `flake = false` inputs in `flake.nix`, rendered into `settings.json` as store
@@ -80,15 +80,12 @@ Provider extensions are machine-local and
 deliberately not Nix-managed. Install a provider extension under
 `~/.pi/agent/extensions/<name>/`, where pi auto-discovers it.
 
-The role table is the exception. `modules/pi/pstack-models.nix` holds one row
-per machine, and `modules/pi.nix` copies the generated JSON to
-`~/.pi/agent/pstack/models.json` in an activation script. It is copied rather
-than linked, because pstack's `saveConfig` refuses to write through a link, so a
-linked file would make `/setup-pstack` fail instead of save. A local edit survives
-only until the next switch, and the assert in `modules/pi.nix` fails evaluation
-on a role name or a slug pstack cannot use. The role names come from the pinned
-package, which the same assert checks, so a rename upstream fails evaluation
-instead of dropping a role on the machines.
+The delegation assignment is the exception. `modules/pi/model-tiers.nix` holds one
+row per machine, and each row carries the model and the thinking effort for a tier
+agent, the PR reviewer, or `comment-sicko`. `modules/pi.nix` renders those rows
+into the `subagents` key of `settings.json` with the same merge as every other
+key, so the assert there fails evaluation on a malformed slug, an undefined
+thinking value, or an agent name absent from both pinned packages.
 
 The macbook row names explicit `github-copilot/<id>` slugs, which its Copilot
 Enterprise plan allows. Copilot Free and Copilot Student are the plans that

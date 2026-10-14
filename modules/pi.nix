@@ -99,9 +99,12 @@ let
     style = "compact";
     mode = "silent";
   };
-  # The delegation assignment, one row per machine. Every machine's row lives in
-  # the same file, so a typo in one row fails the eval of the others too.
-  modelTiers = import ./pi/model-tiers.nix;
+  # pi-subagents resolves an override by the agent's own name, so a row under a
+  # misspelled name would be silently unused. Both agent packages own names here,
+  # the skills package for the tiers and pi-subagents for the builtins.
+  agentNamesIn = dir: map (lib.removeSuffix ".md") (builtins.attrNames (builtins.readDir dir));
+  pinnedAgents = agentNamesIn "${piPackagePaths.skills}/agents" ++ agentNamesIn "${piPackagePaths.pi-subagents}/agents";
+  modelTiers = import ./pi/model-tiers.nix { knownAgents = pinnedAgents; };
   assignmentProblems = modelTiers.problemsFor modelTiers.rows;
   piSettingsMerge = pkgs.writeShellScript "pi-settings-managed" ''
     set -euo pipefail
