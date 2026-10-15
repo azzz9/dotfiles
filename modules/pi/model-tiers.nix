@@ -21,14 +21,15 @@ let
   # row names explicit ids. Copilot Free and Copilot Student cannot name a model
   # and answer an explicit slug with 400 model_not_supported, so the row does not
   # transfer to them. https://docs.github.com/ja/copilot/get-started/plans
-  # Haiku 5.5 is not in pi's catalog, so 4.5 carries the cheap rows.
+  # The catalog refreshes over the network: the snapshot built into pi 1.2.0
+  # stops at claude-haiku-4.5, while pi.dev serves 5.5 for github-copilot.
   macbook = {
-    fast = { model = "github-copilot/claude-haiku-4.5"; thinking = "max"; };
+    fast = { model = "github-copilot/claude-haiku-5.5"; thinking = "max"; };
     standard = { model = "github-copilot/claude-sonnet-5.5"; thinking = "medium"; };
     intent = { model = "github-copilot/claude-opus-5.5"; thinking = "high"; };
     deep = { model = "github-copilot/claude-opus-5.5"; thinking = "high"; };
     reviewer = { model = "github-copilot/gpt-6.1-sol"; thinking = "high"; };
-    comment-sicko = { model = "github-copilot/claude-haiku-4.5"; thinking = "max"; };
+    comment-sicko = { model = "github-copilot/claude-haiku-5.5"; thinking = "max"; };
   };
 
   rows = {
