@@ -417,11 +417,11 @@
     "pi-subagents": {
       "flake": false,
       "locked": {
-        "lastModified": 1791268763,
-        "narHash": "sha256-YA4sxZOSduIOA2YbMNx1Vw1mdh32iK6AyKySbcOjpD8=",
+        "lastModified": 1791868852,
+        "narHash": "sha256-kTzwkgt+ZVRc5LoPCsryQcmMB9XJ5k5Tptrw3HV+9a8=",
         "owner": "nicobailon",
         "repo": "pi-subagents",
-        "rev": "5da808168c097ea0d56616644773efe0f6f87938",
+        "rev": "a4c8ced69a8176cdf4179b127feddc8875e3418f",
         "type": "github"
       },
       "original": {

@@ -13,7 +13,7 @@ let
   # would be dropped again, because the merge below replaces the `packages`
   # array on every activation.
   rows = [
-    { input = "pi-subagents"; npmDepsHash = "sha256-zPo0Z3IjaSEA74YptOUComiwvQxSMhPw7N6SwtGkveE=";
+    { input = "pi-subagents"; npmDepsHash = "sha256-862hXsUJ7CSVSntkV1Iv4z5E2On8v5BJSbM9iIYe+GY=";
       filter = { prompts = [ ]; skills = [ "!skills/council-mode" ]; };
     }
     { input = "pi-web-access"; npmDepsHash = "sha256-BvAI68JpqJKNcg8luJ3d250C/YISUf13EItMgrJVrV4="; }
