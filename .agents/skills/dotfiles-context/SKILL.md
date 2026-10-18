@@ -10,7 +10,7 @@ Nix flake + Home Manager repo. Read this before exploring files.
 ## Layout
 
 The entry points are `flake.nix` (inputs, machines, outputs), `hosts/default.nix`
-(Home Manager entry and skill links), `modules/` (one module per capability),
+(Home Manager entry and rules links), `modules/` (one module per capability),
 `checks/default.nix` (the check set), and `scripts/` (the `dotfiles` CLI, the
 bootstrap, and the check set).
 
@@ -41,33 +41,26 @@ comes from `modules/hermes.nix` and exists on nix-server alone.
 
 ## AI config deployment model
 
-`hosts/default.nix` links AI config out of store, so an edit here is live:
+`hosts/default.nix` links the three rules links out of store, so an edit in
+the skills checkout is live:
 
 ```
-agents/skills/<name>                 -> ~/.agents/skills/<name>
 <skills checkout>/AGENTS.md          -> ~/.pi/agent/AGENTS.md
 <skills checkout>/AGENTS.md          -> ~/.dsh/AGENTS.md
+<skills checkout>/APPEND_SYSTEM.md   -> ~/.pi/agent/APPEND_SYSTEM.md
 ```
 
-The links name the machines row's `checkout` (default
-`~/src/github.com/azzz9/dotfiles`), never the checkout that ran the switch. A
+All three links name `skillsCheckout`, defaulting to
+`~/src/github.com/azzz9/skills`, never the checkout that ran the switch. A
 worktree activation therefore leaves them on the main checkout, and deleting the
-worktree breaks nothing. To try one file from a worktree live, point that link
-at it with `ln -sfnT <worktree>/agents/skills/<name> ~/.agents/skills/<name>`.
-The next activation puts it back.
+worktree breaks nothing.
 
-The rules moved to the skills repository, and the `~/.pi/agent/AGENTS.md`
-link follows them. Its target is `skillsCheckout`, defaulting to
-`~/src/github.com/azzz9/skills`. The `~/.dsh/AGENTS.md` link names the same file
-for DSH. The pinned dsh-agent-instructions 0.2.0-rc.2 reads only
+The pinned dsh-agent-instructions 0.2.0-rc.2 reads only
 `$DSH_HOME/AGENTS.md` as the user-global file; pi does not read that path.
 
-
-Skills come in two scopes. Every directory under `agents/skills` is linked
-into `~/.agents/skills/` and visible in all projects; the link list comes from
-`builtins.readDir`, so there is no list to keep in sync. The two skills that
-only make sense here sit in `.agents/skills/` at the repo root instead, where pi
-discovers them as project skills once the project is trusted.
+Repo-local skills are the only skills this repo ships. They sit in
+`.agents/skills/` at the repo root, where pi discovers them as project skills
+once the project is trusted.
 
 The skills repository (`skills`) ships the skills, the `comment-sicko` subagent, and the
 four delegation tiers (`fast`, `standard`, `deep`, `intent`), plus the two files that load on
@@ -109,10 +102,8 @@ Enterprise plan allows. Copilot Free and Copilot Student are the plans that
 cannot name a model (auto selection only), and there an explicit slug is
 answered with 400 `model_not_supported`.
 
-To add a global skill: create `agents/skills/<name>/SKILL.md`; the link list
-is derived, and the build fails if a directory has no `SKILL.md`. To add a
-repo-local skill: create `.agents/skills/<name>/SKILL.md`; no Nix change is
-needed.
+To add a repo-local skill: create `.agents/skills/<name>/SKILL.md`; no Nix
+change is needed.
 
 ## dotfiles CLI commands
 
@@ -257,11 +248,12 @@ and the asserts that fail evaluation.
 
 ## OS differences
 
-Conditionals live in the five files below, each next to what it configures.
+Conditionals live in the files below, each next to what it configures.
 
 | File | What it separates |
 |------|-------------------|
-| `hosts/default.nix` | sessionPath entries and the GC launchd argument split on Darwin, the XDG user dirs on Linux |
+| `hosts/platform/darwin.nix` | sessionPath entries and the GC launchd argument split |
+| `hosts/platform/linux.nix` | sessionPath entries and the XDG user dirs |
 | `modules/ghostty.nix` | `config` against `config.ghostty`, with different content |
 | `modules/hunk.nix` | the ld-linux wrapper on Linux, upstream on Darwin |
 | `modules/packages.nix` | unar, xclip, wl-clipboard on Linux, terminal-notifier on Darwin |
