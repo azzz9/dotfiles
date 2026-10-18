@@ -47,6 +47,7 @@ let
     "plugins/gitsigns.lua"
     "plugins/gitblame.lua"
     "plugins/codediff.lua"
+    "plugins/neogit.lua"
     "plugins/atlas.lua"
     "plugins/herdr.lua"
     "plugins/mini.lua"
@@ -70,8 +71,9 @@ let
   ];
   readLua = file: builtins.readFile (luaConfigDir + "/${file}");
 
-  # Order matters (dap/init.lua defines the helpers the adapters use), so
-  # luaFiles stays a list. This listing keeps it in sync with the directory.
+  # Order matters (dap/init.lua defines the helpers the adapters use, and
+  # codediff.lua defines parent_or_empty_tree for neogit.lua), so luaFiles stays
+  # a list. This listing keeps it in sync with the directory.
   listLuaFiles = prefix: dir:
     lib.concatLists (lib.mapAttrsToList
       (name: type:
@@ -155,6 +157,7 @@ assert lib.assertMsg (luaFilesUnlisted == [ ] && luaFilesAbsent == [ ])
         telescope-nvim
         codediffNvim
         atlas-nvim
+        neogit
         fff-nvim
         plenary-nvim
         telescope-ui-select-nvim
