@@ -1,12 +1,17 @@
 # The pins are one repository fact, not one per machine. This job moves them on
-# a runner and opens a pull request, so the change is built on both platforms
-# before any machine applies it. A machine then only runs `dotfiles apply` or
-# `dotfiles sync`; `dotfiles upgrade` stays the by-hand way to move them, and
-# `dotfiles upgrade --pins-only` is what this job runs.
+# a runner, checks them there, and opens a pull request. A machine then only runs
+# `dotfiles apply` or `dotfiles sync`; `dotfiles upgrade` stays the by-hand way
+# to move them, and `dotfiles upgrade --pins-only` is what this job runs.
+#
+# GitHub does not start workflows from a push or pull request the job token
+# makes, so this job checks the pins itself and then dispatches `ci.yml` on the
+# branch for the macOS build. The pull request therefore shows no checks of its
+# own; the branch runs carry the result.
 #
 # Opening the pull request needs "Allow GitHub Actions to create and approve
-# pull requests" in the repository's Actions settings; the job token has
-# contents and pull-requests write scope below.
+# pull requests" in the repository's Actions settings. A schedule stops after 60
+# days without repository activity, so either keep the repository busy or run
+# this by hand with workflow_dispatch.
 name: Upgrade
 
 on:
@@ -15,7 +20,13 @@ on:
     - cron: "0 3 * * 1"
   workflow_dispatch:
 
+# Two runs would force-push the same branch over each other.
+concurrency:
+  group: pin-upgrade
+  cancel-in-progress: false
+
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 
@@ -23,6 +34,7 @@ jobs:
   pins:
     name: Move the pins
     runs-on: ubuntu-latest
+    timeout-minutes: 180
 
     steps:
       - name: Check out repository
@@ -36,6 +48,16 @@ jobs:
             access-tokens = github.com=${{ github.token }}
             experimental-features = nix-command flakes
 
+      # Optional, like CI: with the cache configured the checks below reuse what
+      # a previous run built instead of fetching it again.
+      - name: Configure Cachix
+        if: ${{ vars.CACHIX_NAME != '' }}
+        uses: cachix/cachix-action@3ba601ff5bbb07c7220846facfa2cd81eeee15a1 # v16
+        with:
+          name: ${{ vars.CACHIX_NAME }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          skipPush: false
+
       - name: Move the pins
         env:
           # The CLI works on the checkout it is pointed at. flake.nix names the
@@ -45,6 +67,13 @@ jobs:
         # every machine, and --pins-only stops before the build that would need
         # a store, so any row works here.
         run: nix run .#dotfiles -- upgrade --pins-only nix-desktop
+
+      # The same set the push guard and CI run, on the moved pins. This is the
+      # Linux build; the dispatch below adds macOS.
+      - name: Check the moved pins
+        env:
+          DOTFILES_DIR: ${{ github.workspace }}
+        run: scripts/check.sh
 
       - name: Open or update the pull request
         env:
@@ -63,6 +92,17 @@ jobs:
           git commit -m "chore(pins): move every pin to its latest"
           # The branch is the bot's own, so a rerun replaces its content.
           git push --force origin "$BRANCH"
+          # The push above started no workflow, so ask for one. ci.yml carries
+          # workflow_dispatch, which is the event a job token may still raise.
+          attempt=1
+          while ! gh workflow run ci.yml --ref "$BRANCH"; do
+            if [ "$attempt" -ge 3 ]; then
+              echo "could not dispatch ci.yml on $BRANCH" >&2
+              exit 1
+            fi
+            attempt=$((attempt + 1))
+            sleep 5
+          done
           if gh pr view "$BRANCH" --json number > /dev/null 2>&1; then
             echo "Updated the existing pull request."
           else
