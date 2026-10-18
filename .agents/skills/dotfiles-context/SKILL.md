@@ -46,6 +46,7 @@ comes from `modules/hermes.nix` and exists on nix-server alone.
 ```
 agents/skills/<name>                 -> ~/.agents/skills/<name>
 <skills checkout>/AGENTS.md          -> ~/.pi/agent/AGENTS.md
+<skills checkout>/AGENTS.md          -> ~/.dsh/AGENTS.md
 ```
 
 The links name the machines row's `checkout` (default
@@ -57,7 +58,9 @@ The next activation puts it back.
 
 The rules moved to the skills repository, and the `~/.pi/agent/AGENTS.md`
 link follows them. Its target is `skillsCheckout`, defaulting to
-`~/src/github.com/azzz9/skills`.
+`~/src/github.com/azzz9/skills`. The `~/.dsh/AGENTS.md` link names the same file
+for DSH. The pinned dsh-agent-instructions 0.2.0-rc.2 reads only
+`$DSH_HOME/AGENTS.md` as the user-global file; pi does not read that path.
 
 
 Skills come in two scopes. Every directory under `agents/skills` is linked
@@ -75,6 +78,14 @@ reads as a context file. Both are linked out of the skills checkout, so an edit 
 `flake = false` inputs in `flake.nix`, rendered into `settings.json` as store
 paths, so `flake.lock` is the only pin; `pi_reconcile` installs any npm row whose
 version differs from its spec. The pins are below.
+
+`modules/dsh.nix` installs the `dsh` and `dsh-tui` wrappers, and
+`modules/dsh-pin.nix` pins both versions. The CLI is not a derivation:
+`dsh_reconcile` installs it into `~/.local/share/dsh` because it builds native
+modules at install time, then keeps the dsh-tui plugin in the mutable
+`~/.dsh/profiles/dsh-tui` on the pinned version. The wrapper launches the
+mise-installed Node 24.18.0, because the CLI's require-builtin addon rejects
+the Nix 22.23.2 and 24.21.0 builds; `DSH_NODE` overrides the path.
 
 The CLI itself comes from upstream's own flake, the `pi` input at
 `github:earendil-works/pi`, which builds pi from source. `modules/pi.nix` and
@@ -107,9 +118,10 @@ needed.
 
 `apply`, `audit`, `sync`, and `upgrade` live in `scripts/dotfiles.sh`, which
 `modules/dotfiles.nix` installs through `writeShellApplication` (so the build
-shellchecks it). README.md owns the command table. `apply` and `sync` run a
-gate first: any change outside the three files `upgrade` rewrites makes them
-refuse, because activation would otherwise pick up a half-finished edit.
+shellchecks it). README.md owns the command table. `sync` runs a gate first: any
+change outside the four files `upgrade` rewrites makes it refuse, because
+activation would otherwise pick up a half-finished edit. `apply` has no such
+gate and activates the current tree.
 
 `audit` is the only command that reaches the network. It reads the store
 closure of the running system and of the Home Manager generation, matches those
@@ -135,6 +147,7 @@ it moved in the working tree for a commit.
 | nixpkgs and every other flake input | `nix flake update`, which rewrites `flake.lock` |
 | the pi packages | `flake.lock` alone, because `modules/pi.nix` hands pi each input's store path |
 | the npm-only pi packages | a registry-queried bump in `modules/pi.nix` plus `pi_reconcile` |
+| `modules/dsh-pin.nix` | a registry-queried bump of the `dsh` CLI and `dsh-tui` versions plus `dsh_reconcile`; its Node runtime is pinned by hand |
 | `modules/pinned-packages.nix` | `nix-update`, one name at a time |
 
 The npm-source rows are the ones `modules/pi.nix` writes as an `npm:` spec, each

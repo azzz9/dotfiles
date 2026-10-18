@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The `dotfiles` CLI. modules/dotfiles.nix installs this file through
-# writeShellApplication and supplies two values from flake.nix:
+# The `dotfiles` CLI. dotfiles-cli.nix installs this file through
+# writeShellApplication and supplies these values:
 #   DOTFILES_DIR       the checkout to build and activate, defaulted to this
 #                      machine's checkout; the live links name that one regardless
 #   DOTFILES_MACHINES  the homeConfigurations attributes that exist
@@ -14,7 +14,7 @@ usage() {
 usage: dotfiles <command> [machine]
 
 commands:
-  apply      apply the current checkout, installing any pi npm package whose version differs from its pinned spec
+  apply      apply the current checkout, installing any pi or dsh package whose version differs from its pinned spec
   audit      check this machine's packages against open security issues
   sync       pull latest changes, then apply
   upgrade    pull latest changes, update flake.lock inputs, then apply
@@ -85,9 +85,10 @@ pins_file="modules/pinned-packages.nix"
 # The pi package rows live in modules/pi.nix; the upgrade rewrites their npm
 # specs from the registry.
 pi_module="modules/pi.nix"
-# The three paths upgrade rewrites and prints for review. sync reads a dirty
+dsh_pin="modules/dsh-pin.nix"
+# The four paths upgrade rewrites and prints for review. sync reads a dirty
 # path here as this machine's own pin, never as a person's work in progress.
-upgrade_paths=(flake.lock "$pins_file" "$pi_module")
+upgrade_paths=(flake.lock "$pins_file" "$pi_module" "$dsh_pin")
 pin_names=(solhint roots prettier-plugin-solidity prettier-plugin-solidity-dist herdr-nvim)
 trap 'for backup in "${upgrade_backups[@]}"; do rm -f "${backup%%|*}"; done; if [ -n "$pin_scratch" ]; then rm -f "$pin_scratch"; fi; if [ -n "$patched_activate" ]; then rm -f "$patched_activate"; fi; if [ "$have_lock" = 1 ]; then rmdir "$lock_dir" 2>/dev/null || true; fi' EXIT
 if ! mkdir "$lock_dir" 2>/dev/null; then
@@ -160,10 +161,11 @@ activate_home() {
   bash "$patched_activate"
 }
 
-apply_home_and_reconcile_pi() {
+apply_home_and_reconcile() {
   build_home
   activate_home
   pi_reconcile
+  dsh_reconcile
 }
 
 backup_file() {
@@ -209,6 +211,15 @@ registry_latest() {
   curl -fsS --max-time 30 "https://registry.npmjs.org/${encoded}" | jq -r '."dist-tags".latest'
 }
 
+# `sort -V` ranks 0.2.0-rc.2 above 0.2.0. Compare a prerelease as a tilde
+# suffix, which sorts before the release.
+version_key() {
+  case "$1" in
+    *-*) printf '%s~%s' "${1%%-*}" "${1#*-}" ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
 # The npm rows carry a literal version in $pi_module, and this moves each one to
 # the registry's latest, keeping the pin on any registry or ordering doubt. Two
 # of them cannot be git sources: the rpiv workspace has no pi manifest at its
@@ -226,13 +237,38 @@ bump_npm_pins() {
       echo "dotfiles upgrade: no registry latest for $name; kept the pin at $current" >&2
       continue
     fi
-    ordering="$(printf '%s\n' "$current" "$latest" | sort -V | tail -n 1)"
-    if [ "$ordering" != "$latest" ] || [ "$latest" = "$current" ]; then
+    ordering="$(printf '%s\n' "$(version_key "$current")" "$(version_key "$latest")" | sort -V | tail -n 1)"
+    if [ "$ordering" != "$(version_key "$latest")" ] || [ "$latest" = "$current" ]; then
       continue
     fi
     sed -i "s|\"$spec\"|\"npm:$name@$latest\"|" "$pi_module"
     echo "dotfiles upgrade: bumped the $name npm pin $current -> $latest"
   done < <(grep -o 'npm:[A-Za-z0-9@/._-]*@[0-9][0-9A-Za-z.+-]*' "$pi_module" | sort -u)
+}
+
+# modules/dsh-pin.nix holds the mutable prefix's CLI and TUI versions. Both are
+# npm packages, so the registry's latest is the next pin.
+bump_dsh_pins() {
+  local key pkg current latest ordering
+
+  for key in cli tui; do
+    case "$key" in
+      cli) pkg="@deepseek-ai/dsh" ;;
+      tui) pkg="@deepseek-harness-tui/dsh-tui" ;;
+    esac
+    current="$(sed -n "s/^  $key = \"\(.*\)\";$/\1/p" "$dsh_pin")"
+    latest="$(registry_latest "$pkg" || true)"
+    if [ -z "$current" ] || [ -z "$latest" ] || [ "$latest" = "null" ]; then
+      echo "dotfiles upgrade: no registry latest for $pkg; kept the pin at ${current:-unknown}" >&2
+      continue
+    fi
+    ordering="$(printf '%s\n' "$(version_key "$current")" "$(version_key "$latest")" | sort -V | tail -n 1)"
+    if [ "$ordering" != "$(version_key "$latest")" ] || [ "$latest" = "$current" ]; then
+      continue
+    fi
+    sed -i "s|^  $key = \".*\";|  $key = \"$latest\";|" "$dsh_pin"
+    echo "dotfiles upgrade: bumped the $pkg pin $current -> $latest"
+  done
 }
 
 # Recomputes every npmDepsHash in modules/pi.nix from the package-lock.json of
@@ -263,7 +299,7 @@ refresh_pi_npm_hashes() {
 
 case "$command" in
   apply)
-    apply_home_and_reconcile_pi
+    apply_home_and_reconcile
     ;;
   audit)
     audit_packages "$repo" "$machine" "$tmp_dir" "$pi_module" "$audit_update" "$audit_declared"
@@ -286,7 +322,7 @@ case "$command" in
       fi
       exit 1
     fi
-    apply_home_and_reconcile_pi
+    apply_home_and_reconcile
     # The stash stays on purpose: the pulled pins have to be able to land, or a
     # pin bump committed on the other machine never takes effect here.
     if [ -n "$sync_stash" ]; then
@@ -312,6 +348,7 @@ case "$command" in
     # than the previous nixpkgs carried can still be bumped in the same run.
     bump_pins
     bump_npm_pins
+    bump_dsh_pins
     refresh_pi_npm_hashes
     if ! build_home; then
       restore_upgrade
@@ -331,6 +368,7 @@ case "$command" in
       echo "dotfiles upgrade: these files moved; review and commit them to keep the next apply on these pins:$moved_files"
     fi
     pi_reconcile
+    dsh_reconcile
     # The pins just moved, which is when a nixpkgs fix lands and when a new
     # issue can start matching, so read the audit here. It stays a report: the
     # pins are already applied, and failing the run would call a finished
