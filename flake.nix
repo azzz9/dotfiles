@@ -110,6 +110,7 @@
           };
           extraSpecialArgs = {
             repoDir = checkout;
+            worktreeRoot = "worktrees";
             inherit skillsCheckout machineNames piPackagePaths;
             machine = name;
             hunk = hunk;

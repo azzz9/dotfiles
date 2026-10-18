@@ -1,4 +1,4 @@
-{ config, lib, pkgs, repoDir, ... }:
+{ config, lib, pkgs, repoDir, worktreeRoot, ... }:
 let
   toastDelivery = "system";
 in
@@ -22,6 +22,10 @@ in
     # New panes/tabs/workspaces inherit the source pane's CWD
     new_cwd = "follow"
 
+    [worktrees]
+    # Herdr slugifies the branch, so feat/x lands in feat-x where git wt nests feat/x.
+    directory = "~/${worktreeRoot}"
+
     [keys]
     # / = side-by-side, - = stacked
     split_vertical = "prefix+/"
@@ -34,8 +38,6 @@ in
     previous_workspace = "alt+shift+k"
     next_workspace = "alt+shift+j"
 
-    # Worktrees come from `git wt` (modules/git.nix: wt.basedir = "../{gitroot}-wt"),
-    # so this only opens existing checkouts as grouped child spaces; new_worktree stays unused.
     open_worktree = "prefix+shift+o"
 
     # Direct (no-prefix) pane navigation. type = "shell" runs detached;

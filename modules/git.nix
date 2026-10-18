@@ -1,4 +1,4 @@
-{ lib, pkgs, ... }:
+{ lib, pkgs, worktreeRoot, ... }:
 {
   # Sensible ghq + git-wt defaults without taking over the whole ~/.gitconfig.
   # NB: activation scripts run with a minimal PATH, so reference git explicitly.
@@ -8,8 +8,10 @@
     # ghq clones into ~/src (conventional layout: ~/src/github.com/owner/repo)
     git config --global ghq.root "$HOME/src"
 
-    # git-wt worktrees sit alongside the repo as <repo>-wt
-    git config --global wt.basedir "../{gitroot}-wt"
+    # ghq treats any directory holding a .git entry as a repository, and a
+    # linked worktree's .git is a file, so a worktree under ~/src would reach
+    # `ghq list` and gqcd.
+    git config --global wt.basedir "$HOME/${worktreeRoot}/{gitroot}"
     # SECURITY: wt.copyignored copies gitignored files such as .env into new
     # worktrees, so secrets end up in multiple locations. Keep worktree
     # directories out of backups and shared paths, or set `wt.copyignored false`
