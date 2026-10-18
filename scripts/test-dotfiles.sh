@@ -57,6 +57,7 @@ cat > "$work/bin/curl" <<STUB
 case " \$* " in
   *"api.github.com/repos/NixOS/nixpkgs/issues"*) cat "$work/issues.json" ;;
   *"advisories/bulk"*) cat "$work/advisories.json" ;;
+  *"registry.npmjs.org/@deepseek-ai%2Fdsh"*) printf '{"dist-tags":{"latest":"0.2.0"}}\n' ;;
   *"registry.npmjs.org/"*) printf '{"dist-tags":{"latest":"9.9.9"}}\n' ;;
   *) printf 'curl stub: refusing %s\n' "\$*" >&2; exit 99 ;;
 esac
@@ -83,6 +84,7 @@ fixture() {
   printf 'lock v1\n' > "$seed/flake.lock"
   printf 'pins v1\n' > "$seed/modules/pinned-packages.nix"
   printf 'pi v1\n' > "$seed/modules/pi.nix"
+  printf '{\n  cli = "0.1.0";\n  tui = "0.1.0";\n}\n' > "$seed/modules/dsh-pin.nix"
   printf 'nvim v1\n' > "$seed/modules/nvim.nix"
   git -C "$seed" add -A
   git -C "$seed" commit -qm init
@@ -109,15 +111,15 @@ push_from_other() {
   git -C "$other" push -q
 }
 
-# What modules/dotfiles.nix builds: the two values, then each body with its
-# shebang dropped, in the order modules/dotfiles.nix inlines them. The stub
-# replaces scripts/pi-reconcile.sh, which installs npm packages from the
+# The runner carries the two values dotfiles.sh reads and the scripts it runs.
+# The two reconcile scripts are stubbed because they install packages from the
 # network.
 write_runner() {
   {
     printf 'export DOTFILES_DIR=%s\n' "$machine"
     printf 'DOTFILES_MACHINES=test\n'
     printf 'pi_reconcile() { echo "[stub] pi_reconcile"; }\n'
+    printf 'dsh_reconcile() { echo "[stub] dsh_reconcile"; }\n'
     tail -n +2 "$machine/scripts/audit.sh"
     tail -n +2 "$machine/scripts/dotfiles.sh"
   } > "$runner"
@@ -202,6 +204,7 @@ run_cli sync
 expect_eq 'sync exits 0' 0 "$cli_rc"
 expect_out_has 'sync activates the pulled checkout' '[stub] activate (profile add)'
 expect_out_has 'sync runs pi_reconcile' '[stub] pi_reconcile'
+expect_out_has 'sync runs dsh_reconcile' '[stub] dsh_reconcile'
 expect_out_has 'sync names the stash holding the pins' "dotfiles sync: the pins this machine had are in stash@{0} and are no longer active."
 expect_eq 'sync lands the pulled nvim change' 'nvim v2-other' "$(cat "$machine/modules/nvim.nix")"
 expect_eq 'sync drops the stashed pin from the tree' 'lock v1' "$(cat "$machine/flake.lock")"
@@ -333,13 +336,17 @@ git -C "$machine" commit -qam 'chore(nvim): mine'
 push_from_other modules/pi.nix 'pi v2-other' 'chore(pi): other'
 run_cli upgrade
 # The branch diverged, so the pull fails before pin_scratch exists and before
-# any backup is taken. The three paths upgrade rewrites stay as they were.
+# any backup is taken. The four paths upgrade rewrites stay as they were.
 expect_eq 'upgrade exits 1 when the pull cannot fast-forward' 1 "$cli_rc"
 expect_out_has 'upgrade reports the pins are untouched' 'dotfiles upgrade: the pull failed; the pins are untouched'
 expect_out_lacks 'upgrade never reaches the bump' 'flake update'
 expect_eq 'upgrade leaves flake.lock alone' 'lock v1' "$(cat "$machine/flake.lock")"
 expect_eq 'upgrade leaves the pinned-packages file alone' 'pins v1' "$(cat "$machine/modules/pinned-packages.nix")"
 expect_eq 'upgrade leaves modules/pi.nix alone' 'pi v1' "$(cat "$machine/modules/pi.nix")"
+expect_eq 'upgrade leaves the dsh pin alone' '{
+  cli = "0.1.0";
+  tui = "0.1.0";
+}' "$(cat "$machine/modules/dsh-pin.nix")"
 expect_eq 'upgrade stashes nothing' '' "$(git -C "$machine" stash list)"
 expect_eq 'upgrade leaves the branch where it was' "$head_before" "$(git -C "$machine" rev-parse HEAD)"
 expect_eq 'upgrade leaves a clean tree' '' "$(git -C "$machine" status --porcelain)"
@@ -409,6 +416,20 @@ expect_eq 'upgrade exits 0 when the audit finds a match' 0 "$cli_rc"
 expect_out_has 'upgrade reaches the audit' 'dotfiles audit: store -'
 expect_out_has 'upgrade names the new match' 'new   #111 fixturepkg 1.2.3'
 expect_out_has 'upgrade says the audit did not fail the upgrade' 'the audit above exited non-zero; the upgrade itself is applied'
+scenario_end
+
+scenario 'upgrade promotes a dsh prerelease to its stable release'
+fixture
+machine_clone
+printf '{\n  cli = "0.2.0-rc.2";\n  tui = "0.1.0";\n}\n' > "$machine/modules/dsh-pin.nix"
+git -C "$machine" commit -qam 'chore(dsh): pin a prerelease'
+touch "$work/allow-flake-update"
+run_cli upgrade
+expect_eq 'upgrade exits 0' 0 "$cli_rc"
+expect_eq 'upgrade promotes the dsh prerelease' '{
+  cli = "0.2.0";
+  tui = "9.9.9";
+}' "$(cat "$machine/modules/dsh-pin.nix")"
 scenario_end
 
 scenario 'audit --declared reads the flake instead of the store'

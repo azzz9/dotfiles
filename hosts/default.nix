@@ -50,7 +50,11 @@ assert lib.assertMsg (upstreamSkillsWithoutLicense == [ ])
   # pi reads ~/.pi/agent/AGENTS.md as its global context file. The file belongs to
   # the skills repository, which owns the rules, and the out-of-store link to it
   # keeps an edit there immediately visible at the target path.
+  #
+  # dsh-agent-instructions@0.2.0-rc.2 reads the user-global file at
+  # $DSH_HOME/AGENTS.md.
   home.file = skillLinks // {
+    ".dsh/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${skillsCheckout}/AGENTS.md";
     ".pi/agent/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${skillsCheckout}/AGENTS.md";
     # Pi appends this one to the system prompt on every turn. The rules live there.
     ".pi/agent/APPEND_SYSTEM.md".source = config.lib.file.mkOutOfStoreSymlink "${skillsCheckout}/APPEND_SYSTEM.md";
@@ -61,6 +65,7 @@ assert lib.assertMsg (upstreamSkillsWithoutLicense == [ ])
     ./platform/linux.nix
     ../modules/dotfiles.nix
     ../modules/pi.nix
+    ../modules/dsh.nix
     ../modules/gh.nix
     ../modules/gh-dash.nix
     ../modules/git.nix

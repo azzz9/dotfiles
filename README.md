@@ -56,7 +56,7 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#<
 
 | Command            | Description                          |
 | ------------------ | ------------------------------------ |
-| `dotfiles apply`   | Build and apply the current checkout |
+| `dotfiles apply`   | Build and apply, then install any `pi` or `dsh` package whose version differs |
 | `dotfiles audit`   | Check this machine's packages against open security issues |
 | `dotfiles sync`    | Pull, then apply                     |
 | `dotfiles upgrade` | Pull, move every pin, then apply     |
@@ -69,7 +69,7 @@ give one.
 machine right after the pins move, and the `Audit` workflow reads what the flake
 declares every week, because a runner has no store to read.
 
-`sync` parks the three files `upgrade` rewrites in a stash before it pulls, so a
+`sync` parks the four files `upgrade` rewrites in a stash before it pulls, so a
 machine that has not committed its own pins still takes the other machine's
 commits. It refuses to run while any other file differs, because `apply` would
 otherwise activate a half-finished edit. The stash stays until it is dropped or
@@ -93,7 +93,7 @@ sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#<machine> --im
 | Editor         | Neovim through nixvim, with the per-language servers, formatters, and linters |
 | Git            | `git`, `gh`, `gh-dash`, `ghq`, `git-wt`, `delta`, `lazygit`                   |
 | Terminals      | `herdr`, `hunk`, and `tuios`                                                  |
-| Agents         | `pi` with the skills and the subagents                                        |
+| Agents         | `pi` with the skills and the subagents, and `dsh-tui`                          |
 | Hermes Agent   | The agent service on `nix-server` only, from the `hermes-agent` flake input   |
 | Tools          | The file, JSON, media, and language toolchains the shell assumes              |
 | Extra packages | The derivations nixpkgs lacks, pinned and bumped by `dotfiles upgrade`        |
