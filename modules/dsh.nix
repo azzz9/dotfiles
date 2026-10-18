@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 let
   pin = import ./dsh-pin.nix;
 
@@ -17,10 +17,13 @@ let
     fi
     exec "$node_bin" "$bin" "$@"
   '';
+  # --patch layers after the profile's own cordis.patch.yml, so this route wins
+  # over a machine-local edit of the same entry.
   dshTui = pkgs.writeShellScriptBin "dsh-tui" ''
-    exec ${dsh}/bin/dsh --profile dsh-tui "$@"
+    exec ${dsh}/bin/dsh --profile dsh-tui --patch ${config.xdg.configHome}/dsh/ollama-cloud.patch.yml "$@"
   '';
 in
 {
+  xdg.configFile."dsh/ollama-cloud.patch.yml".source = ./dsh/ollama-cloud.patch.yml;
   home.packages = [ dsh dshTui ];
 }

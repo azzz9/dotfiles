@@ -80,6 +80,12 @@ modules at install time, then keeps the dsh-tui plugin in the mutable
 mise-installed Node 24.18.0, because the CLI's require-builtin addon rejects
 the Nix 22.23.2 and 24.21.0 builds; `DSH_NODE` overrides the path.
 
+`modules/dsh/ollama-cloud.patch.yml` declares the ollama-cloud provider route
+and the default model, and the `dsh-tui` wrapper passes it with `--patch` so it
+layers after the profile's own patch file. The route names
+`OLLAMA_CLOUD_API_KEY`, resolved per request from the launching environment
+first and then the harness credential store; the key stays machine-local.
+
 The CLI itself comes from upstream's own flake, the `pi` input at
 `github:earendil-works/pi`, which builds pi from source. `modules/pi.nix` and
 `dotfiles-cli.nix` take `piFlake.packages.<system>.pi` from it, so the
