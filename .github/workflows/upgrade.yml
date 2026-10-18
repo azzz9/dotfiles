@@ -1,0 +1,70 @@
+# The pins are one repository fact, not one per machine. This job moves them on
+# a runner and opens a pull request, so the change is built on both platforms
+# before any machine applies it. A machine then only runs `dotfiles apply` or
+# `dotfiles sync`; `dotfiles upgrade` stays the by-hand way to move them, and
+# `dotfiles upgrade --pins-only` is what this job runs.
+#
+# Opening the pull request needs "Allow GitHub Actions to create and approve
+# pull requests" in the repository's Actions settings; the job token has
+# contents and pull-requests write scope below.
+name: Upgrade
+
+on:
+  schedule:
+    # Monday 03:00 UTC, noon JST.
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  pins:
+    name: Move the pins
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
+        with:
+          extra_nix_config: |
+            accept-flake-config = true
+            access-tokens = github.com=${{ github.token }}
+            experimental-features = nix-command flakes
+
+      - name: Move the pins
+        env:
+          # The CLI works on the checkout it is pointed at. flake.nix names the
+          # machine's own checkout, not the runner's.
+          DOTFILES_DIR: ${{ github.workspace }}
+        # The machine argument names the row to bump for. The pins are shared by
+        # every machine, and --pins-only stops before the build that would need
+        # a store, so any row works here.
+        run: nix run .#dotfiles -- upgrade --pins-only nix-desktop
+
+      - name: Open or update the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: chore/pin-upgrade
+          BASE: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "Every pin is already at its latest."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
+          git add -A
+          git commit -m "chore(pins): move every pin to its latest"
+          # The branch is the bot's own, so a rerun replaces its content.
+          git push --force origin "$BRANCH"
+          if gh pr view "$BRANCH" --json number > /dev/null 2>&1; then
+            echo "Updated the existing pull request."
+          else
+            gh pr create --fill --head "$BRANCH" --base "$BASE"
+          fi
