@@ -55,6 +55,7 @@ wtcd() {
 _dotfiles() {
   local -a commands=(
     'apply:apply the current checkout'
+    'audit:check this machine against open security issues'
     'sync:pull latest changes, then apply'
     'upgrade:update flake.lock inputs, then apply'
   )
@@ -63,10 +64,23 @@ _dotfiles() {
   _arguments -C \
     '(-h --help)'{-h,--help}'[show help]' \
     '1:command:->commands' \
-    '2:machine:->machines'
+    '*::argument:->args'
   case $state in
     commands) _describe -t commands 'dotfiles command' commands ;;
-    machines) _describe -t machines 'machine' machines ;;
+    args)
+      # Inside a state action $words starts at the first argument, so the command
+      # word is $words[1].
+      case $words[1] in
+        audit)
+          _arguments -C \
+            '--update[record what it found in scripts/audit-baseline.txt instead of failing on it]' \
+            '--declared[read the packages flake.nix names for this machine instead of the store]' \
+            '*:machine:->machines'
+          [[ $state == machines ]] && _describe -t machines 'machine' machines
+          ;;
+        *) _describe -t machines 'machine' machines ;;
+      esac
+      ;;
   esac
 }
 
