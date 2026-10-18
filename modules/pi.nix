@@ -1,4 +1,13 @@
-{ lib, pkgs, config, repoDir, piFlake, piPackagePaths, machine, ... }:
+{
+  lib,
+  pkgs,
+  config,
+  repoDir,
+  piFlake,
+  piPackagePaths,
+  machine,
+  ...
+}:
 let
   # One row per package pi installs. `input` names the flake input whose store
   # path the row loads; `spec` is an exact npm source; `npmDepsHash` marks an
@@ -13,10 +22,18 @@ let
   # would be dropped again, because the merge below replaces the `packages`
   # array on every activation.
   rows = [
-    { input = "pi-subagents"; npmDepsHash = "sha256-862hXsUJ7CSVSntkV1Iv4z5E2On8v5BJSbM9iIYe+GY=";
-      filter = { prompts = [ ]; skills = [ "!skills/council-mode" ]; };
+    {
+      input = "pi-subagents";
+      npmDepsHash = "sha256-862hXsUJ7CSVSntkV1Iv4z5E2On8v5BJSbM9iIYe+GY=";
+      filter = {
+        prompts = [ ];
+        skills = [ "!skills/council-mode" ];
+      };
     }
-    { input = "pi-web-access"; npmDepsHash = "sha256-BvAI68JpqJKNcg8luJ3d250C/YISUf13EItMgrJVrV4="; }
+    {
+      input = "pi-web-access";
+      npmDepsHash = "sha256-BvAI68JpqJKNcg8luJ3d250C/YISUf13EItMgrJVrV4=";
+    }
     # The rules load from APPEND_SYSTEM.md every turn, so the menu lists only the
     # skills a person types.
     { input = "skills"; }
@@ -38,7 +55,8 @@ let
     { spec = "npm:pi-agent-teleport@0.2.5"; }
     # Compact, expandable TUI tool rows, with its own bundled theme.
     { input = "pi-compact-tools"; }
-  ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+  ]
+  ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
     # pi_reconcile installs this row. The API key stays machine-local in
     # ~/.pi/agent/ollama_cloud.json.
     { spec = "npm:pi-ollama-cloud-link@1.2.0"; }
@@ -49,7 +67,8 @@ let
   # `npmDepsHash` loads a copy of that path carrying its node_modules. The
   # install phase copies the whole work tree because the pack step that
   # buildNpmPackage runs by default trims the sources pi loads from here.
-  declare = row:
+  declare =
+    row:
     let
       source =
         if row ? input then
@@ -60,18 +79,23 @@ let
           if row ? npmDepsHash then
             pkgs.buildNpmPackage {
               pname = meta.name;
-              version = meta.version;
+              inherit (meta) version;
               inherit src;
               inherit (row) npmDepsHash;
               dontNpmBuild = true;
               # pi installs its npm packages with the same two flags: the
               # extensions need no dev tree and resolve pi's own packages from
               # the host.
-              npmFlags = [ "--omit=dev" "--legacy-peer-deps" ];
+              npmFlags = [
+                "--omit=dev"
+                "--legacy-peer-deps"
+              ];
               installPhase = "mkdir -p $out; cp -r . $out/";
             }
-          else src
-        else row.spec;
+          else
+            src
+        else
+          row.spec;
     in
     if row ? filter then { inherit source; } // row.filter else source;
 
@@ -86,14 +110,18 @@ let
     # pi reads a list of only `+name` entries as a change to the inherited
     # selection, so a plain "codemode" here would replace read/bash/edit/write.
     defaultTools = [ "+codemode" ];
-    markdown = { mermaid = "final"; };
+    markdown = {
+      mermaid = "final";
+    };
     # The tier agents carry no model, so the host binds one per tier here. The
     # merge below adds this key to the local settings.json like any other.
     subagents = modelTiers.subagentsFor machine;
   };
   # Every other key is carried over untouched: objects are merged, scalars
   # replaced. The file stays a regular file so pi can keep writing it.
-  piManagedSettingsJson = (pkgs.formats.json { }).generate "pi-managed-settings.json" piManagedSettings;
+  piManagedSettingsJson =
+    (pkgs.formats.json { }).generate "pi-managed-settings.json"
+      piManagedSettings;
   # Compact-tools reads this at startup; only non-default keys belong here.
   compactToolsConfig = (pkgs.formats.json { }).generate "compact-tools.json" {
     style = "compact";
@@ -103,7 +131,9 @@ let
   # misspelled name would be silently unused. Both agent packages own names here,
   # the skills package for the tiers and pi-subagents for the builtins.
   agentNamesIn = dir: map (lib.removeSuffix ".md") (builtins.attrNames (builtins.readDir dir));
-  pinnedAgents = agentNamesIn "${piPackagePaths.skills}/agents" ++ agentNamesIn "${piPackagePaths.pi-subagents}/agents";
+  pinnedAgents =
+    agentNamesIn "${piPackagePaths.skills}/agents"
+    ++ agentNamesIn "${piPackagePaths.pi-subagents}/agents";
   modelTiers = import ./pi/model-tiers.nix { knownAgents = pinnedAgents; };
   assignmentProblems = modelTiers.problemsFor modelTiers.rows;
   piSettingsMerge = pkgs.writeShellScript "pi-settings-managed" ''
@@ -130,8 +160,9 @@ let
     mv -f "$merged" "$settings"
   '';
 in
-assert lib.assertMsg (assignmentProblems == [ ])
-  "modules/pi.nix: delegation assignment: ${lib.concatStringsSep "; " assignmentProblems}";
+assert lib.assertMsg (
+  assignmentProblems == [ ]
+) "modules/pi.nix: delegation assignment: ${lib.concatStringsSep "; " assignmentProblems}";
 {
   programs.pi-coding-agent = {
     enable = true;
@@ -146,10 +177,12 @@ assert lib.assertMsg (assignmentProblems == [ ])
   home.file.".pi/agent/compact-tools.json".source = compactToolsConfig;
   # The visible-model rules are hand-written for the providers the Linux
   # machines carry; the macOS row keeps its own provider set.
-  home.file.".pi/agent/extensions/openai-model-visibility.ts" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
-    source = config.lib.file.mkOutOfStoreSymlink "${repoDir}/modules/pi/openai-model-visibility.ts";
-    force = true;
-  };
+  home.file.".pi/agent/extensions/openai-model-visibility.ts" =
+    lib.mkIf pkgs.stdenv.hostPlatform.isLinux
+      {
+        source = config.lib.file.mkOutOfStoreSymlink "${repoDir}/modules/pi/openai-model-visibility.ts";
+        force = true;
+      };
   # Runs before linkGeneration so the first switch can still read the old store
   # symlink and carry the local keys into the regular file.
   home.activation.piSettings = lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''

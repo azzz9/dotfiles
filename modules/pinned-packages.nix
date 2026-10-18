@@ -21,25 +21,27 @@ let
     else
       builtins.head match;
 
-  codediffWatcherTarget = {
-    "x86_64-linux" = {
-      os = "linux";
-      arch = "x64";
-      hash = "sha256-acXsKVZCUZ952p57kIkK0TLw/YDiiD9v9pZxBqAF27w=";
-    };
-    "aarch64-darwin" = {
-      os = "macos";
-      arch = "arm64";
-      hash = "sha256-LOudhXiteUsNAYkwbwTQdf7GEdLAYfeL24q4SBri0t4=";
-    };
-  }.${pkgs.stdenv.hostPlatform.system};
+  codediffWatcherTarget =
+    {
+      "x86_64-linux" = {
+        os = "linux";
+        arch = "x64";
+        hash = "sha256-acXsKVZCUZ952p57kIkK0TLw/YDiiD9v9pZxBqAF27w=";
+      };
+      "aarch64-darwin" = {
+        os = "macos";
+        arch = "arm64";
+        hash = "sha256-LOudhXiteUsNAYkwbwTQdf7GEdLAYfeL24q4SBri0t4=";
+      };
+    }
+    .${pkgs.stdenv.hostPlatform.system};
 
   codediffWatcher = pkgs.stdenvNoCC.mkDerivation {
     pname = "codediff-watcher";
     version = codediffWatcherVersion;
     src = pkgs.fetchurl {
       url = "https://github.com/esmuellert/codediff/releases/download/v${codediffWatcherVersion}/codediff-watcher-${codediffWatcherVersion}-${codediffWatcherTarget.os}-${codediffWatcherTarget.arch}.tar.gz";
-      hash = codediffWatcherTarget.hash;
+      inherit (codediffWatcherTarget) hash;
     };
     sourceRoot = ".";
     nativeBuildInputs = pkgs.lib.optional pkgs.stdenv.hostPlatform.isLinux pkgs.autoPatchelfHook;
@@ -143,10 +145,23 @@ let
       hash = "sha256-neK1K3Emam70LJR/oVi1Gn0dNM+OC6X5TyAufQJE7BQ=";
     };
     vendorHash = "sha256-po/kY9zXId2qvk3oNgdrgFLEbVIWedYjfqMfdX4J5Ls=";
-    ldflags = [ "-s" "-w" ];
+    ldflags = [
+      "-s"
+      "-w"
+    ];
   };
 in
 {
-  inherit debugpyPython nomicfoundationSolidityLanguageServer codediffWatcher herdrNvim;
-  inherit prettierPluginSolidity prettierPluginSolidityDist roots solhint;
+  inherit
+    debugpyPython
+    nomicfoundationSolidityLanguageServer
+    codediffWatcher
+    herdrNvim
+    ;
+  inherit
+    prettierPluginSolidity
+    prettierPluginSolidityDist
+    roots
+    solhint
+    ;
 }

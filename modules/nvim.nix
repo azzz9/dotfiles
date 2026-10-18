@@ -74,14 +74,20 @@ let
   # Order matters (dap/init.lua defines the helpers the adapters use, and
   # codediff.lua defines parent_or_empty_tree for neogit.lua), so luaFiles stays
   # a list. This listing keeps it in sync with the directory.
-  listLuaFiles = prefix: dir:
-    lib.concatLists (lib.mapAttrsToList
-      (name: type:
-        let rel = if prefix == "" then name else "${prefix}/${name}";
+  listLuaFiles =
+    prefix: dir:
+    lib.concatLists (
+      lib.mapAttrsToList (
+        name: type:
+        let
+          rel = if prefix == "" then name else "${prefix}/${name}";
         in
-        if type == "directory" then listLuaFiles rel (dir + "/${name}")
-        else lib.optional (lib.hasSuffix ".lua" name) rel)
-      (builtins.readDir dir));
+        if type == "directory" then
+          listLuaFiles rel (dir + "/${name}")
+        else
+          lib.optional (lib.hasSuffix ".lua" name) rel
+      ) (builtins.readDir dir)
+    );
   luaFilesOnDisk = listLuaFiles "" luaConfigDir;
   luaFilesUnlisted = lib.subtractLists luaFiles luaFilesOnDisk;
   luaFilesAbsent = lib.subtractLists luaFilesOnDisk luaFiles;
@@ -185,7 +191,10 @@ assert lib.assertMsg (luaFilesUnlisted == [ ] && luaFilesAbsent == [ ])
         smear-cursor-nvim
         which-key-nvim
       ]
-      ++ [ treesitterWithGrammars pinned.herdrNvim ];
+      ++ [
+        treesitterWithGrammars
+        pinned.herdrNvim
+      ];
     inherit extraConfigLua;
   };
 }

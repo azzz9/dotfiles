@@ -1,7 +1,12 @@
 # Settings only macOS needs. Everything shared lives in ../default.nix.
 # The guard stays here because `imports` cannot read `pkgs` without forcing
 # `config`, and the Home Manager module system reports that as infinite recursion.
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
   # The Nix profile directories are not on the login shell's default PATH on
   # macOS, and Homebrew's own shellenv runs after these entries.

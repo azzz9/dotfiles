@@ -1,3 +1,3 @@
-      vim.g.gitblame_enabled = 1
-      vim.g.gitblame_message_template = "  <author> - <summary>"
-      vim.g.gitblame_highlight_group = "Comment"
+vim.g.gitblame_enabled = 1
+vim.g.gitblame_message_template = "  <author> - <summary>"
+vim.g.gitblame_highlight_group = "Comment"

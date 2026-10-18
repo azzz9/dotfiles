@@ -1,4 +1,10 @@
-{ config, lib, pkgs, machineNames, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  machineNames,
+  ...
+}:
 let
   zshCacheDir = "${config.xdg.cacheHome}/zsh";
   fzfCache = "${zshCacheDir}/fzf-integration.zsh";

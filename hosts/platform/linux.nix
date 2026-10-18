@@ -1,5 +1,10 @@
 # Settings only Linux needs. Everything shared lives in ../default.nix.
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
   home.sessionPath = [ "${config.home.homeDirectory}/.local/bin" ];
 

@@ -28,7 +28,10 @@
     isNormalUser = true;
     description = "azzz";
     shell = pkgs.zsh;
-    extraGroups = [ "networkmanager" "wheel" ];
+    extraGroups = [
+      "networkmanager"
+      "wheel"
+    ];
   };
 
   # mise installs tools as unpatched binaries, and so do plugin releases from
@@ -44,7 +47,10 @@
 
   # /etc/nix/nix.conf is generated from here, and a hand-typed
   # `sudo nixos-rebuild switch --flake` fails without both features.
-  nix.settings.experimental-features = lib.mkDefault [ "nix-command" "flakes" ];
+  nix.settings.experimental-features = lib.mkDefault [
+    "nix-command"
+    "flakes"
+  ];
 
   nixpkgs.config.allowUnfree = lib.mkDefault true;
 }

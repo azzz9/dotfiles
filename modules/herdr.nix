@@ -1,4 +1,11 @@
-{ config, lib, pkgs, repoDir, worktreeRoot, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  repoDir,
+  worktreeRoot,
+  ...
+}:
 let
   toastDelivery = "system";
 in

@@ -2,7 +2,12 @@
 # machine lives in hosts/platform/nixos/machines/<name>/ next to its
 # hardware-configuration.nix. Every scalar is a default, so this machine's own
 # configuration.nix can set it; lists and attrsets merge already.
-{ lib, pkgs, serein, ... }:
+{
+  lib,
+  pkgs,
+  serein,
+  ...
+}:
 
 let
   meltype = pkgs.callPackage ../pkgs/meltype.nix { };

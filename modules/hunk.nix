@@ -1,4 +1,9 @@
-{ hunk, pkgs, lib, ... }:
+{
+  hunk,
+  pkgs,
+  lib,
+  ...
+}:
 let
   upstreamHunk = hunk.packages.${pkgs.stdenv.hostPlatform.system}.default;
 

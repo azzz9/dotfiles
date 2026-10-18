@@ -1,46 +1,44 @@
-      local lint = require("lint")
-      local linters_by_ft = {}
-      for ft, conf in pairs(_langs) do
-        if conf.linters then
-          linters_by_ft[ft] = conf.linters
-        end
+local lint = require("lint")
+local linters_by_ft = {}
+for ft, conf in pairs(_langs) do
+  if conf.linters then
+    linters_by_ft[ft] = conf.linters
+  end
+end
+lint.linters_by_ft = linters_by_ft
+
+-- Preserve default args (stdin, --formatter unix) and add --disc.
+lint.linters.solhint.args =
+  vim.list_extend(vim.deepcopy(lint.linters.solhint.args or {}), { "--disc" })
+
+local has_clangd = vim.fn.executable("clangd") == 1
+if vim.fn.executable("clang-tidy") == 1 and not has_clangd then
+  lint.linters_by_ft.c = { "clangtidy" }
+  lint.linters_by_ft.cpp = { "clangtidy" }
+  lint.linters_by_ft.objc = { "clangtidy" }
+  lint.linters_by_ft.objcpp = { "clangtidy" }
+end
+
+local function has_solhint_config()
+  return has_project_config(0, { ".solhint.json", ".solhint.yaml", ".solhint.yml" })
+end
+
+vim.api.nvim_create_autocmd({ "BufWritePost", "InsertLeave" }, {
+  callback = function()
+    if vim.bo.filetype == "solidity" then
+      local linters = {}
+      if has_solhint_config() then
+        table.insert(linters, "solhint")
       end
-      lint.linters_by_ft = linters_by_ft
-
-      -- Preserve default args (stdin, --formatter unix) and add --disc.
-      lint.linters.solhint.args = vim.list_extend(
-        vim.deepcopy(lint.linters.solhint.args or {}),
-        { "--disc" }
-      )
-
-      local has_clangd = vim.fn.executable("clangd") == 1
-      if vim.fn.executable("clang-tidy") == 1 and not has_clangd then
-        lint.linters_by_ft.c = { "clangtidy" }
-        lint.linters_by_ft.cpp = { "clangtidy" }
-        lint.linters_by_ft.objc = { "clangtidy" }
-        lint.linters_by_ft.objcpp = { "clangtidy" }
+      if #linters > 0 then
+        lint.try_lint(linters)
       end
-
-      local function has_solhint_config()
-        return has_project_config(0, { ".solhint.json", ".solhint.yaml", ".solhint.yml" })
-      end
-
-      vim.api.nvim_create_autocmd({ "BufWritePost", "InsertLeave" }, {
-        callback = function()
-          if vim.bo.filetype == "solidity" then
-            local linters = {}
-            if has_solhint_config() then
-              table.insert(linters, "solhint")
-            end
-            if #linters > 0 then
-              lint.try_lint(linters)
-            end
-            return
-          end
-          if uses_biome(0) then
-            lint.try_lint("biomejs")
-            return
-          end
-          lint.try_lint()
-        end,
-      })
+      return
+    end
+    if uses_biome(0) then
+      lint.try_lint("biomejs")
+      return
+    end
+    lint.try_lint()
+  end,
+})

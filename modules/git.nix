@@ -1,4 +1,9 @@
-{ lib, pkgs, worktreeRoot, ... }:
+{
+  lib,
+  pkgs,
+  worktreeRoot,
+  ...
+}:
 {
   # Sensible ghq + git-wt defaults without taking over the whole ~/.gitconfig.
   # NB: activation scripts run with a minimal PATH, so reference git explicitly.

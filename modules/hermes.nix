@@ -4,7 +4,13 @@
 # The module is the Home Manager one, because the gateway is a systemd USER
 # service, and because the state, the credentials and the cron jobs belong to
 # azzz rather than to the system.
-{ config, hermesAgent, lib, pkgs, ... }:
+{
+  config,
+  hermesAgent,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   imports = [ hermesAgent.homeManagerModules.default ];
@@ -33,7 +39,10 @@
     # work: home.packages already carries pkgs.python3.withPackages, and buildEnv
     # refuses two paths that both ship bin/python3. Use that same derivation if a
     # shell command ever needs an interpreter.
-    extraPackages = [ pkgs.systemd pkgs.curl ];
+    extraPackages = [
+      pkgs.systemd
+      pkgs.curl
+    ];
 
     # The unit it replaces had WorkingDirectory=/home/azzz/.hermes. The
     # module also writes workingDirectory to config.yaml as terminal.cwd, and
@@ -57,9 +66,10 @@
   # plugins.enabled undeclared on purpose: a Nix-declared list would win over the
   # file and take away `hermes plugins enable` for every other plugin.
   home.activation.herdrHermesIntegration =
-    lib.hm.dag.entryAfter [ "writeBoundary" "installPackages" "hermesAgentSetup" ] ''
-      run ${pkgs.herdr}/bin/herdr integration install hermes >/dev/null
-    '';
+    lib.hm.dag.entryAfter [ "writeBoundary" "installPackages" "hermesAgentSetup" ]
+      ''
+        run ${pkgs.herdr}/bin/herdr integration install hermes >/dev/null
+      '';
 
   # Upstream's unit is Restart=always, and hermes exits 78 on a permanent
   # refusal (GATEWAY_FATAL_CONFIG_EXIT_CODE, for example a profile the
