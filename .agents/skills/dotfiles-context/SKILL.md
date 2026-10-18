@@ -73,7 +73,10 @@ paths, so `flake.lock` is the only pin; `pi_reconcile` installs any npm row whos
 version differs from its spec. The pins are below.
 
 `modules/dsh.nix` installs the `dsh` and `dsh-tui` wrappers, and
-`modules/dsh-pin.nix` pins both versions. The CLI is not a derivation:
+`modules/dsh-pin.nix` pins both versions. The module is guarded with `lib.mkIf`
+on Linux, so the macbook carries no wrapper, no `~/.dsh/AGENTS.md` link, and no
+provider overlay; `dsh_reconcile` returns on Darwin for the same reason. The CLI
+is not a derivation:
 `dsh_reconcile` installs it into `~/.local/share/dsh` because it builds native
 modules at install time, then keeps the dsh-tui plugin in the mutable
 `~/.dsh/profiles/dsh-tui` on the pinned version. The wrapper launches the
@@ -258,6 +261,7 @@ Conditionals live in the files below, each next to what it configures.
 
 | File | What it separates |
 |------|-------------------|
+| `hosts/default.nix` | the dsh module and its AGENTS.md link on Linux |
 | `hosts/platform/darwin.nix` | sessionPath entries and the GC launchd argument split |
 | `hosts/platform/linux.nix` | sessionPath entries and the XDG user dirs |
 | `modules/ghostty.nix` | `config` against `config.ghostty`, with different content |

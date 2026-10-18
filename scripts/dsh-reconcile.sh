@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # Installs the dsh CLI into the dotfiles-owned prefix, keeps the dsh-tui
 # profile plugin on the pinned version, and provisions the pinned Node runtime.
+# Linux only, matching the module that installs the wrappers.
 #
 # dotfiles-cli.nix inlines this file into the `dotfiles` CLI.
 dsh_reconcile() {
+  if [ "$(uname -s)" != "Linux" ]; then
+    return 0
+  fi
   local prefix bin installed dsh_home nodedir python_bin pin_file
   local dsh_cli_version dsh_tui_version dsh_node_version node_bin marker built
   prefix="${HOME}/.local/share/dsh"

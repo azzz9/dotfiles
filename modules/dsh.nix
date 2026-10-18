@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 let
   pin = import ./dsh-pin.nix;
 
@@ -23,7 +23,8 @@ let
     exec ${dsh}/bin/dsh --profile dsh-tui --patch ${config.xdg.configHome}/dsh/ollama-cloud.patch.yml "$@"
   '';
 in
-{
+# Every machine imports this module; the guard keeps the layer to Linux.
+lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
   xdg.configFile."dsh/ollama-cloud.patch.yml".source = ./dsh/ollama-cloud.patch.yml;
   home.packages = [ dsh dshTui ];
 }

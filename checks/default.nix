@@ -12,7 +12,7 @@ let
         python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$files/$f"
       done
       for f in .config/lazygit/config.yml .config/gh/config.yml \
-               .config/gh-dash/config.yml .config/dsh/ollama-cloud.patch.yml; do
+               .config/gh-dash/config.yml; do
         yq -e '.' "$files/$f" > /dev/null
       done
       zsh -n "$files/.zshrc"
@@ -24,6 +24,7 @@ let
       # Linux has the unit, and pkgs.systemd does not evaluate on darwin, so the
       # check stays behind the stdenv test.
       ${pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
+        yq -e '.' "$files/.config/dsh/ollama-cloud.patch.yml" > /dev/null
         hermes_unit="$files/.config/systemd/user/hermes-agent.service"
         if [ -e "$hermes_unit" ]; then
           grep -q '${pkgs.systemd}/bin' "$hermes_unit" || {
