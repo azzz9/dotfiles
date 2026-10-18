@@ -61,7 +61,7 @@ while IFS='|' read -r label command; do
   labels+=("$label")
   commands+=("$command")
 done <<'LAYOUT'
-agents|pi
+agents|
 diff|nvim -c CodeDiff
 scratch|
 scratch|
