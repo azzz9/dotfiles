@@ -51,11 +51,15 @@ let
   # The machines table README.md carries, rendered from the same attrset that
   # builds the configurations. Adding a row to flake.nix without adding its
   # README row fails the docs check instead of leaving the prose stale.
-  machinesTable = lib.concatStringsSep "\n" (
-    lib.mapAttrsToList (
-      name: machine: "| `${name}` | `${machine.system}` | ${if machine ? nixos then "yes" else "no"} |"
-    ) machines
-  );
+  # The trailing newline matters: `read` skips a final line without one, so the
+  # last machine would go unchecked.
+  machinesTable =
+    lib.concatStringsSep "\n" (
+      lib.mapAttrsToList (
+        name: machine: "| `${name}` | `${machine.system}` | ${if machine ? nixos then "yes" else "no"} |"
+      ) machines
+    )
+    + "\n";
 in
 {
   deadnix = pkgs.runCommand "deadnix" { nativeBuildInputs = [ pkgs.deadnix ]; } ''
@@ -122,8 +126,8 @@ in
     for path in flake.nix hosts modules dotfiles-cli.nix; do
       test -e "${self}/$path"
     done
-    if grep -rn 'getEnv' ${self}/flake.nix ${self}/hosts ${self}/modules ${self}/dotfiles-cli.nix; then
-      echo "evaluation reads the environment; state the path or the account in flake.nix instead, so the flake stays pure" >&2
+    if grep -rnE 'builtins\.(getEnv|currentSystem)' ${self}/flake.nix ${self}/hosts ${self}/modules ${self}/dotfiles-cli.nix; then
+      echo "evaluation reads the environment or the host; state the path or the account in flake.nix instead, so the flake stays pure" >&2
       exit 1
     fi
     touch $out
@@ -213,8 +217,15 @@ in
         done < "$expected"
 
         # pin_names is the list `dotfiles upgrade` bumps; each one needs a row in
-        # the skill's pin table so the documentation moves with it.
-        for pin in $(sed -n 's/^pin_names=(\(.*\))$/\1/p' ${self}/scripts/dotfiles.sh); do
+        # the skill's pin table so the documentation moves with it. A rewrite
+        # that puts the list on several lines would otherwise pass with nothing
+        # checked.
+        pins="$(sed -n 's/^pin_names=(\(.*\))$/\1/p' ${self}/scripts/dotfiles.sh)"
+        if [ -z "$pins" ]; then
+          echo "docs: scripts/dotfiles.sh no longer declares pin_names on one line" >&2
+          exit 1
+        fi
+        for pin in $pins; do
           grep -qF -- "\`$pin\`" "$skill" || {
             echo "docs: SKILL.md has no pin row for $pin" >&2
             exit 1
