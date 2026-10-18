@@ -1,12 +1,49 @@
-      local function select_branch_diff()
-        local branches = vim.fn.systemlist({
-          "git",
-          "for-each-ref",
-          "--format=%(refname:short)",
-          "refs/heads",
-          "refs/remotes",
-        })
+      local function git_lines(git_root, ...)
+        local out = vim.fn.systemlist(vim.list_extend({ "git", "-C", git_root }, { ... }))
+        -- systemlist keeps git's stderr, so a failing command would otherwise
+        -- read as one branch named "fatal: ...".
+        if out[1] and out[1]:match("^fatal:") then
+          return {}
+        end
+        return out
+      end
 
+      -- A detached HEAD has no branch name, so the commit itself is the ref.
+      local function head_ref(git_root)
+        local name = git_lines(git_root, "rev-parse", "--abbrev-ref", "HEAD")[1]
+        if name == nil or name == "HEAD" then
+          return git_lines(git_root, "rev-parse", "--short", "HEAD")[1]
+        end
+        return name
+      end
+
+      local function head_first(refs, head)
+        if not head then
+          return refs
+        end
+        for i, ref in ipairs(refs) do
+          if ref == head then
+            table.remove(refs, i)
+            break
+          end
+        end
+        table.insert(refs, 1, head)
+        return refs
+      end
+
+      local function select_branch_diff()
+        local buffer = vim.api.nvim_buf_get_name(0)
+        local directory = buffer ~= "" and vim.fn.fnamemodify(buffer, ":h") or ""
+        local seed = vim.fn.isdirectory(directory) == 1 and directory or vim.fn.getcwd()
+        local git_root = git_lines(seed, "rev-parse", "--show-toplevel")[1]
+        if not git_root or vim.fn.isdirectory(git_root) ~= 1 then
+          vim.notify("Not in a git repository", vim.log.levels.WARN)
+          return
+        end
+
+        local head = head_ref(git_root)
+        local branches =
+          git_lines(git_root, "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes")
         local seen = {}
         branches = vim.tbl_filter(function(branch)
           if branch == "" or branch:match("/HEAD$") or seen[branch] then
@@ -17,15 +54,39 @@
         end, branches)
         table.sort(branches)
 
-        if #branches == 0 then
+        local bases = head_first(branches, head)
+        if #bases == 0 then
           vim.notify("No local or remote branches found", vim.log.levels.WARN)
           return
         end
 
-        vim.ui.select(branches, { prompt = "Compare from branch (merge-base): " }, function(branch)
-          if branch then
-            vim.cmd("CodeDiff " .. vim.fn.fnameescape(branch .. "..."))
+        local function label(ref)
+          return ref == head and (ref .. "  (HEAD)") or ref
+        end
+
+        vim.ui.select(bases, {
+          prompt = "Compare from (Enter = " .. (head or "HEAD") .. "): ",
+          format_item = label,
+        }, function(base)
+          if not base then
+            return
           end
+          -- The working tree keeps the previous behaviour: `base...` is the
+          -- merge base against HEAD, diffed against what is on disk.
+          local working_tree = "(working tree)"
+          local targets = vim.tbl_filter(function(ref)
+            return ref ~= base
+          end, branches)
+          targets = head_first(targets, head ~= base and head or nil)
+          table.insert(targets, 1, working_tree)
+
+          vim.ui.select(targets, { prompt = "Compare to: ", format_item = label }, function(target)
+            if not target then
+              return
+            end
+            local spec = target == working_tree and (base .. "...") or (base .. "..." .. target)
+            vim.cmd("CodeDiff " .. vim.fn.fnameescape(spec))
+          end)
         end)
       end
 
@@ -51,7 +112,6 @@
       vim.keymap.set("n", "<leader>gs", "<cmd>CodeDiff --staged<cr>", { desc = "Open staged diff" })
       vim.keymap.set("n", "<leader>gf", "<cmd>CodeDiff file HEAD<cr>", { desc = "Compare file with HEAD" })
       vim.keymap.set("n", "<leader>gl", "<cmd>CodeDiff history %<cr>", { desc = "Current file history" })
-      vim.keymap.set("n", "<leader>gL", "<cmd>CodeDiff history<cr>", { desc = "Repository file history" })
 
       -- A history session always keeps a diff pane next to its list, and at one
       -- row that pane is a blank strip above the list. winminheight lets a
