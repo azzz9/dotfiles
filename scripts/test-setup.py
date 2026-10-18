@@ -458,7 +458,7 @@ esac
         self.assert_success(result, calls, repo)
         self.assertIn(
             f"sudo env NIX_CONFIG=extra-experimental-features = nix-command flakes "
-            f"nixos-rebuild switch --flake {repo}#nix-desktop --impure\n", calls)
+            f"nixos-rebuild switch --flake {repo}#nix-desktop\n", calls)
         self.assertNotIn("nixos-rebuild switch --flake", result.stdout)
         self.assertNotIn("nixos-generate-config", calls)
         self.assertNotIn(" add ", calls)

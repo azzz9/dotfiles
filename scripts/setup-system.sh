@@ -285,7 +285,7 @@ ensure_dotfiles_repo() {
 flake_machines() {
   local repo_dir="$1"
 
-  nix_cmd eval --impure --raw \
+  nix_cmd eval --raw \
     --apply 'names: builtins.concatStringsSep " " (builtins.attrNames names)' \
     "$repo_dir#homeConfigurations"
 }
@@ -510,7 +510,7 @@ apply_home_manager() {
     echo "The live links name $DEFAULT_DOTFILES_DIR. Add checkout = \"$repo_dir\"; to the machines.$machine row so they resolve." >&2
   fi
 
-  DOTFILES_DIR="$repo_dir" nix_cmd run nixpkgs#home-manager -- switch --flake "$repo_dir#$machine" --impure -b backup
+  DOTFILES_DIR="$repo_dir" nix_cmd run nixpkgs#home-manager -- switch --flake "$repo_dir#$machine" -b backup
 }
 
 # Debian's installer points the 127.0.1.1 line at the name the machine had when
@@ -632,7 +632,7 @@ main() {
   if [[ "$linux_distribution" == "nixos" && -d "$repo_dir/hosts/platform/nixos/machines/$machine" ]]; then
     # A copied machine configuration can collide with the repo's modules. Fail
     # here, naming the file to edit, rather than inside nixos-rebuild.
-    if ! nix_cmd eval --impure --raw \
+    if ! nix_cmd eval --raw \
       "$repo_dir#nixosConfigurations.$machine.config.system.build.toplevel.drvPath" >/dev/null; then
       echo "The system configuration for '$machine' does not evaluate." >&2
       echo "Resolve the conflict nix reported above in hosts/platform/nixos/machines/$machine/configuration.nix." >&2
@@ -642,7 +642,7 @@ main() {
     # nixos-rebuild explicitly; a fresh NixOS has flakes off.
     echo "Applying the NixOS system configuration for '$machine'..."
     run_as_root env NIX_CONFIG="extra-experimental-features = nix-command flakes" \
-      nixos-rebuild switch --flake "$repo_dir#$machine" --impure
+      nixos-rebuild switch --flake "$repo_dir#$machine"
   fi
 
   if [[ "$should_reboot" == 1 && "${REBOOT:-0}" == 1 ]]; then

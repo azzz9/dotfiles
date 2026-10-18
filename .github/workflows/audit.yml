@@ -42,10 +42,10 @@ jobs:
 
       - name: Audit the declared packages
         env:
-          # flake.nix reads this back through builtins.getEnv, and the CLI
-          # refuses a checkout it cannot find.
+          # flake.nix names the machine's checkout, not the runner's, and the
+          # CLI refuses a checkout it cannot find.
           DOTFILES_DIR: ${{ github.workspace }}
           # An anonymous reader gets 60 requests an hour, which nine pages of
           # issues can exhaust. The job's own token lifts that.
           GH_TOKEN: ${{ github.token }}
-        run: nix run --impure .#dotfiles -- audit --declared ${{ matrix.machine }}
+        run: nix run .#dotfiles -- audit --declared ${{ matrix.machine }}

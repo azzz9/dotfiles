@@ -36,7 +36,7 @@ audit_store_paths() {
   if [ -e /run/current-system ]; then
     nix_cmd path-info -r /run/current-system || return 1
   fi
-  if ! generation="$(nix_cmd build --no-link --print-out-paths --impure \
+  if ! generation="$(nix_cmd build --no-link --print-out-paths \
     "$1#homeConfigurations.$2.activationPackage")"; then
     return 1
   fi
@@ -50,7 +50,7 @@ audit_declared_names() {
   local kind
   for kind in "homeConfigurations.$2.config.home.packages" \
     "nixosConfigurations.$2.config.environment.systemPackages"; do
-    nix_cmd eval --impure --json "$1#$kind" --apply 'ps: map (p: p.name) ps' 2>/dev/null || true
+    nix_cmd eval --json "$1#$kind" --apply 'ps: map (p: p.name) ps' 2>/dev/null || true
   done | jq -r '.[]' | tr '[:upper:]' '[:lower:]' | LC_ALL=C sort -u
 }
 
