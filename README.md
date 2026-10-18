@@ -39,12 +39,15 @@ is the source, and the `docs` check fails when this table drifts from it:
 | `nix-desktop` | `x86_64-linux` | yes |
 | `nix-server` | `x86_64-linux` | yes |
 
+A row carries the machine's `system` and, when it has one, its `nixos` path. It
+can also carry `username`, `homeDirectory`, `checkout`, and `skillsCheckout`;
+those default to the account `azzz` in `/home/azzz` (or `/Users/azzz` on macOS).
+The flake evaluates purely, so nothing reads the environment: a machine whose
+account differs must state `username` and `homeDirectory` in its row.
+
 NixOS is the exception to the rule. There a new name adopts the machine, by
 writing `hardware-configuration.nix`, copying `/etc/nixos/configuration.nix` in,
 writing `default.nix`, and adding the row.
-
-The flake evaluates purely: `flake.nix` states the account and the checkout
-paths, so no command needs `--impure`.
 
 `git config core.hooksPath .githooks` in the checkout runs `scripts/check.sh`
 before every push, the same set CI builds. `scripts/check.sh --only <check>`
@@ -82,10 +85,12 @@ machine right after the pins move, and the `Audit` workflow reads what the flake
 declares every week, because a runner has no store to read.
 
 The pins are one repository fact. The `Upgrade` workflow runs
-`dotfiles upgrade --pins-only` every week and opens a pull request, so CI builds
-the moved pins on both platforms before a machine sees them. A machine then only
-needs `dotfiles sync`; `dotfiles upgrade` stays the by-hand way to move a pin
-when a fix cannot wait for the weekly run.
+`dotfiles upgrade --pins-only` every week, runs the checks on its Linux runner,
+and opens a pull request. It also dispatches CI on the branch, so both platforms
+build the moved pins before a machine sees them. The pull request itself shows no
+checks, because GitHub does not start workflows from the job token's own push. A
+machine then only needs `dotfiles sync`; `dotfiles upgrade` stays the by-hand way
+to move a pin when a fix cannot wait for the weekly run.
 
 `sync` parks the four files `upgrade` rewrites in a stash before it pulls, so a
 machine that has not committed its own pins still takes the other machine's
@@ -112,9 +117,9 @@ scripts/check.sh       # every check CI builds
 scripts/check.sh --only <check>   # one of them, while iterating
 ```
 
-The checks are `deadnix`, `format`, `statix`, `stylua`, `shellcheck`,
-`no-device-config`, `link-path`, `bootstrap`, `dotfiles-cli`, `actionlint`,
-`gitleaks`, `generated-configs`, and `docs`. A failed one reads
+`nix flake check` runs the set in `checks/default.nix`: the formatter, the
+linters, the fixture suites for the bootstrap and the CLI, and the parsers for
+every config the flake emits. A failed one reads
 `nix log .#checks.<system>.<check>`.
 
 ## What is installed

@@ -20,8 +20,8 @@ nix build --dry-run .#homeConfigurations.nix-desktop.activationPackage 2>&1 | ta
 
 - Never pass `--impure`. `flake.nix` states the account (`user`) and each row's
   `homeDirectory`, `checkout`, and `skillsCheckout`, and the `link-path` check
-  fails on any `builtins.getEnv` under `flake.nix`, `hosts/`, `modules/`, or
-  `dotfiles-cli.nix`.
+  fails on `builtins.getEnv` or `builtins.currentSystem` under `flake.nix`,
+  `hosts/`, `modules/`, or `dotfiles-cli.nix`.
 - `git add` a new file before any Nix command. The flake sees tracked files
   only, and `scripts/`, `tests/`, `modules/herdr/worktree-layout/`, and the Lua
   tree are read by name, so an unadded file fails with `path ... does not exist`.

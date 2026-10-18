@@ -185,6 +185,11 @@ carries the rendered table, and the `docs` check compares it against this
 attrset. A row without a `nixos` path has a user environment only, which is
 every non-NixOS machine.
 
+A row may also carry `username`, `homeDirectory`, `checkout`, and
+`skillsCheckout`. They default to the account `azzz` and its home (see `user` and
+`homeDirectoryFor` in `flake.nix`), and nothing reads the environment, so a row
+on another account has to state the first two.
+
 The bootstrap sets the hostname from `MACHINE`: `scutil` on macOS,
 `hostnamectl` and the `127.0.1.1` line of `/etc/hosts` on Ubuntu and Arch, and
 `networking.hostName` through the system switch on NixOS. So the row key, the
@@ -256,13 +261,15 @@ An optional Cachix cache speeds CI up. Set the repository variable `CACHIX_NAME`
 and the secret `CACHIX_AUTH_TOKEN` and the workflow configures the cache. Without
 a token CI uses the public cache only.
 
-Three other workflows sit beside CI. `Audit` runs weekly and on demand, reads the
+Two other workflows sit beside CI. `Audit` runs weekly and on demand, reads the
 packages the flake declares, and is not in the push path: it needs the network,
 and upstream issue churn must not fail an unrelated push. `Upgrade` runs weekly
-and on demand and moves every pin with `dotfiles upgrade --pins-only`, then opens
-or updates the `chore/pin-upgrade` pull request, so CI verifies the pins on both
-platforms before any machine applies them. A machine therefore only needs
-`dotfiles sync`; `dotfiles upgrade` stays the by-hand way to move a pin.
+and on demand, moves every pin with `dotfiles upgrade --pins-only`, runs
+`scripts/check.sh` on the runner, opens or updates the `chore/pin-upgrade` pull
+request, and dispatches `ci.yml` on that branch for the macOS build. The job
+token's own push and pull request do not start workflows, which is why the
+dispatch is explicit. A machine therefore only needs `dotfiles sync`;
+`dotfiles upgrade` stays the by-hand way to move a pin.
 
 ## Formatting and checks
 
