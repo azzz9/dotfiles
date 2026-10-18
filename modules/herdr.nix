@@ -4,7 +4,19 @@ let
 in
 {
   # herdr agent multiplexer, https://github.com/ogulcancelik/herdr
-  home.packages = [ pkgs.herdr ];
+  home.packages = [
+    pkgs.herdr
+    (pkgs.writeShellApplication {
+      name = "wt-clean";
+      runtimeInputs = [
+        pkgs.coreutils
+        pkgs.git
+        pkgs.herdr
+        pkgs.jq
+      ];
+      text = builtins.readFile ./herdr/wt-clean.sh;
+    })
+  ];
 
   xdg.configFile."herdr/config.toml".text = ''
     # Managed by Home Manager (modules/herdr.nix); do not edit directly.
