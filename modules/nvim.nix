@@ -47,6 +47,7 @@ let
     "plugins/gitsigns.lua"
     "plugins/gitblame.lua"
     "plugins/codediff.lua"
+    "plugins/atlas.lua"
     "plugins/herdr.lua"
     "plugins/mini.lua"
     "plugins/oil.lua"
@@ -153,6 +154,7 @@ assert lib.assertMsg (luaFilesUnlisted == [ ] && luaFilesAbsent == [ ])
         blink-cmp
         telescope-nvim
         codediffNvim
+        atlas-nvim
         fff-nvim
         plenary-nvim
         telescope-ui-select-nvim
