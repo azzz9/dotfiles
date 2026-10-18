@@ -11,8 +11,14 @@ Nix flake + Home Manager repo. Read this before exploring files.
 
 The entry points are `flake.nix` (inputs, machines, outputs), `hosts/default.nix`
 (Home Manager entry and rules links), `modules/` (one module per capability),
-`checks/default.nix` (the check set), and `scripts/` (the `dotfiles` CLI, the
-bootstrap, and the check set).
+`checks/default.nix` (the check set), `scripts/` (the `dotfiles` CLI, the
+bootstrap, and the audit), and `tests/` (the fixture suites those checks drive).
+
+`flake.nix` states the account (`user`) and each row's `homeDirectory`,
+`checkout`, and `skillsCheckout`, so the flake evaluates purely: no command in
+this repository passes `--impure`. The one exception is
+`refresh_pi_npm_hashes`, which reads the checkout through `builtins.getFlake`
+and says so on the line.
 
 ## Neovim config structure
 
@@ -153,8 +159,9 @@ it moved in the working tree for a commit.
 The npm-source rows are the ones `modules/pi.nix` writes as an `npm:` spec, each
 with its reason recorded on the row. `bump_npm_pins` finds them with one
 `grep -o 'npm:...'` and moves each to the registry's latest. The `nix-update`
-names are `solhint`, `roots`, `prettier-plugin-solidity` and its dist, and
-`herdr-nvim`.
+names are `solhint`, `roots`, `prettier-plugin-solidity`,
+`prettier-plugin-solidity-dist`, and `herdr-nvim`; the `docs` check fails when
+one of them has no row in this table.
 
 A `nix-update` run that fails, for example because a release needs a newer Go
 than nixpkgs carries, restores that one file and warns, so one blocked release
@@ -173,9 +180,10 @@ package.
 
 One table in `flake.nix` names every machine. The key is the machine's hostname,
 which is also the `homeConfigurations` attribute, and the
-`nixosConfigurations` attribute for a row that carries a `nixos` path. The rows
-are `nix-desktop`, `macbook`, and `nix-server`. A row without a `nixos` path has
-a user environment only, which is every non-NixOS machine.
+`nixosConfigurations` attribute for a row that carries a `nixos` path. README.md
+carries the rendered table, and the `docs` check compares it against this
+attrset. A row without a `nixos` path has a user environment only, which is
+every non-NixOS machine.
 
 The bootstrap sets the hostname from `MACHINE`: `scutil` on macOS,
 `hostnamectl` and the `127.0.1.1` line of `/etc/hosts` on Ubuntu and Arch, and
@@ -223,7 +231,7 @@ No other platform evaluates it. The system configuration is a flake output, so i
 needs no `/etc/nixos` wiring:
 
 ```bash
-sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#<machine> --impure
+sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#<machine>
 ```
 
 The adoption picks `desktop.nix` when the copied configuration drives a GUI
@@ -239,17 +247,30 @@ in.
 `git config core.hooksPath .githooks` runs `scripts/check.sh` before every push.
 CI runs the same set: it evaluates every machine with `scripts/check.sh
 --no-build`, then builds the checks and every activation package for
-`x86_64-linux` and `aarch64-darwin`.
+`x86_64-linux` and `aarch64-darwin`. `scripts/check.sh --only <check>` builds a
+single check by name for the local loop, and the full run retries only when the
+failure names the registry or the network, so a deterministic failure fails on
+the first attempt.
 
 An optional Cachix cache speeds CI up. Set the repository variable `CACHIX_NAME`
 and the secret `CACHIX_AUTH_TOKEN` and the workflow configures the cache. Without
 a token CI uses the public cache only.
 
-A second workflow, `Audit`, runs weekly and on demand. It is not in the push
-path: it needs the network, and upstream issue churn must not fail an unrelated
-push.
+Three other workflows sit beside CI. `Audit` runs weekly and on demand, reads the
+packages the flake declares, and is not in the push path: it needs the network,
+and upstream issue churn must not fail an unrelated push. `Upgrade` runs weekly
+and on demand and moves every pin with `dotfiles upgrade --pins-only`, then opens
+or updates the `chore/pin-upgrade` pull request, so CI verifies the pins on both
+platforms before any machine applies them. A machine therefore only needs
+`dotfiles sync`; `dotfiles upgrade` stays the by-hand way to move a pin.
 
-## Checks
+## Formatting and checks
+
+`nix fmt` runs `nixfmt` through the flake's `formatter`, and `nix develop` gives
+`nixfmt`, `deadnix`, `statix`, `stylua`, `shellcheck`, and `actionlint`.
+`modules/nvim/lua/languages.lua` names `nixfmt` and `stylua` for conform.nvim, so
+an editor save and the checks agree. `statix.toml` disables W20 only, because the
+modules write the flat `a.b = ...; a.c = ...;` form on purpose.
 
 `checks/default.nix` holds the check set and `flake.nix` wires it into
 `checks.<system>`. The `nix-home-manager` skill lists what each check covers
@@ -278,15 +299,15 @@ for conditionals:
 ```bash
 for m in nix-desktop macbook nix-server; do
   echo "== $m"
-  nix --extra-experimental-features "nix-command flakes" eval --impure \
+  nix --extra-experimental-features "nix-command flakes" eval \
     --json ".#homeConfigurations.$m.config.xdg.configFile" --apply builtins.attrNames
-  nix --extra-experimental-features "nix-command flakes" eval --impure \
+  nix --extra-experimental-features "nix-command flakes" eval \
     --json ".#homeConfigurations.$m.config.home.packages" --apply 'ps: map (p: p.name) ps'
 done
 ```
 
-Evaluation reads `$HOME`, so the `macbook` attribute evaluated on Linux prints
-Linux home paths. Compare names and keys, not absolute paths.
+Each row states its own home directory, so the `macbook` attribute evaluated on
+Linux still prints `/Users/azzz`. Compare names and keys, not absolute paths.
 
 ## Supported platforms
 

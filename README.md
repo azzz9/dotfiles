@@ -30,24 +30,35 @@ root, so `ghq list` shows it with no registration. It applies the Home Manager
 profile for `MACHINE`. On NixOS it also applies the system configuration, which
 sets the hostname to `MACHINE`, and asks for your password once.
 
-`MACHINE` must name a row the repository carries. The rows today are
-`nix-desktop`, `macbook`, and `nix-server`, and `flake.nix`'s `machines` table is
-the source. NixOS is the exception to the rule. There a new name adopts the
-machine, by writing `hardware-configuration.nix`, copying
-`/etc/nixos/configuration.nix` in, writing `default.nix`, and adding the row.
+`MACHINE` must name a row the repository carries. `flake.nix`'s `machines` table
+is the source, and the `docs` check fails when this table drifts from it:
+
+| Machine | System | NixOS system |
+| ------- | ------ | ------------ |
+| `macbook` | `aarch64-darwin` | no |
+| `nix-desktop` | `x86_64-linux` | yes |
+| `nix-server` | `x86_64-linux` | yes |
+
+NixOS is the exception to the rule. There a new name adopts the machine, by
+writing `hardware-configuration.nix`, copying `/etc/nixos/configuration.nix` in,
+writing `default.nix`, and adding the row.
+
+The flake evaluates purely: `flake.nix` states the account and the checkout
+paths, so no command needs `--impure`.
 
 `git config core.hooksPath .githooks` in the checkout runs `scripts/check.sh`
-before every push, the same set CI builds.
+before every push, the same set CI builds. `scripts/check.sh --only <check>`
+builds a single check while iterating.
 
 To apply by hand instead of running the bootstrap:
 
 ```bash
-nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#<machine> --impure -b backup
+nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#<machine> -b backup
 ```
 
 | Variable             | Default                                    | Purpose                                                                               |
 | -------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------- |
-| `MACHINE`            | required                                   | This machine's name. The `machines` row to apply, and the hostname the bootstrap sets. The rows today are `nix-desktop`, `macbook`, and `nix-server` |
+| `MACHINE`            | required                                   | This machine's name: the `machines` row to apply, and the hostname the bootstrap sets |
 | `DOTFILES_DIR`       | `~/src/github.com/azzz9/dotfiles`          | Checkout to clone or reuse, and the checkout to build. The live links name the machines row's `checkout` instead |
 | `MACHINE_CAPABILITY` | picked from the copied NixOS configuration | `desktop` or `headless`, the capability module a new NixOS machine imports            |
 | `REBOOT`             | `0`                                        | Reboot at the end, where the setup asked for one                                      |
@@ -60,6 +71,7 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#<
 | `dotfiles audit`   | Check this machine's packages against open security issues |
 | `dotfiles sync`    | Pull, then apply                     |
 | `dotfiles upgrade` | Pull, move every pin, then apply     |
+| `dotfiles upgrade --pins-only` | Move every pin and stop before building; the `Upgrade` workflow runs this |
 
 The machine's name is its hostname and its row key, so none of these needs an
 argument. An argument names another machine, which is also the only reason to
@@ -68,6 +80,12 @@ give one.
 `audit` also runs without being asked. `dotfiles upgrade` reads it on the
 machine right after the pins move, and the `Audit` workflow reads what the flake
 declares every week, because a runner has no store to read.
+
+The pins are one repository fact. The `Upgrade` workflow runs
+`dotfiles upgrade --pins-only` every week and opens a pull request, so CI builds
+the moved pins on both platforms before a machine sees them. A machine then only
+needs `dotfiles sync`; `dotfiles upgrade` stays the by-hand way to move a pin
+when a fix cannot wait for the weekly run.
 
 `sync` parks the four files `upgrade` rewrites in a stash before it pulls, so a
 machine that has not committed its own pins still takes the other machine's
@@ -82,8 +100,22 @@ their own pins.
 The system configuration applies on its own:
 
 ```bash
-sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#<machine> --impure
+sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#<machine>
 ```
+
+## Working on this repository
+
+```bash
+nix develop            # nixfmt, deadnix, statix, stylua, shellcheck, actionlint
+nix fmt                # format every Nix file, the same formatter conform.nvim runs
+scripts/check.sh       # every check CI builds
+scripts/check.sh --only <check>   # one of them, while iterating
+```
+
+The checks are `deadnix`, `format`, `statix`, `stylua`, `shellcheck`,
+`no-device-config`, `link-path`, `bootstrap`, `dotfiles-cli`, `actionlint`,
+`gitleaks`, `generated-configs`, and `docs`. A failed one reads
+`nix log .#checks.<system>.<check>`.
 
 ## What is installed
 
@@ -105,6 +137,7 @@ flake.nix             # the machines table, homeConfigurations, nixosConfigurati
 hosts/default.nix     # the Home Manager entry point and the rules links
 hosts/platform/       # the per-platform differences, and the NixOS layer
 modules/              # one module per capability, named for what it configures
-scripts/              # the dotfiles CLI, the bootstrap, and the check set
+scripts/              # the dotfiles CLI, the bootstrap, the checks, and the audit
+tests/                # the fixture suites the bootstrap and CLI checks run
 .agents/skills/       # the skills that only make sense in this repository
 ```
