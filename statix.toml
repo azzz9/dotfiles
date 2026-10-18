@@ -1,0 +1,5 @@
+# W20 (repeated_keys) asks for every `a.b = ...;` / `a.c = ...;` pair to be
+# merged into one attribute set. The modules here write the flat form on
+# purpose: a Home Manager module reads top to bottom, and the nested form hides
+# which option a line sets behind an extra level. Every other lint stays on.
+disabled = ["repeated_keys"]

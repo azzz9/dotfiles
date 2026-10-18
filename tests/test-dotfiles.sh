@@ -432,6 +432,29 @@ expect_eq 'upgrade promotes the dsh prerelease' '{
 }' "$(cat "$machine/modules/dsh-pin.nix")"
 scenario_end
 
+scenario 'upgrade --pins-only moves the pins and stops before applying'
+fixture
+machine_clone
+touch "$work/allow-flake-update"
+run_cli upgrade --pins-only
+expect_eq 'upgrade --pins-only exits 0' 0 "$cli_rc"
+# The nix stub allows flake update silently, so the pin bump is what proves the
+# run reached the rewrite step.
+expect_out_has 'it reaches the bump' 'dotfiles upgrade: bumping solhint'
+# The dsh pin is the row the curl stub answers, so the run moves it and the
+# report names the file the workflow has to commit.
+expect_out_has 'it reports the moved files' 'these files moved'
+expect_out_has 'it names the dsh pin' 'modules/dsh-pin.nix'
+expect_out_lacks 'it never activates' '[stub] activate'
+expect_out_lacks 'it never runs pi_reconcile' '[stub] pi_reconcile'
+expect_out_lacks 'it never runs dsh_reconcile' '[stub] dsh_reconcile'
+expect_out_lacks 'it runs no audit' 'dotfiles audit:'
+expect_eq 'it moves the dsh pin' '{
+  cli = "0.2.0";
+  tui = "9.9.9";
+}' "$(cat "$machine/modules/dsh-pin.nix")"
+scenario_end
+
 scenario 'audit --declared reads the flake instead of the store'
 fixture
 machine_clone

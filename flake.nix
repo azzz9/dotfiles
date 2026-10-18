@@ -237,17 +237,83 @@
           platformMachines = nixpkgs.lib.filterAttrs (_: machine: machine.system == system) machines;
         in
         import ./checks {
-          inherit self pkgs platformMachines;
+          inherit
+            self
+            pkgs
+            platformMachines
+            machines
+            ;
         };
       homeConfigurations = nixpkgs.lib.mapAttrs mkHomeConfiguration machines;
       # Only the rows that carry a nixos path have a system configuration.
       nixosConfigurations = nixpkgs.lib.mapAttrs mkNixosSystem (
         nixpkgs.lib.filterAttrs (_: m: m ? nixos) machines
       );
+      # `nix fmt` and `nix develop` are the two entry points a contributor has
+      # before any check runs. The formatter matches what Neovim's conform.nvim
+      # calls, so an editor save and `nix fmt` cannot disagree. nixfmt itself
+      # reads stdin with no argument and does not recurse, so the wrapper
+      # expands a directory (`.` by default) and leaves flags alone.
+      mkFormatter =
+        system:
+        let
+          pkgs = pkgsFor system;
+        in
+        pkgs.writeShellApplication {
+          name = "nixfmt";
+          runtimeInputs = [
+            pkgs.nixfmt
+            pkgs.findutils
+          ];
+          text = ''
+            flags=()
+            targets=()
+            for argument in "$@"; do
+              case "$argument" in
+                -*) flags+=("$argument") ;;
+                *) targets+=("$argument") ;;
+              esac
+            done
+            if [ "''${#targets[@]}" -eq 0 ]; then
+              targets=(.)
+            fi
+            files=()
+            for target in "''${targets[@]}"; do
+              if [ -d "$target" ]; then
+                while IFS= read -r file; do
+                  files+=("$file")
+                done < <(find "$target" -type f -name '*.nix')
+              else
+                files+=("$target")
+              fi
+            done
+            nixfmt "''${flags[@]}" "''${files[@]}"
+          '';
+        };
+      mkDevShell =
+        system:
+        let
+          pkgs = pkgsFor system;
+        in
+        pkgs.mkShell {
+          packages = with pkgs; [
+            nixfmt
+            deadnix
+            statix
+            stylua
+            shellcheck
+            actionlint
+            git
+          ];
+        };
     in
     {
       inherit homeConfigurations nixosConfigurations;
       packages = forAllSystems mkPackages;
       checks = forAllSystems mkChecks;
+      formatter = forAllSystems mkFormatter;
+      devShells = forAllSystems (system: {
+        default = mkDevShell system;
+      });
     };
 }

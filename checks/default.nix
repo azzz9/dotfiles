@@ -1,8 +1,16 @@
 # The verification layer. scripts/check.sh, the pre-push hook, and CI all run
 # these, so a check cannot drift between them.
-{ self, pkgs, platformMachines }:
+{
+  self,
+  pkgs,
+  platformMachines,
+  machines,
+}:
 let
-  parseGeneratedConfigs = host:
+  inherit (pkgs) lib;
+
+  parseGeneratedConfigs =
+    host:
     let
       activationPackage = self.homeConfigurations.${host}.activationPackage;
     in
@@ -39,60 +47,118 @@ let
       grep -q '^export PATH="\$PATH:' \
         ${activationPackage}/home-path/bin/dotfiles
     '';
+
+  # The machines table README.md carries, rendered from the same attrset that
+  # builds the configurations. Adding a row to flake.nix without adding its
+  # README row fails the docs check instead of leaving the prose stale.
+  machinesTable = lib.concatStringsSep "\n" (
+    lib.mapAttrsToList (
+      name: machine: "| `${name}` | `${machine.system}` | ${if machine ? nixos then "yes" else "no"} |"
+    ) machines
+  );
 in
 {
   deadnix = pkgs.runCommand "deadnix" { nativeBuildInputs = [ pkgs.deadnix ]; } ''
     deadnix --fail ${self}
     touch $out
   '';
+  # `nix fmt` runs the same formatter, so an editor save and this check cannot
+  # disagree.
+  format =
+    pkgs.runCommand "format"
+      {
+        nativeBuildInputs = [
+          pkgs.nixfmt
+          pkgs.findutils
+        ];
+      }
+      ''
+        cd ${self}
+        nixfmt --check $(find . -type f -name '*.nix')
+        touch $out
+      '';
+  # W20 is disabled in statix.toml, with the reason recorded there.
+  statix = pkgs.runCommand "statix" { nativeBuildInputs = [ pkgs.statix ]; } ''
+    cd ${self}
+    statix check .
+    touch $out
+  '';
+  # The Neovim Lua tree is the only hand-written code no compiler reads before
+  # startup, so its style is checked the way conform.nvim formats it.
+  stylua = pkgs.runCommand "stylua" { nativeBuildInputs = [ pkgs.stylua ]; } ''
+    cd ${self}
+    stylua --check modules/nvim/lua
+    touch $out
+  '';
   shellcheck = pkgs.runCommand "shellcheck" { nativeBuildInputs = [ pkgs.shellcheck ]; } ''
     cd ${self}
-    shellcheck -x scripts/*.sh .githooks/pre-push
-    bash -n scripts/*.sh .githooks/pre-push
+    shellcheck -x scripts/*.sh tests/*.sh .githooks/pre-push
+    bash -n scripts/*.sh tests/*.sh .githooks/pre-push
     touch $out
   '';
   # Device facts belong in hosts/platform/nixos/machines/<name>/ next to that
   # machine's hardware-configuration.nix, so a shared NixOS module cannot be
   # evaluated by another machine by mistake. The directory check keeps the grep
   # from passing silently after the tree moves.
-  no-device-config = pkgs.runCommand "no-device-config" {
-    nativeBuildInputs = [ pkgs.gnugrep ];
-  } ''
-    shared=${self}/hosts/platform/nixos/modules
-    test -d "$shared"
-    if grep -rnE 'hardware\.|/dev/disk|fileSystems|videoDrivers' "$shared"; then
-      echo "device-specific config belongs in hosts/platform/nixos/machines/<name>/" >&2
-      exit 1
-    fi
-    touch $out
-  '';
+  no-device-config =
+    pkgs.runCommand "no-device-config"
+      {
+        nativeBuildInputs = [ pkgs.gnugrep ];
+      }
+      ''
+        shared=${self}/hosts/platform/nixos/modules
+        test -d "$shared"
+        if grep -rnE 'hardware\.|/dev/disk|fileSystems|videoDrivers' "$shared"; then
+          echo "device-specific config belongs in hosts/platform/nixos/machines/<name>/" >&2
+          exit 1
+        fi
+        touch $out
+      '';
   # A live link that follows the environment points at whatever checkout ran the
   # switch, and deleting that checkout leaves the target unreadable. The path is
-  # a machine fact, so it comes from the machines row.
+  # a machine fact, so it comes from the machines row. `builtins.getEnv` would
+  # make the flake need --impure, so it is banned everywhere else as well.
   link-path = pkgs.runCommand "link-path" { nativeBuildInputs = [ pkgs.gnugrep ]; } ''
     for path in flake.nix hosts modules dotfiles-cli.nix; do
       test -e "${self}/$path"
     done
-    if grep -rn 'getEnv "DOTFILES' ${self}/flake.nix ${self}/hosts ${self}/modules ${self}/dotfiles-cli.nix; then
-      echo "a link path reads DOTFILES_* from the environment; name it in the machines row instead" >&2
+    if grep -rn 'getEnv' ${self}/flake.nix ${self}/hosts ${self}/modules ${self}/dotfiles-cli.nix; then
+      echo "evaluation reads the environment; state the path or the account in flake.nix instead, so the flake stays pure" >&2
       exit 1
     fi
     touch $out
   '';
-  bootstrap = pkgs.runCommand "bootstrap" {
-    nativeBuildInputs = [ pkgs.python3 pkgs.bash pkgs.coreutils pkgs.gnugrep ];
-  } ''
-    python3 ${self}/scripts/test-setup.py ${self}/scripts/setup-system.sh
-    touch $out
-  '';
+  bootstrap =
+    pkgs.runCommand "bootstrap"
+      {
+        nativeBuildInputs = [
+          pkgs.python3
+          pkgs.bash
+          pkgs.coreutils
+          pkgs.gnugrep
+        ];
+      }
+      ''
+        python3 ${self}/tests/test-setup.py ${self}/scripts/setup-system.sh
+        touch $out
+      '';
   # Drives scripts/dotfiles.sh against fixture git repos with its nix build stubbed.
   # jq is here for the audit's reads, which the same fixture stubs.
-  dotfiles-cli = pkgs.runCommand "dotfiles-cli" {
-    nativeBuildInputs = [ pkgs.bash pkgs.coreutils pkgs.git pkgs.gnugrep pkgs.jq ];
-  } ''
-    bash ${self}/scripts/test-dotfiles.sh ${self}/scripts/dotfiles.sh
-    touch $out
-  '';
+  dotfiles-cli =
+    pkgs.runCommand "dotfiles-cli"
+      {
+        nativeBuildInputs = [
+          pkgs.bash
+          pkgs.coreutils
+          pkgs.git
+          pkgs.gnugrep
+          pkgs.jq
+        ];
+      }
+      ''
+        bash ${self}/tests/test-dotfiles.sh ${self}/scripts/dotfiles.sh
+        touch $out
+      '';
   actionlint = pkgs.runCommand "actionlint" { nativeBuildInputs = [ pkgs.actionlint ]; } ''
     actionlint ${self}/.github/workflows/*.yml
     touch $out
@@ -106,10 +172,54 @@ in
   '';
   # The generated files are only text until a tool parses them, so parse
   # every config this flake emits, for every machine this system builds.
-  generated-configs = pkgs.runCommand "generated-configs" {
-    nativeBuildInputs = [ pkgs.python3 pkgs.yq-go pkgs.zsh pkgs.lua5_1 pkgs.gnugrep ];
-  } (
-    builtins.concatStringsSep "" (map parseGeneratedConfigs (builtins.attrNames platformMachines))
-    + "touch $out"
-  );
+  generated-configs =
+    pkgs.runCommand "generated-configs"
+      {
+        nativeBuildInputs = [
+          pkgs.python3
+          pkgs.yq-go
+          pkgs.zsh
+          pkgs.lua5_1
+          pkgs.gnugrep
+        ];
+      }
+      (
+        builtins.concatStringsSep "" (map parseGeneratedConfigs (builtins.attrNames platformMachines))
+        + "touch $out"
+      );
+  # README.md and the skill are prose that drifts from flake.nix and
+  # scripts/dotfiles.sh, so the facts they restate are compared against the
+  # source here rather than checked by hand.
+  docs =
+    pkgs.runCommand "docs"
+      {
+        nativeBuildInputs = [
+          pkgs.gnugrep
+          pkgs.gnused
+          pkgs.coreutils
+        ];
+      }
+      ''
+        readme=${self}/README.md
+        skill=${self}/.agents/skills/dotfiles-context/SKILL.md
+        expected=${pkgs.writeText "machines-table.md" machinesTable}
+
+        while IFS= read -r row; do
+          [ -z "$row" ] && continue
+          grep -qF -- "$row" "$readme" || {
+            echo "docs: README.md is missing this machines row: $row" >&2
+            exit 1
+          }
+        done < "$expected"
+
+        # pin_names is the list `dotfiles upgrade` bumps; each one needs a row in
+        # the skill's pin table so the documentation moves with it.
+        for pin in $(sed -n 's/^pin_names=(\(.*\))$/\1/p' ${self}/scripts/dotfiles.sh); do
+          grep -qF -- "\`$pin\`" "$skill" || {
+            echo "docs: SKILL.md has no pin row for $pin" >&2
+            exit 1
+          }
+        done
+        touch $out
+      '';
 }
