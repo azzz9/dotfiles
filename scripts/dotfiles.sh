@@ -23,6 +23,10 @@ audit reads this machine's store. --declared reads the packages flake.nix names
 for it instead, which is what a runner without a store can do. --update records
 what it found in scripts/audit-baseline.txt instead of failing on it.
 
+upgrade --pins-only moves the pins and stops before any build, activation, or
+audit. The weekly Upgrade workflow runs it on a runner to open the pull request,
+so the pins are verified on both platforms before a machine applies them.
+
 machine: the name of the machine to apply. This machine's hostname is the
          default. An unknown name is listed against the names flake.nix has.
 EOF
@@ -38,10 +42,12 @@ if [ -z "$command" ] || [ "$command" = "-h" ] || [ "$command" = "--help" ]; then
 fi
 shift
 
-# audit is the only command that takes flags. Read them before the machine
-# argument, so `dotfiles audit --update` does not read --update as a machine.
+# audit and upgrade are the commands that take flags. Read them before the
+# machine argument, so `dotfiles audit --update` does not read --update as a
+# machine.
 audit_update=0
 audit_declared=0
+pins_only=0
 if [ "$command" = "audit" ]; then
   while [ "${1:-}" = "--update" ] || [ "${1:-}" = "--declared" ]; do
     if [ "$1" = "--update" ]; then
@@ -49,6 +55,12 @@ if [ "$command" = "audit" ]; then
     else
       audit_declared=1
     fi
+    shift
+  done
+fi
+if [ "$command" = "upgrade" ]; then
+  while [ "${1:-}" = "--pins-only" ]; do
+    pins_only=1
     shift
   done
 fi
@@ -143,7 +155,7 @@ require_clean_repo() {
 }
 
 build_home() {
-  activation_path="$(nix_cmd build --no-link --print-out-paths "$repo#homeConfigurations.$machine.activationPackage" --impure)"
+  activation_path="$(nix_cmd build --no-link --print-out-paths "$repo#homeConfigurations.$machine.activationPackage")"
   patched_activate="$(mktemp "$tmp_dir/dotfiles-activate.XXXXXX")"
   cp "$activation_path/activate" "$patched_activate"
 }
@@ -187,6 +199,22 @@ restore_upgrade() {
       echo "dotfiles upgrade: restored $target after failure" >&2
     fi
   done
+}
+
+# Names the files the upgrade moved, so a person knows what to review and
+# commit. Prints nothing when every pin was already current.
+report_moved_files() {
+  local moved_files="" moved_file
+  for moved_file in "${upgrade_paths[@]}"; do
+    if ! git diff --quiet -- "$moved_file"; then
+      moved_files="$moved_files $moved_file"
+    fi
+  done
+  if [ -n "$moved_files" ]; then
+    echo "dotfiles upgrade: these files moved; review and commit them to put every machine on these pins:$moved_files"
+  else
+    echo "dotfiles upgrade: every pin was already at its latest"
+  fi
 }
 
 # Bump each derivation pinned in $pins_file on its own. nix-update prints its
@@ -279,6 +307,8 @@ bump_dsh_pins() {
 refresh_pi_npm_hashes() {
   local input got
   while read -r input; do
+    # `builtins.getFlake` on a path reads the checkout rather than the store,
+    # which pure evaluation forbids, so this one call keeps --impure.
     got="$(nix_cmd build --no-link --impure --expr "
       let
         flake = builtins.getFlake \"$repo\";
@@ -331,10 +361,16 @@ case "$command" in
     ;;
   upgrade)
     require_clean_repo
-    # Before the bump, so the new lock is computed on top of the newest flake.nix.
-    if ! git pull --ff-only; then
-      echo "dotfiles upgrade: the pull failed; the pins are untouched" >&2
-      exit 1
+    # `--pins-only` stops after the pins move, before any build, activation,
+    # reconcile, or audit. The Upgrade workflow runs it on a runner, and a
+    # runner neither has a home configuration to apply nor should pull: the
+    # checkout it just made is already the default branch.
+    if [ "$pins_only" = 0 ]; then
+      # Before the bump, so the new lock is computed on top of the newest flake.nix.
+      if ! git pull --ff-only; then
+        echo "dotfiles upgrade: the pull failed; the pins are untouched" >&2
+        exit 1
+      fi
     fi
     pin_scratch="$(mktemp "$tmp_dir/dotfiles-pin-bump.XXXXXX")"
     for upgrade_path in "${upgrade_paths[@]}"; do
@@ -350,6 +386,10 @@ case "$command" in
     bump_npm_pins
     bump_dsh_pins
     refresh_pi_npm_hashes
+    if [ "$pins_only" = 1 ]; then
+      report_moved_files
+      exit 0
+    fi
     if ! build_home; then
       restore_upgrade
       exit 1
@@ -358,15 +398,7 @@ case "$command" in
       restore_upgrade
       exit 1
     fi
-    moved_files=""
-    for moved_file in "${upgrade_paths[@]}"; do
-      if ! git diff --quiet -- "$moved_file"; then
-        moved_files="$moved_files $moved_file"
-      fi
-    done
-    if [ -n "$moved_files" ]; then
-      echo "dotfiles upgrade: these files moved; review and commit them to keep the next apply on these pins:$moved_files"
-    fi
+    report_moved_files
     pi_reconcile
     dsh_reconcile
     # The pins just moved, which is when a nixpkgs fix lands and when a new
