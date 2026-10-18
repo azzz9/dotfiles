@@ -102,12 +102,9 @@ Where it lives:
 
 ```
 flake.nix             # the machines table, homeConfigurations, nixosConfigurations, checks
-hosts/default.nix     # the Home Manager entry point and the skill links
+hosts/default.nix     # the Home Manager entry point and the rules links
 hosts/platform/       # the per-platform differences, and the NixOS layer
 modules/              # one module per capability, named for what it configures
-agents/               # the global skills, one directory per skill
-                      #   the machine skills answer what this host is, a NixOS quirk, a font, an extension
-                      #   the workflow skills answer how to work, and they moved to the skills repository
 scripts/              # the dotfiles CLI, the bootstrap, and the check set
 .agents/skills/       # the skills that only make sense in this repository
 ```

@@ -1,34 +1,4 @@
-{ config, lib, repoDir, skillsCheckout, ... }:
-let
-  # Every directory under agents/skills is a global skill, so the list is
-  # derived. Skills that only make sense in this repo live in .agents/skills.
-  skillsDir = ../agents/skills;
-  localSkillNames = builtins.attrNames (
-    lib.filterAttrs (_: type: type == "directory") (builtins.readDir skillsDir)
-  );
-  skillsWithoutSkillFile = lib.filter (name: !builtins.pathExists (skillsDir + "/${name}/SKILL.md")) localSkillNames;
-
-  # A vendored skill carries its upstream license next to it, because the
-  # deploy symlinks the skill directory, not the repo root.
-  upstreamSkillsWithoutLicense = lib.filter (
-    name:
-    lib.hasInfix "upstream:" (builtins.readFile (skillsDir + "/${name}/SKILL.md"))
-    && !builtins.pathExists (skillsDir + "/${name}/LICENSE")
-  ) localSkillNames;
-
-  # Out-of-store links, so edits here take effect without a rebuild.
-  skillLinks = builtins.listToAttrs (
-    lib.concatMap (base: map (name: {
-      name = "${base}/skills/${name}";
-      value.source = config.lib.file.mkOutOfStoreSymlink "${repoDir}/agents/skills/${name}";
-    }) localSkillNames) [ ".agents" ]
-  );
-in
-assert lib.assertMsg (skillsWithoutSkillFile == [ ])
-  "hosts/default.nix: agents/skills entries without SKILL.md: ${toString skillsWithoutSkillFile}";
-
-assert lib.assertMsg (upstreamSkillsWithoutLicense == [ ])
-  "hosts/default.nix: third-party skills without a LICENSE: ${toString upstreamSkillsWithoutLicense}";
+{ config, skillsCheckout, ... }:
 {
   home.username = builtins.getEnv "USER";
   home.homeDirectory = builtins.getEnv "HOME";
@@ -53,7 +23,7 @@ assert lib.assertMsg (upstreamSkillsWithoutLicense == [ ])
   #
   # dsh-agent-instructions@0.2.0-rc.2 reads the user-global file at
   # $DSH_HOME/AGENTS.md.
-  home.file = skillLinks // {
+  home.file = {
     ".dsh/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${skillsCheckout}/AGENTS.md";
     ".pi/agent/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${skillsCheckout}/AGENTS.md";
     # Pi appends this one to the system prompt on every turn. The rules live there.

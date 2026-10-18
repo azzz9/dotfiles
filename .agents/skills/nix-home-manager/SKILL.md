@@ -26,9 +26,8 @@ nix build --dry-run .#homeConfigurations.nix-desktop.activationPackage --impure 
   stashes the pins and pulls. `dotfiles apply` does not check.
 - In the agent sandbox, prefix Nix with `XDG_CACHE_HOME=/tmp/nix-cache`, or Nix
   fails with `unable to open database file`.
-- `hosts/default.nix` links `agents/skills/*` out of store, so an edit in the
-  checkout is live without a rebuild. The `~/.pi/agent/AGENTS.md` link points at
-  the skills checkout instead, because the skills repository owns the rules.
+- `hosts/default.nix` links the rules files out of the skills checkout, so an
+  edit there is live without a rebuild.
 - Activation calls `nix profile add`; `scripts/dotfiles.sh` rewrites
   `profile install` to `profile add` for Determinate Nix.
 
@@ -49,5 +48,3 @@ A failed check reads `nix log .#checks.<system>.<check>`.
 
 - `modules/nvim.nix`: every `.lua` file under `modules/nvim/lua/` appears in
   `luaFiles`.
-- `hosts/default.nix`: every `agents/skills/*` directory holds a `SKILL.md`, and
-  a body containing `upstream:` needs a `LICENSE` beside it.

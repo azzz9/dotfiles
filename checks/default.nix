@@ -1,6 +1,5 @@
 # The verification layer. scripts/check.sh, the pre-push hook, and CI all run
-# these, so a check cannot drift between them. Registry-vs-disk equality is
-# enforced by asserts in modules/nvim.nix and hosts/default.nix.
+# these, so a check cannot drift between them.
 { self, pkgs, platformMachines }:
 let
   parseGeneratedConfigs = host:
