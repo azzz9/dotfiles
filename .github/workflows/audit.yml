@@ -4,8 +4,8 @@
 # for a home generation on this repository.
 #
 # The full closure is what `dotfiles audit` reads on the machine itself, and
-# `dotfiles upgrade` runs that there as soon as the pins move. This job is the
-# clock for the case where nothing gets upgraded for a while.
+# The Pins workflow runs that before it opens its PR. This job is the clock for
+# the case where nothing gets upgraded for a while.
 name: Audit
 
 on:

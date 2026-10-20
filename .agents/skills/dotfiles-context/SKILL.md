@@ -51,8 +51,8 @@ so `flake.lock` pins them:
 
 The input is the same one `modules/pi.nix` hands pi, so the rules and the skill
 files come from one revision. Editing `~/src/github.com/azzz9/skills` has no
-effect until the pin moves. Run `dotfiles upgrade`, or `nix flake update skills`
-and then `dotfiles apply`.
+effect until the pin moves. The `Pins` workflow moves it weekly; by hand, run
+`nix flake update skills` and then `dotfiles apply`.
 
 Repo-local skills are the only skills this repo ships. They sit in
 `.agents/skills/` at the repo root, where pi discovers them as project skills
@@ -106,18 +106,21 @@ change is needed.
 
 ## dotfiles CLI commands
 
-`apply`, `audit`, `status`, `sync`, and `upgrade` live in `scripts/dotfiles.sh`,
+`apply`, `audit`, `rollback`, `status`, and `sync` live in `scripts/dotfiles.sh`,
 which `modules/dotfiles.nix` installs through `writeShellApplication` (so the
-build shellchecks it). README.md owns the command table. `sync` runs a gate
-first: any change outside the three files `upgrade` rewrites makes it refuse,
-because activation would otherwise pick up a half-finished edit. `apply` has no
-such gate and activates the current tree. `status` reads and never fetches: it
+build shellchecks it). README.md owns the command table. `sync` refuses any
+dirty path before it pulls, because activation would otherwise pick up a
+half-finished edit. `sync --at <commit>` applies one commit and leaves a
+detached HEAD. `apply` has no dirty gate and activates the current tree.
+`apply`, `sync`, and `rollback` record the applied commit in
+`~/.local/state/dotfiles/applied.log`, and `rollback` applies the most recent
+applied commit that differs from the current one. `status` reads and never fetches: it
 reports the distance from the last fetched upstream, the uncommitted pin files,
 whether the running Home Manager generation's derivation matches the one the
 checkout evaluates to, and whether the pi npm rows sit on their pins. The last
 one is the only reader of the mutable npm prefix besides the reconcile, so it is
 what sees a reconcile that failed offline. Only a run that
-mutates takes the lock, so `status` stays usable during an upgrade; a second
+mutates takes the lock, so `status` stays usable during a run; a second
 mutating run exits 1 rather than reading as applied, and a lock left by a killed
 run is reclaimed through the pid inside it. On NixOS these commands change the
 user environment only; a pull that touches `hosts/platform/nixos/` still needs a
@@ -131,16 +134,16 @@ package names against the open issues NixOS/nixpkgs labels
 machine instead, which is a subset of the closure and all a runner without a
 store can read. `scripts/audit-baseline.txt` holds what was already read, and
 only a match outside it fails the command, so the file is part of the working
-tree like the pins `upgrade` moves. Only the store audit reads or prunes that
-file.
+tree like the pins `bump-pins.sh` moves. Only the store audit reads or prunes
+that file.
 
-`upgrade` reads the audit as its last step and treats it as a report, because
-the pins it just moved are where a nixpkgs fix lands.
+The `Pins` workflow reads the audit before it opens its PR and stops on a match,
+because a bump that lands a fix should not also land a new issue.
 
 ## Pins
 
-`upgrade` moves every flake input and every `nix-update` pin in one run, and leaves the files
-it moved in the working tree for a commit.
+The `Pins` workflow moves every flake input and every `nix-update` pin in one
+run, through `scripts/bump-pins.sh`, and opens a PR for the files it moved.
 
 | Pin | Moves with |
 |-----|------------|

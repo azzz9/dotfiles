@@ -16,7 +16,7 @@
       # bun2nix (hunk's input) evaluates flake.formatter for every system in
       # github:nix-systems/default, including x86_64-darwin, which unstable
       # nixpkgs (26.11+) dropped. That transitive eval throws even when building
-      # for x86_64-linux and breaks `dotfiles upgrade`, so pin hunk to 26.05 (the
+      # for x86_64-linux and breaks the Pins workflow, so pin hunk to 26.05 (the
       # last branch with x86_64-darwin) instead of following our nixpkgs.
       inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     };
@@ -113,8 +113,8 @@
           modules = [ nixos ];
         };
       # The pinned derivations in modules/pinned-packages.nix, exposed as
-      # flake packages so `nix-update --flake <name>` (the bump `dotfiles
-      # upgrade` runs) can find and rewrite them. Build pkgs the same way
+      # flake packages so `nix-update --flake <name>` (the bump the Pins
+      # workflow runs) can find and rewrite them. Build pkgs the same way
       # mkChecks does: these derivations need neither the unfree allowlist nor
       # the home configuration's package set.
       mkPackages = system:

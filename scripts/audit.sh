@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # The package audit. dotfiles-cli.nix inlines this file into the `dotfiles` CLI,
-# which passes arguments and supplies two helpers, nix_cmd and registry_latest:
+# which passes arguments and supplies one helper, nix_cmd:
 #
 #   audit_packages <repo> <machine> <tmp_dir> <pi_module> <update> <declared>
 #
-# It reports by return code, so `dotfiles upgrade` can read it as a report and
-# still call the upgrade applied.
+# It reports by return code, so `dotfiles audit` and the Pins workflow can read
+# it as a report.
 #
 # Two sources are checked, because they are pinned in different ways.
 #
@@ -144,6 +144,13 @@ audit_match_issues() {
 # "<name>\t<version>" for every npm row modules/pi.nix pins: an `npm:` spec,
 # and a tarball row or one of its `deps`, which pin a bare name and version on
 # their own lines.
+# The latest version published for an npm package; empty on any doubt.
+registry_latest() {
+  local encoded
+  encoded="$(printf '%s' "$1" | sed 's|/|%2F|')"
+  curl -fsS --max-time 30 "https://registry.npmjs.org/${encoded}" | jq -r '."dist-tags".latest'
+}
+
 audit_npm_specs() {
   local name spec
   {
@@ -236,7 +243,7 @@ audit_packages() {
       continue
     fi
     # Only a newer version is worth naming. A registry that went backwards is a
-    # pin problem, and `dotfiles upgrade` already refuses to make that move.
+    # pin problem, and `bump-pins.sh` already refuses to make that move.
     if [ "$(printf '%s\n' "$version" "$newest" | sort -V | tail -n 1)" = "$newest" ]; then
       behind="$behind$name $version -> $newest"$'\n'
     fi

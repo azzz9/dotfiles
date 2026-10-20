@@ -1,6 +1,6 @@
 # Derivations this repo pins because nixpkgs does not package them. Every
 # updatable derivation keeps the shape nix-update needs (pname, version, and a
-# src whose rev or url embeds ${version}), so `dotfiles upgrade` bumps it with
+# src whose rev or url embeds ${version}), so `bump-pins.sh` bumps it with
 # `nix-update --flake <name>` and no hand edit. modules/pin-names.txt names the
 # ones it bumps. codediff-watcher reads its version from nixpkgs'
 # codediff-nvim instead and is not in that list.

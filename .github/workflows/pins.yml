@@ -1,0 +1,80 @@
+# Moves every pin this repository carries, then opens a pull request. The
+# checks and the audit run here before the PR exists, so a broken or vulnerable
+# bump never becomes a commit. The PR is squash-merged by auto-merge.
+#
+# The push uses the job's own token, which GitHub does not count as a push for
+# the CI workflow, so the checks above are the gate rather than a second CI run.
+# If this repository makes CI a required check, set PINS_TOKEN to a personal
+# access token and check out with it instead, or auto-merge waits for a CI run
+# that never starts.
+name: Pins
+
+on:
+  schedule:
+    # Saturday 18:00 UTC, Sunday 03:00 JST.
+    - cron: "0 18 * * 6"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  pins:
+    name: Move the pins
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: main
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
+        with:
+          extra_nix_config: |
+            accept-flake-config = true
+            access-tokens = github.com=${{ github.token }}
+            experimental-features = nix-command flakes
+
+      - name: Configure Cachix
+        if: ${{ vars.CACHIX_NAME != '' }}
+        uses: cachix/cachix-action@3ba601ff5bbb07c7220846facfa2cd81eeee15a1 # v16
+        with:
+          name: ${{ vars.CACHIX_NAME }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Install nix-update
+        run: nix profile install nixpkgs#nix-update
+
+      - name: Move the pins
+        run: bash scripts/bump-pins.sh
+
+      # The same entry point the pre-push hook and CI run, so the moved pins
+      # land only after every check and every activation package builds.
+      - name: Build the moved pins
+        run: scripts/check.sh
+
+      - name: Audit the declared packages
+        env:
+          DOTFILES_DIR: ${{ github.workspace }}
+          GH_TOKEN: ${{ github.token }}
+        run: nix run --impure .#dotfiles -- audit --declared nix-desktop
+
+      - name: Open a pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet; then
+            echo "no pin moved"
+            exit 0
+          fi
+          branch="pi/pins-$(date -u +%Y-%m-%d)"
+          git switch -c "$branch"
+          git commit -am "chore(pins): move the pins"
+          git push -u origin "$branch"
+          gh pr create \
+            --title "chore(pins): move the pins" \
+            --body "Every pin the repository carries, moved by the Pins workflow. The checks and the audit passed before this PR was opened."
+          gh pr merge --auto --squash
