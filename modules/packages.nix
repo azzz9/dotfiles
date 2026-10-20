@@ -14,7 +14,6 @@ in
       ghq
       git-wt
       delta
-      yazi
       fd
       ripgrep
       jq
@@ -22,12 +21,6 @@ in
       yq-go                   # YAML processor
       shellcheck              # shell script linter
       shfmt                   # shell script formatter
-      poppler-utils
-      ffmpegthumbnailer
-      p7zip
-      imagemagick
-      resvg
-      tree-sitter
       pkgs."nerd-fonts"."jetbrains-mono"
 
       # --- Lua ---
@@ -46,7 +39,6 @@ in
       biome                       # formatter + linter (biome.json projects)
       prettier                    # formatter
       prettierd                   # formatter (daemon)
-      eslint                      # linter
       eslint_d                    # linter (daemon)
       mise                        # tool version manager; versions belong to each environment
       bun                         # the agent's TypeScript runtime
@@ -82,8 +74,5 @@ in
       unar
       xclip
       wl-clipboard
-    ])
-    ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin (with pkgs; [
-      terminal-notifier
     ]);
 }
