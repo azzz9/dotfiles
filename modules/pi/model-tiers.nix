@@ -9,12 +9,12 @@
 let
   # nix-desktop and nix-server carry the same accounts, so they share one row.
   desktop = {
-    fast = { model = "ollama-cloud/deepseek-v4.1-flash"; thinking = "xhigh"; };
+    fast = { model = "ollama-cloud/deepseek-v4.1-flash:1017"; thinking = "xhigh"; };
     standard = { model = "ollama-cloud/glm-5.3-flash"; thinking = "xhigh"; };
     intent = { model = "ollama-cloud/glm-5.3"; thinking = "xhigh"; };
     deep = { model = "ollama-cloud/glm-5.3"; thinking = "xhigh"; };
     reviewer = { model = "openai-codex/gpt-6.1-sol"; thinking = "high"; };
-    comment-sicko = { model = "ollama-cloud/deepseek-v4.1-flash"; thinking = "xhigh"; };
+    comment-sicko = { model = "ollama-cloud/deepseek-v4.1-flash:1017"; thinking = "xhigh"; };
   };
 
   # The macbook runs on Copilot Enterprise, which includes model choice, so this
