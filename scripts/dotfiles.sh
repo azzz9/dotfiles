@@ -19,7 +19,6 @@ commands:
   rollback   apply the commit that was applied before the current one
   status     report what is out of date here, changing nothing
   sync       check out main, pull, then apply
-  sync --at <commit>  apply one commit instead of the head of main
 
 audit reads this machine's store. --declared reads the packages flake.nix names
 for it instead, which is what a runner without a store can do. --update records
@@ -57,17 +56,6 @@ if [ "$command" = "audit" ]; then
     fi
     shift
   done
-fi
-
-# sync --at applies one commit instead of the head of main.
-sync_at=""
-if [ "$command" = "sync" ] && [ "${1:-}" = "--at" ]; then
-  sync_at="${2:-}"
-  if [ -z "$sync_at" ]; then
-    echo "dotfiles sync: --at needs a commit" >&2
-    exit 2
-  fi
-  shift 2
 fi
 
 # A machine argument names the attribute to apply. Otherwise this machine's
@@ -421,13 +409,8 @@ case "$command" in
     if [ "${#own_dirty[@]}" -gt 0 ] || [ "${#foreign_dirty[@]}" -gt 0 ]; then
       refuse_dirty "${own_dirty[@]}" "${foreign_dirty[@]}"
     fi
-    if [ -n "$sync_at" ]; then
-      git fetch origin
-      git checkout --detach "$sync_at"
-    else
-      git checkout main
-      git pull --ff-only
-    fi
+    git checkout main
+    git pull --ff-only
     apply_home_and_reconcile
     record_applied
     ;;

@@ -110,8 +110,7 @@ change is needed.
 which `modules/dotfiles.nix` installs through `writeShellApplication` (so the
 build shellchecks it). README.md owns the command table. `sync` refuses any
 dirty path before it pulls, because activation would otherwise pick up a
-half-finished edit. `sync --at <commit>` applies one commit and leaves a
-detached HEAD. `apply` has no dirty gate and activates the current tree.
+half-finished edit. `apply` has no dirty gate and activates the current tree.
 `apply`, `sync`, and `rollback` record the applied commit in
 `~/.local/state/dotfiles/applied.log`, and `rollback` applies the most recent
 applied commit that differs from the current one. `status` reads and never fetches: it

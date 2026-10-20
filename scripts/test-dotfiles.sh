@@ -259,23 +259,6 @@ expect_eq 'sync records the applied commit' "$(git -C "$origin" rev-parse main)"
 expect_origin_unmoved 'sync leaves the origin branch alone'
 scenario_end
 
-scenario 'sync --at applies one commit'
-fixture
-machine_clone
-first="$(push_from_other modules/nvim.nix 'nvim v2-other' 'chore(nvim): other')"
-push_from_other modules/nvim.nix 'nvim v3-other' 'chore(nvim): third'
-run_cli sync --at "$first"
-expect_eq 'sync --at exits 0' 0 "$cli_rc"
-expect_out_has 'sync --at activates' '[stub] activate (profile add)'
-expect_eq 'sync --at checks out the named commit' "$first" "$(git -C "$machine" rev-parse HEAD)"
-expect_eq 'sync --at lands that commit content' 'nvim v2-other' "$(cat "$machine/modules/nvim.nix")"
-expect_eq 'sync --at leaves a detached HEAD' '' "$(git -C "$machine" symbolic-ref -q HEAD || true)"
-expect_origin_unmoved 'sync --at leaves the origin branch alone'
-run_cli sync
-expect_eq 'a later sync returns to main' "$(git -C "$origin" rev-parse main)" "$(git -C "$machine" rev-parse HEAD)"
-expect_eq 'a later sync lands the newest commit' 'nvim v3-other' "$(cat "$machine/modules/nvim.nix")"
-scenario_end
-
 scenario 'rollback applies the commit applied before the current one'
 fixture
 machine_clone

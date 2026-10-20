@@ -61,7 +61,6 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#<
 | `dotfiles rollback`| Apply the commit applied before the current one |
 | `dotfiles status`  | Report what is out of date here, changing nothing |
 | `dotfiles sync`    | Check out `main`, pull, then apply   |
-| `dotfiles sync --at <commit>` | Apply one commit instead of the head of `main` |
 
 The machine's name is its hostname and its row key, so none of these needs an
 argument. An argument names another machine, which is also the only reason to
@@ -72,9 +71,8 @@ opens the weekly pin PR, and the `Audit` workflow reads what the flake declares
 every week, because a runner has no store to read.
 
 `sync` refuses any dirty path, because `apply` would otherwise activate a
-half-finished edit. `sync --at <commit>` applies one commit and leaves a
-detached HEAD, which is how a machine takes a single step instead of everything
-`main` collected while it was away. A later `sync` returns to `main`.
+half-finished edit. It checks out `main`, so a machine that rolled back returns
+to the head of `main` with another `sync`.
 
 `status` shows the applied commit from `~/.local/state/dotfiles/applied.log`
 against `origin/main`, and `rollback` applies the commit applied before the
