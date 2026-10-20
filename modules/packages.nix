@@ -41,7 +41,6 @@ in
       markdownlint-cli        # linter
 
       # --- Security ---
-      vulnix                  # NVD scan of the store
       osv-scanner             # OSV scan of the npm lockfile
 
       pkgs."nerd-fonts"."jetbrains-mono"

@@ -128,12 +128,13 @@ user environment only; a pull that touches `hosts/platform/nixos/` still needs a
 `audit` is the only command that reaches the network. It reads the store
 closure of the running system and of the Home Manager generation, matches those
 package names against the open issues NixOS/nixpkgs labels
-`1.severity: security`, scans the same store with `vulnix` against NVD, and
-reads the npm advisories for the rows `modules/pi.nix` pins. `osv-scanner` adds
-the transitive dependencies of the npm packages pi installed, from the lockfile
-pi leaves in `~/.pi/agent/npm`. `--declared` reads the packages flake.nix names
-for the machine instead, which is a subset of the closure and all a runner
-without a store can read, and it skips the vulnix scan for the same reason. `scripts/audit-baseline.txt` holds what was already read, and
+`1.severity: security`, and reads the npm advisories for the rows
+`modules/pi.nix` pins. `osv-scanner`
+adds the transitive dependencies of the npm packages pi installed, from the
+lockfile pi leaves in `~/.pi/agent/npm`. `--declared` reads the packages
+flake.nix names for the machine instead, which is a subset of the closure and
+all a runner without a store can read. `scripts/audit-baseline.txt` holds what
+was already read, and
 only a match outside it fails the command, so the file is part of the working
 tree like the pins `bump-pins.sh` moves. Only the store audit reads or prunes
 that file.
