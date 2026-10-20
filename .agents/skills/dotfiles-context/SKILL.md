@@ -46,7 +46,6 @@ so `flake.lock` pins them:
 
 ```
 <skills input>/AGENTS.md          -> ~/.pi/agent/AGENTS.md
-<skills input>/AGENTS.md          -> ~/.dsh/AGENTS.md
 <skills input>/APPEND_SYSTEM.md   -> ~/.pi/agent/APPEND_SYSTEM.md
 ```
 
@@ -54,9 +53,6 @@ The input is the same one `modules/pi.nix` hands pi, so the rules and the skill
 files come from one revision. Editing `~/src/github.com/azzz9/skills` has no
 effect until the pin moves. Run `dotfiles upgrade`, or `nix flake update skills`
 and then `dotfiles apply`.
-
-The pinned dsh-agent-instructions 0.2.0-rc.2 reads only
-`$DSH_HOME/AGENTS.md` as the user-global file; pi does not read that path.
 
 Repo-local skills are the only skills this repo ships. They sit in
 `.agents/skills/` at the repo root, where pi discovers them as project skills
@@ -68,27 +64,20 @@ every turn: `APPEND_SYSTEM.md`, which pi appends to the system prompt, and `AGEN
 reads as a context file. Both link from the `skills` flake input, so `flake.lock`
 pins them.
 
-`modules/pi.nix` owns the package rows. The four package inputs are
-`flake = false` inputs in `flake.nix`, rendered into `settings.json` as store
-paths, so `flake.lock` is the only pin; `pi_reconcile` installs any npm row whose
-version differs from its spec. The pins are below.
+`modules/pi.nix` owns the package rows. Four rows are `flake = false` inputs in
+`flake.nix`, and the five npm packages are published tarballs Nix unpacks into
+the store, with `@juicesharp/rpiv-config` vendored under the rpiv row's
+`node_modules`. Every row reaches `settings.json` as a store path, so
+`flake.lock` and the version and hash in `modules/pi.nix` are the pins.
+`pi_reconcile` has no npm row left to install; it and the `status` reconcile
+line stay for a row that is still a `spec`. The tarball rows move by hand, with
+the hash from `nix store prefetch-file`; a runtime dependency needs its own
+`deps` entry. The pins are below.
 
-`modules/dsh.nix` installs the `dsh` and `dsh-tui` wrappers, and
-`modules/dsh-pin.nix` pins both versions. The module is guarded with `lib.mkIf`
-on Linux, so the macbook carries no wrapper, no `~/.dsh/AGENTS.md` link, and no
-provider overlay; `dsh_reconcile` returns on Darwin for the same reason. The CLI
-is not a derivation:
-`dsh_reconcile` installs it into `~/.local/share/dsh` because it builds native
-modules at install time, then keeps the dsh-tui plugin in the mutable
-`~/.dsh/profiles/dsh-tui` on the pinned version. The wrapper launches the
-mise-installed Node 24.18.0, because the CLI's require-builtin addon rejects
-the Nix 22.23.2 and 24.21.0 builds; `DSH_NODE` overrides the path.
-
-`modules/dsh/ollama-cloud.patch.yml` declares the ollama-cloud provider route
-and the default model, and the `dsh-tui` wrapper passes it with `--patch` so it
-layers after the profile's own patch file. The route names
-`OLLAMA_CLOUD_API_KEY`, resolved per request from the launching environment
-first and then the harness credential store; the key stays machine-local.
+`dsh` is not managed here. It is installed on this machine only, under
+`~/.local/share/dsh` with its Node runtime from mise, and `~/.local/bin/dsh`
+with `dsh-install` are its launchers. Nothing in the flake or the CLI touches
+it, so a machine without that local install simply has no `dsh`.
 
 The CLI itself comes from upstream's own flake, the `pi` input at
 `github:earendil-works/pi`, which builds pi from source. `modules/pi.nix` and
@@ -117,12 +106,22 @@ change is needed.
 
 ## dotfiles CLI commands
 
-`apply`, `audit`, `sync`, and `upgrade` live in `scripts/dotfiles.sh`, which
-`modules/dotfiles.nix` installs through `writeShellApplication` (so the build
-shellchecks it). README.md owns the command table. `sync` runs a gate first: any
-change outside the four files `upgrade` rewrites makes it refuse, because
-activation would otherwise pick up a half-finished edit. `apply` has no such
-gate and activates the current tree.
+`apply`, `audit`, `status`, `sync`, and `upgrade` live in `scripts/dotfiles.sh`,
+which `modules/dotfiles.nix` installs through `writeShellApplication` (so the
+build shellchecks it). README.md owns the command table. `sync` runs a gate
+first: any change outside the three files `upgrade` rewrites makes it refuse,
+because activation would otherwise pick up a half-finished edit. `apply` has no
+such gate and activates the current tree. `status` reads and never fetches: it
+reports the distance from the last fetched upstream, the uncommitted pin files,
+whether the running Home Manager generation's derivation matches the one the
+checkout evaluates to, and whether the pi npm rows sit on their pins. The last
+one is the only reader of the mutable npm prefix besides the reconcile, so it is
+what sees a reconcile that failed offline. Only a run that
+mutates takes the lock, so `status` stays usable during an upgrade; a second
+mutating run exits 1 rather than reading as applied, and a lock left by a killed
+run is reclaimed through the pid inside it. On NixOS these commands change the
+user environment only; a pull that touches `hosts/platform/nixos/` still needs a
+`nixos-rebuild switch --flake` run for the system layer.
 
 `audit` is the only command that reaches the network. It reads the store
 closure of the running system and of the Home Manager generation, matches those
@@ -140,22 +139,22 @@ the pins it just moved are where a nixpkgs fix lands.
 
 ## Pins
 
-`upgrade` moves every pin this repository has, in one run, and leaves the files
+`upgrade` moves every flake input and every `nix-update` pin in one run, and leaves the files
 it moved in the working tree for a commit.
 
 | Pin | Moves with |
 |-----|------------|
 | nixpkgs and every other flake input | `nix flake update`, which rewrites `flake.lock` |
 | the pi packages | `flake.lock` alone, because `modules/pi.nix` hands pi each input's store path |
-| the npm-only pi packages | a registry-queried bump in `modules/pi.nix` plus `pi_reconcile` |
-| `modules/dsh-pin.nix` | a registry-queried bump of the `dsh` CLI and `dsh-tui` versions plus `dsh_reconcile`; its Node runtime is pinned by hand |
+| the five npm pi packages | a hand edit in `modules/pi.nix`: version, URL, and hash from `nix store prefetch-file`; a runtime dependency needs its own `deps` entry |
 | `modules/pinned-packages.nix` | `nix-update`, one name at a time |
 
 The npm-source rows are the ones `modules/pi.nix` writes as an `npm:` spec, each
 with its reason recorded on the row. `bump_npm_pins` finds them with one
 `grep -o 'npm:...'` and moves each to the registry's latest. The `nix-update`
-names are `solhint`, `roots`, `prettier-plugin-solidity` and its dist, and
-`herdr-nvim`.
+names live in `modules/pin-names.txt`, one flake package name per line, and the
+`pin-names` check fails when that file and `flake.nix`'s packages disagree in
+either direction.
 
 A `nix-update` run that fails, for example because a release needs a newer Go
 than nixpkgs carries, restores that one file and warns, so one blocked release
@@ -262,7 +261,6 @@ Conditionals live in the files below, each next to what it configures.
 
 | File | What it separates |
 |------|-------------------|
-| `hosts/default.nix` | the dsh module and its AGENTS.md link on Linux |
 | `hosts/platform/darwin.nix` | sessionPath entries and the GC launchd argument split |
 | `hosts/platform/linux.nix` | sessionPath entries and the XDG user dirs |
 | `modules/ghostty.nix` | `config` against `config.ghostty`, with different content |

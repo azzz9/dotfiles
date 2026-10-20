@@ -39,6 +39,9 @@ case " \$* " in
   *" path-info -r "*) cat "$work/stores" ;;
   # The declared audit reads package names through nix eval.
   *" eval "*--apply*) printf '%s\n' '["fixturepkg-1.2.3","otherpkg-4.5.6"]' ;;
+  # status compares the running generation's derivation with the one this
+  # checkout evaluates to.
+  *" eval "*drvPath*) cat "$work/checkout.drv" ;;
   # upgrade's flake update is refused unless a scenario asks for it, so a
   # scenario that strays into the bump cannot pass silently.
   *" flake update "*)
@@ -57,12 +60,29 @@ cat > "$work/bin/curl" <<STUB
 case " \$* " in
   *"api.github.com/repos/NixOS/nixpkgs/issues"*) cat "$work/issues.json" ;;
   *"advisories/bulk"*) cat "$work/advisories.json" ;;
-  *"registry.npmjs.org/@deepseek-ai%2Fdsh"*) printf '{"dist-tags":{"latest":"0.2.0"}}\n' ;;
   *"registry.npmjs.org/"*) printf '{"dist-tags":{"latest":"9.9.9"}}\n' ;;
   *) printf 'curl stub: refusing %s\n' "\$*" >&2; exit 99 ;;
 esac
 STUB
 chmod +x "$work/bin/curl"
+
+# status asks the hostname and the running generation. The hostname file lets a
+# scenario be a different machine without rewriting the stub.
+printf 'test\n' > "$work/hostname"
+cat > "$work/bin/hostname" <<STUB
+#!$BASH
+cat "$work/hostname"
+STUB
+chmod +x "$work/bin/hostname"
+
+cat > "$work/bin/nix-store" <<STUB
+#!$BASH
+case " \$* " in
+  *" -q --deriver "*) cat "$work/running.drv" ;;
+  *) printf 'nix-store stub: refusing %s\n' "\$*" >&2; exit 99 ;;
+esac
+STUB
+chmod +x "$work/bin/nix-store"
 
 cat > "$work/fakeout/activate" <<'STUB'
 #!/usr/bin/env bash
@@ -80,11 +100,12 @@ fixture() {
   git -C "$seed" remote add origin "$origin"
   install -Dm644 "$src" "$seed/scripts/dotfiles.sh"
   install -Dm644 "$(dirname "$src")/audit.sh" "$seed/scripts/audit.sh"
+  install -Dm644 "$(dirname "$src")/pi-reconcile.sh" "$seed/scripts/pi-reconcile.sh"
   mkdir -p "$seed/modules"
   printf 'lock v1\n' > "$seed/flake.lock"
   printf 'pins v1\n' > "$seed/modules/pinned-packages.nix"
+  printf '# fixture pins\nsolhint\nroots\n' > "$seed/modules/pin-names.txt"
   printf 'pi v1\n' > "$seed/modules/pi.nix"
-  printf '{\n  cli = "0.1.0";\n  tui = "0.1.0";\n}\n' > "$seed/modules/dsh-pin.nix"
   printf 'nvim v1\n' > "$seed/modules/nvim.nix"
   git -C "$seed" add -A
   git -C "$seed" commit -qm init
@@ -96,6 +117,11 @@ fixture() {
   printf '[]\n' > "$work/issues.json"
   printf '{}\n' > "$work/advisories.json"
   rm -f "$work/allow-flake-update"
+  rm -rf "$XDG_RUNTIME_DIR/dotfiles.lockdir" "$HOME/.local/state/home-manager"
+  rm -rf "$HOME/.pi"
+  printf 'test\n' > "$work/hostname"
+  printf '/nix/store/00000000000000000000000000000000-home-manager-generation.drv\n' > "$work/running.drv"
+  cp "$work/running.drv" "$work/checkout.drv"
 }
 
 machine_clone() {
@@ -118,11 +144,22 @@ write_runner() {
   {
     printf 'export DOTFILES_DIR=%s\n' "$machine"
     printf 'DOTFILES_MACHINES=test\n'
+    # The real reader comes in with its file, so `status` reads the same layout
+    # the reconcile does. The installer is stubbed after it, because it reaches
+    # the network.
+    tail -n +2 "$machine/scripts/pi-reconcile.sh"
     printf 'pi_reconcile() { echo "[stub] pi_reconcile"; }\n'
-    printf 'dsh_reconcile() { echo "[stub] dsh_reconcile"; }\n'
     tail -n +2 "$machine/scripts/audit.sh"
     tail -n +2 "$machine/scripts/dotfiles.sh"
   } > "$runner"
+}
+
+# A HOME whose pi row sits on the fixture pin. A scenario calls this, then
+# moves the installed version off it.
+match_reconcile() {
+  mkdir -p "$HOME/.pi/agent/npm/node_modules/fixturepkg"
+  printf '{"packages":["npm:fixturepkg@1.0.0"]}\n' > "$HOME/.pi/agent/settings.json"
+  printf '{"version":"1.0.0"}\n' > "$HOME/.pi/agent/npm/node_modules/fixturepkg/package.json"
 }
 
 failures=0
@@ -204,10 +241,11 @@ run_cli sync
 expect_eq 'sync exits 0' 0 "$cli_rc"
 expect_out_has 'sync activates the pulled checkout' '[stub] activate (profile add)'
 expect_out_has 'sync runs pi_reconcile' '[stub] pi_reconcile'
-expect_out_has 'sync runs dsh_reconcile' '[stub] dsh_reconcile'
 expect_out_has 'sync names the stash holding the pins' "dotfiles sync: the pins this machine had are in stash@{0} and are no longer active."
 expect_eq 'sync lands the pulled nvim change' 'nvim v2-other' "$(cat "$machine/modules/nvim.nix")"
 expect_eq 'sync drops the stashed pin from the tree' 'lock v1' "$(cat "$machine/flake.lock")"
+run_cli status
+expect_out_has 'status names the stash sync left' 'stash:    1 sync stash(es)'
 expect_eq 'sync leaves a clean tree' '' "$(git -C "$machine" status --porcelain)"
 expect_eq 'sync keeps the pins in stash@{0}' "stash@{0}: On main: dotfiles sync: this machine's pins" "$(git -C "$machine" stash list)"
 expect_eq 'sync leaves HEAD on the pulled commit' "$(git -C "$origin" rev-parse main)" "$(git -C "$machine" rev-parse HEAD)"
@@ -336,17 +374,13 @@ git -C "$machine" commit -qam 'chore(nvim): mine'
 push_from_other modules/pi.nix 'pi v2-other' 'chore(pi): other'
 run_cli upgrade
 # The branch diverged, so the pull fails before pin_scratch exists and before
-# any backup is taken. The four paths upgrade rewrites stay as they were.
+# any backup is taken. The three paths upgrade rewrites stay as they were.
 expect_eq 'upgrade exits 1 when the pull cannot fast-forward' 1 "$cli_rc"
 expect_out_has 'upgrade reports the pins are untouched' 'dotfiles upgrade: the pull failed; the pins are untouched'
 expect_out_lacks 'upgrade never reaches the bump' 'flake update'
 expect_eq 'upgrade leaves flake.lock alone' 'lock v1' "$(cat "$machine/flake.lock")"
 expect_eq 'upgrade leaves the pinned-packages file alone' 'pins v1' "$(cat "$machine/modules/pinned-packages.nix")"
 expect_eq 'upgrade leaves modules/pi.nix alone' 'pi v1' "$(cat "$machine/modules/pi.nix")"
-expect_eq 'upgrade leaves the dsh pin alone' '{
-  cli = "0.1.0";
-  tui = "0.1.0";
-}' "$(cat "$machine/modules/dsh-pin.nix")"
 expect_eq 'upgrade stashes nothing' '' "$(git -C "$machine" stash list)"
 expect_eq 'upgrade leaves the branch where it was' "$head_before" "$(git -C "$machine" rev-parse HEAD)"
 expect_eq 'upgrade leaves a clean tree' '' "$(git -C "$machine" status --porcelain)"
@@ -418,18 +452,46 @@ expect_out_has 'upgrade names the new match' 'new   #111 fixturepkg 1.2.3'
 expect_out_has 'upgrade says the audit did not fail the upgrade' 'the audit above exited non-zero; the upgrade itself is applied'
 scenario_end
 
-scenario 'upgrade promotes a dsh prerelease to its stable release'
+scenario 'audit reads the tarball rows and their deps'
 fixture
 machine_clone
-printf '{\n  cli = "0.2.0-rc.2";\n  tui = "0.1.0";\n}\n' > "$machine/modules/dsh-pin.nix"
-git -C "$machine" commit -qam 'chore(dsh): pin a prerelease'
+printf '[{"number":111,"title":"fixturepkg: security issues < 1.2.4"}]\n' > "$work/issues.json"
+printf '{"fixturepkg":[{"id":123,"severity":"high","title":"Command Injection","vulnerable_versions":"<1.0.1"}]}\n' > "$work/advisories.json"
+cat > "$machine/modules/pi.nix" <<'EOF'
+{
+  rows = [
+    { tarball = {
+        name = "fixturepkg";
+        version = "1.0.0";
+        url = "https://registry.npmjs.org/fixturepkg/-/fixturepkg-1.0.0.tgz";
+        hash = "sha256-x";
+        deps = [{
+          name = "fixturedep";
+          version = "2.0.0";
+          url = "https://registry.npmjs.org/fixturedep/-/fixturedep-2.0.0.tgz";
+          hash = "sha256-y";
+        }];
+      };
+    }
+  ];
+}
+EOF
+run_cli audit
+expect_eq 'audit exits 1 on the tarball advisory' 1 "$cli_rc"
+expect_out_has 'audit reads the tarball row version' 'new   fixturepkg 1.0.0 high'
+expect_out_has 'audit counts the row and its dep' 'npm - 2 rows'
+expect_out_has 'audit reads the vendored dependency' 'behind fixturedep 2.0.0 -> 9.9.9'
+scenario_end
+
+scenario 'upgrade bumps an npm spec'
+fixture
+machine_clone
+printf '{"rows": [{"spec": "npm:fixturepkg@1.0.0"}]}\n' > "$machine/modules/pi.nix"
+git -C "$machine" commit -qam 'chore(pi): an npm row'
 touch "$work/allow-flake-update"
 run_cli upgrade
 expect_eq 'upgrade exits 0' 0 "$cli_rc"
-expect_eq 'upgrade promotes the dsh prerelease' '{
-  cli = "0.2.0";
-  tui = "9.9.9";
-}' "$(cat "$machine/modules/dsh-pin.nix")"
+expect_eq 'upgrade bumps the npm spec' '{"rows": [{"spec": "npm:fixturepkg@9.9.9"}]}' "$(cat "$machine/modules/pi.nix")"
 scenario_end
 
 scenario 'audit --declared reads the flake instead of the store'
@@ -447,6 +509,138 @@ run_cli audit --declared --update
 expect_eq 'audit --declared refuses --update' 1 "$cli_rc"
 expect_out_has 'audit --declared says why' 'reads a subset of it'
 expect_eq 'audit --declared leaves the baseline alone' 'nixpkgs 999 ghostpkg # 1.0' "$(cat "$machine/scripts/audit-baseline.txt")"
+scenario_end
+
+scenario 'a run holding the lock makes the next one fail'
+fixture
+machine_clone
+mkdir -p "$XDG_RUNTIME_DIR/dotfiles.lockdir"
+printf '%s\n' "$$" > "$XDG_RUNTIME_DIR/dotfiles.lockdir/pid"
+run_cli apply
+expect_eq 'apply exits 1 while another run holds the lock' 1 "$cli_rc"
+expect_out_has 'apply names the holder' "another run ($$) holds"
+expect_out_lacks 'a refused apply does not activate' '[stub] activate'
+expect_eq 'a refused apply leaves the lock in place' "$$" "$(cat "$XDG_RUNTIME_DIR/dotfiles.lockdir/pid")"
+scenario_end
+
+scenario 'apply reclaims a lock its owner no longer holds'
+fixture
+machine_clone
+mkdir -p "$XDG_RUNTIME_DIR/dotfiles.lockdir"
+sleep 0.01 & dead_pid=$!
+wait "$dead_pid"
+printf '%s\n' "$dead_pid" > "$XDG_RUNTIME_DIR/dotfiles.lockdir/pid"
+run_cli apply
+expect_eq 'apply exits 0 after reclaiming the lock' 0 "$cli_rc"
+expect_out_has 'apply says it reclaimed the lock' 'reclaiming'
+expect_out_has 'apply activates after reclaiming' '[stub] activate (profile add)'
+expect_eq 'apply leaves no lock behind' absent "$(test -d "$XDG_RUNTIME_DIR/dotfiles.lockdir" && echo present || echo absent)"
+scenario_end
+
+scenario 'apply reclaims a lock directory that carries no pid'
+fixture
+machine_clone
+mkdir -p "$XDG_RUNTIME_DIR/dotfiles.lockdir"
+run_cli apply
+expect_eq 'apply exits 0 after reclaiming a pid-less lock' 0 "$cli_rc"
+expect_out_has 'apply activates after reclaiming' '[stub] activate (profile add)'
+scenario_end
+
+scenario 'two runs reclaiming one stale lock do not both write'
+fixture
+machine_clone
+# Hold the winner in the activation stub, so the second run arrives while the
+# first owns the lock instead of after it released it.
+printf '#!/usr/bin/env bash\nsleep 0.3\necho "[stub] activate (profile add)"\n' > "$work/fakeout/activate"
+sleep 0.01 & dead=$!
+wait "$dead"
+mkdir -p "$XDG_RUNTIME_DIR/dotfiles.lockdir"
+printf '%s\n' "$dead" > "$XDG_RUNTIME_DIR/dotfiles.lockdir/pid"
+( set +e; PATH="$work/bin:$PATH" bash "$runner" apply test > "$work/first.out" 2>&1; echo $? > "$work/first.rc" ) &
+( set +e; PATH="$work/bin:$PATH" bash "$runner" apply test > "$work/second.out" 2>&1; echo $? > "$work/second.rc" ) &
+wait
+activations=0
+for f in "$work/first.out" "$work/second.out"; do
+  if grep -q '\[stub\] activate (profile add)' "$f"; then
+    activations=$((activations + 1))
+  fi
+done
+expect_eq 'only one of the two reclaimers activates' 1 "$activations"
+expect_eq 'the other reclaimer exits non-zero' 1 "$(cat "$work/first.rc" "$work/second.rc" | grep -vc '^0$')"
+printf '#!/usr/bin/env bash\necho "[stub] activate (profile add)"\n' > "$work/fakeout/activate"
+scenario_end
+
+scenario 'status reports the checkout and a current generation'
+fixture
+machine_clone
+match_reconcile
+mkdir -p "$HOME/.local/state/home-manager/gcroots"
+ln -sfn "$work/fakeout" "$HOME/.local/state/home-manager/gcroots/current-home"
+run_cli status
+expect_eq 'status exits 0' 0 "$cli_rc"
+expect_out_has 'status names the machine' 'dotfiles status: test'
+expect_out_has 'status names the branch and its distance' 'branch:   main, 0 ahead of origin/main, 0 behind'
+expect_out_has 'status reports committed pins' 'pins:     committed'
+expect_out_has 'status reports the generation as current' 'generation: current'
+expect_out_has 'status reports the reconcile as matching' 'reconcile: pi matches its pins'
+expect_eq 'status leaves the tree alone' '' "$(git -C "$machine" status --porcelain)"
+expect_eq 'status stashes nothing' '' "$(git -C "$machine" stash list)"
+expect_origin_unmoved 'status leaves the origin branch alone'
+scenario_end
+
+scenario 'status names a diverged branch instead of sync'
+fixture
+machine_clone
+printf 'nvim v2-mine\n' > "$machine/modules/nvim.nix"
+git -C "$machine" commit -qam 'chore(nvim): mine'
+push_from_other modules/pi.nix 'pi v2-other' 'chore(pi): other'
+git -C "$machine" fetch -q
+run_cli status
+expect_eq 'status exits 0 on a diverged branch' 0 "$cli_rc"
+expect_out_has 'status names the divergence' 'the branch diverged; rebase or merge before sync'
+expect_out_lacks 'status does not recommend sync on a diverged branch' '; run dotfiles sync'
+scenario_end
+
+scenario 'status names what is behind and what is uncommitted'
+fixture
+machine_clone
+mkdir -p "$HOME/.local/state/home-manager/gcroots"
+ln -sfn "$work/fakeout" "$HOME/.local/state/home-manager/gcroots/current-home"
+push_from_other modules/nvim.nix 'nvim v2-other' 'chore(nvim): other'
+git -C "$machine" fetch -q
+printf 'lock v2-mine\n' > "$machine/flake.lock"
+printf '/nix/store/11111111111111111111111111111111-home-manager-generation.drv\n' > "$work/checkout.drv"
+run_cli status
+expect_eq 'status exits 0' 0 "$cli_rc"
+expect_out_has 'status names the commit it is behind' '0 ahead of origin/main, 1 behind'
+expect_out_has 'status names the pin left uncommitted' 'pins:     1 uncommitted: flake.lock'
+expect_out_has 'status points at a commit' '; commit and push them'
+expect_out_has 'status points at sync' '; run dotfiles sync'
+expect_out_has 'status reports the generation as stale' 'generation: stale'
+expect_eq 'status does not pull' "$head_before" "$(git -C "$machine" rev-parse HEAD)"
+scenario_end
+
+scenario 'status names the packages that are behind their pins'
+fixture
+machine_clone
+match_reconcile
+printf '{"version":"0.9.0"}\n' > "$HOME/.pi/agent/npm/node_modules/fixturepkg/package.json"
+run_cli status
+expect_eq 'status exits 0 with drift' 0 "$cli_rc"
+expect_out_has 'status names the pi package that is behind' 'reconcile: pi fixturepkg is 0.9.0, pinned 1.0.0'
+expect_out_lacks 'status does not claim a match' 'reconcile: pi matches its pins'
+expect_eq 'status leaves the tree alone' '' "$(git -C "$machine" status --porcelain)"
+scenario_end
+
+scenario 'status does not compare another machine to this generation'
+fixture
+machine_clone
+mkdir -p "$HOME/.local/state/home-manager/gcroots"
+ln -sfn "$work/fakeout" "$HOME/.local/state/home-manager/gcroots/current-home"
+printf 'other-host\n' > "$work/hostname"
+run_cli status
+expect_eq 'status exits 0' 0 "$cli_rc"
+expect_out_has 'status says the row is not this machine' 'generation: not compared, test is not this machine (other-host)'
 scenario_end
 
 if [ "$failures" -gt 0 ]; then

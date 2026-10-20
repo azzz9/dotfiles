@@ -4,8 +4,30 @@
 # path, so pi already loads the pinned revision.
 #
 # modules/dotfiles.nix inlines this file into the `dotfiles` CLI.
+
+# "<source>\t<installed version>" per versioned npm row. The reconcile and
+# `dotfiles status` share it, so the report cannot disagree with the install.
+pi_npm_rows() {
+  local settings="$1" source name installed
+  if [ ! -f "$settings" ]; then
+    return 0
+  fi
+  while IFS= read -r source; do
+    name="${source#npm:}"
+    name="${name%@*}"
+    if [ "${source##*@}" = "$source" ]; then
+      continue
+    fi
+    installed="$(jq -r .version "${HOME}/.pi/agent/npm/node_modules/${name}/package.json" 2>/dev/null || true)"
+    printf '%s\t%s\n' "$source" "${installed:--}"
+  done < <(
+    jq -r '.packages[] | if type == "object" then .source else . end
+           | select(type == "string" and startswith("npm:"))' "$settings"
+  )
+}
+
 pi_reconcile() {
-  local settings source name expected installed npm_sources
+  local settings source expected installed rows row
   settings="${HOME}/.pi/agent/settings.json"
   if [ ! -f "$settings" ]; then
     return 0
@@ -17,20 +39,11 @@ pi_reconcile() {
   #
   # Read the list before any install runs: pi rewrites settings.json, and a
   # streamed read would race that write.
-  mapfile -t npm_sources < <(
-    jq -r '.packages[] | if type == "object" then .source else . end
-           | select(type == "string" and startswith("npm:"))' "$settings"
-  )
+  mapfile -t rows < <(pi_npm_rows "$settings")
 
-  for source in "${npm_sources[@]}"; do
-    name="${source#npm:}"
-    name="${name%@*}"
+  for row in "${rows[@]}"; do
+    IFS=$'\t' read -r source installed <<< "$row"
     expected="${source##*@}"
-    # An unpinned source names no version, so there is nothing to compare.
-    if [ "$expected" = "$source" ]; then
-      continue
-    fi
-    installed="$(jq -r .version "${HOME}/.pi/agent/npm/node_modules/${name}/package.json" 2>/dev/null || true)"
     if [ "$installed" = "$expected" ]; then
       continue
     fi

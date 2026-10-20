@@ -56,6 +56,7 @@ _dotfiles() {
   local -a commands=(
     'apply:apply the current checkout'
     'audit:check this machine against open security issues'
+    'status:report what is out of date here, changing nothing'
     'sync:pull latest changes, then apply'
     'upgrade:update flake.lock inputs, then apply'
   )

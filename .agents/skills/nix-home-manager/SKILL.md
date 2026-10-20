@@ -41,7 +41,9 @@ nix build --dry-run .#homeConfigurations.nix-desktop.activationPackage --impure 
 flake copy carries no `.git`.
 `bootstrap` drives `setup-system.sh` against fixture PATHs, and
 `dotfiles-cli` drives `scripts/dotfiles.sh` against fixture git repositories,
-with the nix build and the activation it feeds stubbed.
+with the nix build and the activation it feeds stubbed. `pin-names` compares
+`modules/pin-names.txt` with the flake packages `dotfiles upgrade` bumps, so a
+pin that one side names and the other does not fails before a push.
 
 A failed check reads `nix log .#checks.<system>.<check>`.
 

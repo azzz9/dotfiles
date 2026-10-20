@@ -56,10 +56,11 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#<
 
 | Command            | Description                          |
 | ------------------ | ------------------------------------ |
-| `dotfiles apply`   | Build and apply, then install any `pi` or `dsh` package whose version differs |
+| `dotfiles apply`   | Build and apply, then install any `pi` package whose version differs |
 | `dotfiles audit`   | Check this machine's packages against open security issues |
+| `dotfiles status`  | Report what is out of date here, changing nothing |
 | `dotfiles sync`    | Pull, then apply                     |
-| `dotfiles upgrade` | Pull, move every pin, then apply     |
+| `dotfiles upgrade` | Pull, move every flake input and nix-update pin, then apply |
 
 The machine's name is its hostname and its row key, so none of these needs an
 argument. An argument names another machine, which is also the only reason to
@@ -69,7 +70,7 @@ give one.
 machine right after the pins move, and the `Audit` workflow reads what the flake
 declares every week, because a runner has no store to read.
 
-`sync` parks the four files `upgrade` rewrites in a stash before it pulls, so a
+`sync` parks the three files `upgrade` rewrites in a stash before it pulls, so a
 machine that has not committed its own pins still takes the other machine's
 commits. It refuses to run while any other file differs, because `apply` would
 otherwise activate a half-finished edit. The stash stays until it is dropped or
@@ -78,6 +79,26 @@ popped, and the command for either is in the output.
 `upgrade` pulls, moves the pins, and applies. It leaves the files it moved in the
 working tree and names them. Commit and push those, or the other machines keep
 their own pins.
+
+The five npm rows in `modules/pi.nix` are tarballs, so `upgrade` leaves them
+alone. Move one by editing its version, URL, and the hash from
+`nix store prefetch-file`.
+
+`status` changes nothing and never fetches. It reports how far the checkout is
+from the upstream as of the last fetch, which of the three pin files are
+uncommitted, whether the running Home Manager generation was built from this
+checkout's lock, and whether any npm row pi still installs itself sits on its
+pin. That last line is empty while every row is a store path, and catches a
+reconcile that could not reach the network when a row is a `spec`:
+`apply` then exits non-zero, but every other report still reads current.
+
+One run at a time: a second `dotfiles` run exits 1 while another holds the lock,
+and a lock left behind by a killed run is reclaimed instead of blocking every
+run after it.
+
+On a NixOS machine, `apply`, `sync`, and `upgrade` change the user environment
+only. A pull that touches `hosts/platform/nixos/` needs the system command below
+as well.
 
 The system configuration applies on its own:
 
@@ -93,7 +114,7 @@ sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#<machine> --im
 | Editor         | Neovim through nixvim, with the per-language servers, formatters, and linters |
 | Git            | `git`, `gh`, `gh-dash`, `ghq`, `git-wt`, `delta`, `lazygit`                   |
 | Terminals      | `herdr`, `hunk`, and `tuios`                                                  |
-| Agents         | `pi` with the skills and the subagents, and `dsh-tui` on Linux                |
+| Agents         | `pi` with the skills and the subagents                                      |
 | Hermes Agent   | The agent service on `nix-server` only, from the `hermes-agent` flake input   |
 | Tools          | The file, JSON, media, and language toolchains the shell assumes              |
 | Extra packages | The derivations nixpkgs lacks, pinned and bumped by `dotfiles upgrade`        |

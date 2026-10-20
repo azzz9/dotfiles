@@ -32,9 +32,6 @@ let
       }
       require_link .pi/agent/AGENTS.md "${skillsSource}/AGENTS.md"
       require_link .pi/agent/APPEND_SYSTEM.md "${skillsSource}/APPEND_SYSTEM.md"
-      ${pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
-        require_link .dsh/AGENTS.md "${skillsSource}/AGENTS.md"
-      ''}
       # The hermes unit gets a PATH of store paths, so a command the agent
       # shells out to is absent unless modules/hermes.nix lists it. systemd-run
       # scopes each cron worker into its own transient unit, and without it on
@@ -42,7 +39,6 @@ let
       # Linux has the unit, and pkgs.systemd does not evaluate on darwin, so the
       # check stays behind the stdenv test.
       ${pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
-        yq -e '.' "$files/.config/dsh/ollama-cloud.patch.yml" > /dev/null
         hermes_unit="$files/.config/systemd/user/hermes-agent.service"
         if [ -e "$hermes_unit" ]; then
           grep -q '${pkgs.systemd}/bin' "$hermes_unit" || {
@@ -101,6 +97,44 @@ in
     nativeBuildInputs = [ pkgs.python3 pkgs.bash pkgs.coreutils pkgs.gnugrep ];
   } ''
     python3 ${self}/scripts/test-setup.py ${self}/scripts/setup-system.sh
+    touch $out
+  '';
+  # modules/pin-names.txt and flake.nix's packages must name the same set: a pin
+  # in one and not the other is never bumped or never builds. `dotfiles` is the
+  # CLI and codediff-watcher takes its version from nixpkgs, so neither is bumped.
+  pin-names = pkgs.runCommand "pin-names" {
+    nativeBuildInputs = [ pkgs.gawk ];
+  } ''
+    awk -v packages="${pkgs.lib.concatStringsSep " " (builtins.attrNames self.packages.${pkgs.stdenv.hostPlatform.system})}" -v exempt="dotfiles codediff-watcher" '
+      BEGIN {
+        count = split(packages, name, " ")
+        for (i = 1; i <= count; i++) is_package[name[i]] = 1
+        count = split(exempt, name, " ")
+        for (i = 1; i <= count; i++) is_exempt[name[i]] = 1
+      }
+      /^[[:space:]]*(#|$)/ { next }
+      {
+        line = $0
+        sub(/[[:space:]]+$/, "", line)
+        listed[line] = 1
+      }
+      END {
+        bad = 0
+        for (line in listed) {
+          if (!(line in is_package)) {
+            printf "pin-names: %s is listed but flake.nix exposes no such package\n", line > "/dev/stderr"
+            bad = 1
+          }
+        }
+        for (line in is_package) {
+          if (!(line in listed) && !(line in is_exempt)) {
+            printf "pin-names: %s is a flake package but modules/pin-names.txt does not list it, so dotfiles upgrade never bumps it\n", line > "/dev/stderr"
+            bad = 1
+          }
+        }
+        exit bad
+      }
+    ' "${self}/modules/pin-names.txt"
     touch $out
   '';
   # Drives scripts/dotfiles.sh against fixture git repos with its nix build stubbed.
