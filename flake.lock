@@ -517,11 +517,11 @@
     "skills": {
       "flake": false,
       "locked": {
-        "lastModified": 1792497458,
-        "narHash": "sha256-ulWmUY3n3e0wpSTda1fr1GkC6+y+bSuZKE0qczctiGs=",
+        "lastModified": 1792525067,
+        "narHash": "sha256-bdVHTPFvX8XoVeJEIsC+6fgNhiYjU2K8vQOQ01SMKe8=",
         "owner": "azzz9",
         "repo": "skills",
-        "rev": "91a4192dd1a9618c27c360b52d0ae62a8ca59707",
+        "rev": "fe13a522ddac0715b9851b525b1255a58e033775",
         "type": "github"
       },
       "original": {

@@ -2,7 +2,8 @@
 
 Coding agents that work inside this repo read this file. The global rules live
 in the skills repository, whose `AGENTS.md` is linked to `~/.pi/agent/AGENTS.md`; that file
-keeps only the turn gate, the output rules, and the git rules.
+keeps only the turn gate, the language rule, and the git rules. The reply rules live in
+`APPEND_SYSTEM.md`.
 
 ## Repo-local skills
 
