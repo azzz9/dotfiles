@@ -7,7 +7,7 @@ pkgs.writeShellApplication {
   # writeShellApplication runs shellcheck during the build, so the CLI is
   # linted by the build itself and not only by CI.
   runtimeInputs = with pkgs; [
-    nix git coreutils gnugrep gnused bash jq curl hostname
+    nix git coreutils gnugrep gnused bash jq curl hostname vulnix osv-scanner
     nodejs pnpm python312 gnumake stdenv.cc
   ] ++ [ piFlake.packages.${pkgs.stdenv.hostPlatform.system}.pi ];
   text = ''

@@ -66,6 +66,20 @@ esac
 STUB
 chmod +x "$work/bin/curl"
 
+# Answers the NVD and OSV reads, so a scenario decides what each source sees.
+printf '[]\n' > "$work/vulnix.json"
+printf '{"results":[]}\n' > "$work/osv.json"
+cat > "$work/bin/vulnix" <<STUB
+#!$BASH
+cat "$work/vulnix.json"
+STUB
+chmod +x "$work/bin/vulnix"
+cat > "$work/bin/osv-scanner" <<STUB
+#!$BASH
+cat "$work/osv.json"
+STUB
+chmod +x "$work/bin/osv-scanner"
+
 # status asks the hostname and the running generation. The hostname file lets a
 # scenario be a different machine without rewriting the stub.
 printf 'test\n' > "$work/hostname"
@@ -116,6 +130,8 @@ fixture() {
   # The stubs read these, so a scenario never sees the previous one's answers.
   printf '[]\n' > "$work/issues.json"
   printf '{}\n' > "$work/advisories.json"
+  printf '[]\n' > "$work/vulnix.json"
+  printf '{"results":[]}\n' > "$work/osv.json"
   rm -f "$work/allow-flake-update"
   rm -rf "$XDG_RUNTIME_DIR/dotfiles.lockdir" "$HOME/.local/state/home-manager"
   rm -rf "$HOME/.local/state/dotfiles"
@@ -360,6 +376,24 @@ expect_eq 'audit exits 1 on the tarball advisory' 1 "$cli_rc"
 expect_out_has 'audit reads the tarball row version' 'new   fixturepkg 1.0.0 high'
 expect_out_has 'audit counts the row and its dep' 'npm - 2 rows'
 expect_out_has 'audit reads the vendored dependency' 'behind fixturedep 2.0.0 -> 9.9.9'
+scenario_end
+
+scenario 'audit reads vulnix and osv'
+fixture
+machine_clone
+printf '[{"name":"fixturepkg","version":"1.2.3","affected_by":["CVE-2026-0001"]}]\n' > "$work/vulnix.json"
+printf '{"results":[{"packages":[{"package":{"name":"fixturepkg","version":"1.2.3"},"vulnerabilities":[{"id":"GHSA-aaaa"}]}]}]}\n' > "$work/osv.json"
+mkdir -p "$HOME/.pi/agent/npm"
+printf '{}\n' > "$HOME/.pi/agent/npm/package-lock.json"
+run_cli audit
+expect_eq 'audit exits 1 on the new sources' 1 "$cli_rc"
+expect_out_has 'audit names the vulnix match' 'new   CVE-2026-0001 fixturepkg@1.2.3'
+expect_out_has 'audit names the osv match' 'new   GHSA-aaaa fixturepkg@1.2.3'
+run_cli audit --update
+expect_eq 'audit --update exits 0' 0 "$cli_rc"
+baseline="$(cat "$machine/scripts/audit-baseline.txt")"
+expect_eq 'audit --update records the vulnix match' present "$(out_has "$baseline" 'vulnix CVE-2026-0001 fixturepkg@1.2.3')"
+expect_eq 'audit --update records the osv match' present "$(out_has "$baseline" 'osv GHSA-aaaa fixturepkg@1.2.3')"
 scenario_end
 
 scenario 'audit --declared reads the flake instead of the store'

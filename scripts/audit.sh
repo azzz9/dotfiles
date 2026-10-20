@@ -7,7 +7,7 @@
 # It reports by return code, so `dotfiles audit` and the Pins workflow can read
 # it as a report.
 #
-# Two sources are checked, because they are pinned in different ways.
+# Four sources are checked, because they are pinned in different ways.
 #
 #   the store   what this machine has, read from the closure of the running
 #               system and of its Home Manager generation, against the open
@@ -17,6 +17,11 @@
 #               one there costs gigabytes.
 #   npm rows    the versions modules/pi.nix pins, against the npm registry's
 #               advisories
+#   vulnix      the store again, against NVD rather than the nixpkgs tracker.
+#               Only a machine with a store can read it, so --declared skips it.
+#   osv         the npm packages pi installed, with their transitive
+#               dependencies, against the OSV database. Skipped when pi has
+#               left no lockfile.
 #
 # A store match is a lead, not a verdict. A store path carries a version and
 # the issue usually does not, so the report prints both and leaves the call to
@@ -177,6 +182,31 @@ audit_npm_advisories() {
     -d "$body" "https://registry.npmjs.org/-/npm/v1/security/advisories/bulk"
 }
 
+# NVD is a second view of the store. vulnix matches package names and versions
+# against NVD products, so a match is a lead like the nixpkgs issue match.
+audit_vulnix_findings() {
+  local report
+  if [ -e /run/current-system ]; then
+    report="$(vulnix --system --json 2>/dev/null || true)"
+  else
+    report="$(vulnix --profile "$HOME/.nix-profile" --json 2>/dev/null || true)"
+  fi
+  printf '%s' "$report" |
+    jq -r '.[]? | "\(.name)@\(.version) \(.affected_by[]?)"' 2>/dev/null |
+    awk 'NF == 2 { printf "vulnix %s %s\n", $2, $1 }'
+}
+
+# OSV covers the npm packages pi installed with their transitive dependencies,
+# which the registry advisory read above does not see.
+audit_osv_findings() {
+  local lockfile="${HOME}/.pi/agent/npm/package-lock.json"
+  if [ ! -f "$lockfile" ]; then
+    return 0
+  fi
+  osv-scanner scan source --lockfile "$lockfile" --format json 2>/dev/null |
+    jq -r '.results[]?.packages[]? | .package as $p | .vulnerabilities[]? | "osv \(.id) \($p.name)@\($p.version)"' 2>/dev/null || true
+}
+
 audit_packages() {
   local repo="$1" machine="$2" tmp_dir="$3" pi_module="$4" update="$5" declared="$6"
   local baseline="$repo/scripts/audit-baseline.txt"
@@ -252,6 +282,10 @@ audit_packages() {
   {
     awk -F'\t' '{ printf "nixpkgs %s %s\n", $1, $2 }' "$matches_file"
     printf '%s' "$findings" | awk -F'\t' 'NF > 0 { printf "npm %s@%s/%s\n", $1, $2, $3 }'
+    if [ "$declared" = 0 ]; then
+      audit_vulnix_findings
+    fi
+    audit_osv_findings
   } | LC_ALL=C sort -u > "$current_file"
 
   if [ -f "$baseline" ]; then
@@ -296,10 +330,30 @@ audit_packages() {
     done
   fi
 
+  if [ "$declared" = 0 ]; then
+    vulnix_new="$(LC_ALL=C comm -13 "$accepted_file" "$current_file" | grep -c '^vulnix ' || true)"
+    if [ "${vulnix_new:-0}" -gt 0 ]; then
+      printf 'dotfiles audit: vulnix - %s new NVD match(es)\n' "$vulnix_new"
+      LC_ALL=C comm -13 "$accepted_file" "$current_file" | grep '^vulnix ' |
+        while read -r _ cve pkg; do
+          printf 'dotfiles audit:   new   %s %s\n' "$cve" "$pkg"
+        done
+    fi
+  fi
+  osv_new="$(LC_ALL=C comm -13 "$accepted_file" "$current_file" | grep -c '^osv ' || true)"
+  if [ "${osv_new:-0}" -gt 0 ]; then
+    printf 'dotfiles audit: osv - %s new advisory(ies)\n' "$osv_new"
+    LC_ALL=C comm -13 "$accepted_file" "$current_file" | grep '^osv ' |
+      while read -r _ id pkg; do
+        printf 'dotfiles audit:   new   %s %s\n' "$id" "$pkg"
+      done
+  fi
+
   if [ "$update" = 1 ]; then
     {
       awk -F'\t' '{ printf "nixpkgs %s %s # %s\n", $1, $2, $3 }' "$matches_file"
       printf '%s' "$findings" | awk -F'\t' 'NF > 0 { printf "npm %s@%s/%s # %s %s\n", $1, $2, $3, $4, $5 }'
+      grep -E '^(vulnix|osv) ' "$current_file" || true
     } | LC_ALL=C sort -u > "$baseline"
     printf 'dotfiles audit: wrote %s new; %s recorded lines no longer match\n' \
       "$(wc -l < "$baseline")" "$stale_count"
