@@ -256,22 +256,6 @@
         "type": "github"
       }
     },
-    "nixpkgs-master": {
-      "locked": {
-        "lastModified": 1791317188,
-        "narHash": "sha256-OCBOv/YhohQFbdkGjQn3AlwoGcAXpy9CWATauED8R1s=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "c69166e507116604d4ede11502d4ab6028974f66",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "ref": "master",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
     "nixpkgs_2": {
       "locked": {
         "lastModified": 1791254437,
@@ -502,7 +486,6 @@
         "home-manager": "home-manager_2",
         "hunk": "hunk",
         "nixpkgs": "nixpkgs_3",
-        "nixpkgs-master": "nixpkgs-master",
         "nixvim": "nixvim",
         "pi": "pi",
         "pi-compact-tools": "pi-compact-tools",

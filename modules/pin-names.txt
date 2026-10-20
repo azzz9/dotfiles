@@ -1,0 +1,8 @@
+# The flake packages `dotfiles upgrade` bumps with `nix-update --flake`. One
+# packages.<system> attribute name per line; checks/default.nix keeps this list
+# and flake.nix in agreement.
+solhint
+roots
+prettier-plugin-solidity
+prettier-plugin-solidity-dist
+herdr-nvim

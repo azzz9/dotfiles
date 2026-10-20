@@ -1,8 +1,6 @@
-# The CLI lives in a mutable prefix because it builds native modules, so there
-# is no derivation for nix-update to read.
-#
-# Measured here: the require-builtin addon fails with Unsupported/no-getter on
-# Node 22.23.2 and 24.21.0; 24.18.0 boots the CLI.
+# Compatibility shim. A CLI installed before this change still lists this path
+# in upgrade_paths, so `dotfiles upgrade` would fail when the pull deletes the
+# file. Keep it until every machine runs the new CLI, then delete it.
 {
   cli = "0.2.0-rc.2";
   tui = "0.16.1";

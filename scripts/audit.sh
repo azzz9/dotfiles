@@ -27,14 +27,18 @@
 # and a few of them always name a base package this machine carries. Text after
 # ` #` on a baseline line is for the reader and takes no part in the comparison.
 
-# The store paths this machine has. macOS has no /run/current-system, so there
-# the Home Manager generation carries everything. Both reads have to succeed,
-# because a closure that only half arrived would report a smaller answer as if
-# it were the whole one.
+# The running Home Manager generation is the machine's actual set; building the
+# checkout is the fallback for a machine that has not applied yet.
 audit_store_paths() {
-  local generation
+  local generation link
   if [ -e /run/current-system ]; then
     nix_cmd path-info -r /run/current-system || return 1
+  fi
+  link="${XDG_STATE_HOME:-$HOME/.local/state}/home-manager/gcroots/current-home"
+  if [ -e "$link" ]; then
+    generation="$(readlink "$link")"
+    nix_cmd path-info -r "$generation" || return 1
+    return 0
   fi
   if ! generation="$(nix_cmd build --no-link --print-out-paths --impure \
     "$1#homeConfigurations.$2.activationPackage")"; then
@@ -137,14 +141,23 @@ audit_match_issues() {
   ' "$1" -
 }
 
-# "<name>\t<version>" for every npm row modules/pi.nix pins.
+# "<name>\t<version>" for every npm row modules/pi.nix pins: an `npm:` spec,
+# and a tarball row or one of its `deps`, which pin a bare name and version on
+# their own lines.
 audit_npm_specs() {
   local name spec
-  while read -r spec; do
-    name="${spec#npm:}"
-    name="${name%@*}"
-    printf '%s\t%s\n' "$name" "${spec##*@}"
-  done < <(grep -o 'npm:[A-Za-z0-9@/._-]*@[0-9][0-9A-Za-z.+-]*' "$1" | sort -u)
+  {
+    while read -r spec; do
+      name="${spec#npm:}"
+      name="${name%@*}"
+      printf '%s\t%s\n' "$name" "${spec##*@}"
+    done < <(grep -o 'npm:[A-Za-z0-9@/._-]*@[0-9][0-9A-Za-z.+-]*' "$1" | sort -u)
+    awk '
+      /^[[:space:]]*name = "/  { split($0, a, "\""); name = a[2]; next }
+      /^[[:space:]]*version = "/ { split($0, a, "\""); version = a[2];
+        if (name != "") { printf "%s\t%s\n", name, version; name = "" } }
+    ' "$1"
+  } | sort -u
 }
 
 # The registry's advisory answer for the pinned npm rows, as JSON. It names the
