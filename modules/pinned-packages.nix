@@ -134,20 +134,8 @@ let
     '';
   };
 
-  roots = pkgs.buildGoModule rec {
-    pname = "roots";
-    version = "0.4.2";
-    src = pkgs.fetchFromGitHub {
-      owner = "k1LoW";
-      repo = "roots";
-      rev = "v${version}";
-      hash = "sha256-neK1K3Emam70LJR/oVi1Gn0dNM+OC6X5TyAufQJE7BQ=";
-    };
-    vendorHash = "sha256-po/kY9zXId2qvk3oNgdrgFLEbVIWedYjfqMfdX4J5Ls=";
-    ldflags = [ "-s" "-w" ];
-  };
 in
 {
   inherit debugpyPython nomicfoundationSolidityLanguageServer codediffWatcher herdrNvim;
-  inherit prettierPluginSolidity prettierPluginSolidityDist roots solhint;
+  inherit prettierPluginSolidity prettierPluginSolidityDist solhint;
 }

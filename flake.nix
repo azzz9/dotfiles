@@ -135,7 +135,6 @@
           solhint = pinned.solhint;
           "prettier-plugin-solidity" = pinned.prettierPluginSolidity;
           "prettier-plugin-solidity-dist" = pinned.prettierPluginSolidityDist;
-          roots = pinned.roots;
           codediff-watcher = pinned.codediffWatcher;
           herdr-nvim = pinned.herdrNvim;
         };

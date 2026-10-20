@@ -85,6 +85,5 @@ in
     ])
     ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin (with pkgs; [
       terminal-notifier
-    ])
-    ++ [ pinned.roots ];
+    ]);
 }
