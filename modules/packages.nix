@@ -19,8 +19,27 @@ in
       jq
       tree                    # directory structure visualization
       yq-go                   # YAML processor
+
+      # --- Shell ---
       shellcheck              # shell script linter
       shfmt                   # shell script formatter
+      bash-language-server    # LSP
+
+      # --- YAML / JSON / TOML ---
+      yaml-language-server          # LSP (yaml)
+      yamllint                    # linter (yaml)
+      vscode-json-languageserver  # LSP (json, jsonc)
+      taplo                       # LSP + formatter (toml)
+
+      # --- CSS / HTML ---
+      vscode-css-languageserver   # LSP
+      vscode-html-languageserver  # LSP
+      stylelint                   # linter (css)
+      htmlhint                    # linter (html)
+
+      # --- Markdown ---
+      markdownlint-cli        # linter
+
       pkgs."nerd-fonts"."jetbrains-mono"
 
       # --- Lua ---
@@ -45,7 +64,7 @@ in
       vscode-js-debug             # DAP debugger (Node.js / Chrome)
 
       # --- C / C++ ---
-      clang-tools           # LSP (clangd) + clang-tidy
+      clang-tools           # LSP (clangd) + clang-format + clang-tidy
 
       # --- Nix ---
       nil                       # LSP
