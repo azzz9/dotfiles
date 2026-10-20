@@ -4,21 +4,23 @@ let
 in
 {
   # herdr agent multiplexer, https://github.com/ogulcancelik/herdr
-  home.packages = [
-    pkgs.herdr
-    # worktree-layout moves a tab over the socket API.
-    pkgs.netcat-openbsd
-    (pkgs.writeShellApplication {
-      name = "wt-clean";
-      runtimeInputs = [
-        pkgs.coreutils
-        pkgs.git
-        pkgs.herdr
-        pkgs.jq
-      ];
-      text = builtins.readFile ./herdr/wt-clean.sh;
-    })
-  ];
+  home.packages =
+    [
+      pkgs.herdr
+      (pkgs.writeShellApplication {
+        name = "wt-clean";
+        runtimeInputs = [
+          pkgs.coreutils
+          pkgs.git
+          pkgs.herdr
+          pkgs.jq
+        ];
+        text = builtins.readFile ./herdr/wt-clean.sh;
+      })
+    ]
+    # worktree-layout moves a tab over the socket API. macOS ships its own nc,
+    # and nixpkgs marks netcat-openbsd unavailable there.
+    ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.netcat-openbsd ];
 
   xdg.configFile."herdr/config.toml".text = ''
     # Managed by Home Manager (modules/herdr.nix); do not edit directly.
