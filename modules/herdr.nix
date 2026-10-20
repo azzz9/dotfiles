@@ -6,8 +6,6 @@ in
   # herdr agent multiplexer, https://github.com/ogulcancelik/herdr
   home.packages = [
     pkgs.herdr
-    # worktree-layout moves a tab over the socket API.
-    pkgs.netcat-openbsd
     (pkgs.writeShellApplication {
       name = "wt-clean";
       runtimeInputs = [
@@ -18,6 +16,9 @@ in
       ];
       text = builtins.readFile ./herdr/wt-clean.sh;
     })
+  ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+    # worktree-layout moves a tab over the socket API. macOS ships nc.
+    pkgs.netcat-openbsd
   ];
 
   xdg.configFile."herdr/config.toml".text = ''
