@@ -59,10 +59,6 @@
       ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
       defaultCheckout = "${builtins.getEnv "HOME"}/src/github.com/azzz9/dotfiles";
-      # The skills repository owns the rules, and ~/.pi/agent/AGENTS.md links
-      # to its checkout. Like `checkout`, the path is a machine fact, so it
-      # never follows the checkout that ran the switch.
-      defaultSkillsCheckout = "${builtins.getEnv "HOME"}/src/github.com/azzz9/skills";
       # The pi packages, by flake input name. A row hands pi that input's store
       # path, so pi loads the source flake.lock locked.
       piPackagePaths = {
@@ -89,7 +85,7 @@
       };
       # The names the `dotfiles` CLI and its completion offer.
       machineNames = nixpkgs.lib.attrNames machines;
-      mkHomeConfiguration = name: { system, home ? [ ], checkout ? defaultCheckout, skillsCheckout ? defaultSkillsCheckout, ... }:
+      mkHomeConfiguration = name: { system, home ? [ ], checkout ? defaultCheckout, ... }:
         home-manager.lib.homeManagerConfiguration {
           pkgs = import nixpkgs {
             inherit system;
@@ -111,7 +107,7 @@
           extraSpecialArgs = {
             repoDir = checkout;
             worktreeRoot = "worktrees";
-            inherit skillsCheckout machineNames piPackagePaths;
+            inherit skills machineNames piPackagePaths;
             machine = name;
             hunk = hunk;
             piFlake = pi;
