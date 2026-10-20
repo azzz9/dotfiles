@@ -72,6 +72,16 @@ let
     }
     # Compact, expandable TUI tool rows, with its own bundled theme.
     { input = "pi-compact-tools"; }
+    # Lazy senior dev mode: one prompt plus the review, audit, debt, gain and
+    # help skills a person types. The extension imports only its own files, so
+    # the published tarball is the source.
+    { tarball = {
+        name = "@dietrichgebert/ponytail";
+        version = "5.3.2";
+        url = "https://registry.npmjs.org/@dietrichgebert/ponytail/-/ponytail-5.3.2.tgz";
+        hash = "sha256-0ujvL5jo9wv0D/zT/xV2NP4TslcuEK1wpi/CbbbebcU=";
+      };
+    }
   ];
   rows = baseRows ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
     # The API key stays machine-local in ~/.pi/agent/ollama_cloud.json.
