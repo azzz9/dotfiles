@@ -41,19 +41,19 @@ comes from `modules/hermes.nix` and exists on nix-server alone.
 
 ## AI config deployment model
 
-`hosts/default.nix` links the three rules links out of store, so an edit in
-the skills checkout is live:
+`hosts/default.nix` links the three rules files from the `skills` flake input,
+so `flake.lock` pins them:
 
 ```
-<skills checkout>/AGENTS.md          -> ~/.pi/agent/AGENTS.md
-<skills checkout>/AGENTS.md          -> ~/.dsh/AGENTS.md
-<skills checkout>/APPEND_SYSTEM.md   -> ~/.pi/agent/APPEND_SYSTEM.md
+<skills input>/AGENTS.md          -> ~/.pi/agent/AGENTS.md
+<skills input>/AGENTS.md          -> ~/.dsh/AGENTS.md
+<skills input>/APPEND_SYSTEM.md   -> ~/.pi/agent/APPEND_SYSTEM.md
 ```
 
-All three links name `skillsCheckout`, defaulting to
-`~/src/github.com/azzz9/skills`, never the checkout that ran the switch. A
-worktree activation therefore leaves them on the main checkout, and deleting the
-worktree breaks nothing.
+The input is the same one `modules/pi.nix` hands pi, so the rules and the skill
+files come from one revision. Editing `~/src/github.com/azzz9/skills` has no
+effect until the pin moves. Run `dotfiles upgrade`, or `nix flake update skills`
+and then `dotfiles apply`.
 
 The pinned dsh-agent-instructions 0.2.0-rc.2 reads only
 `$DSH_HOME/AGENTS.md` as the user-global file; pi does not read that path.
@@ -65,7 +65,8 @@ once the project is trusted.
 The skills repository (`skills`) ships the skills, the `comment-sicko` subagent, and the
 four delegation tiers (`fast`, `standard`, `deep`, `intent`), plus the two files that load on
 every turn: `APPEND_SYSTEM.md`, which pi appends to the system prompt, and `AGENTS.md`, which pi
-reads as a context file. Both are linked out of the skills checkout, so an edit there is live.
+reads as a context file. Both link from the `skills` flake input, so `flake.lock`
+pins them.
 
 `modules/pi.nix` owns the package rows. The four package inputs are
 `flake = false` inputs in `flake.nix`, rendered into `settings.json` as store

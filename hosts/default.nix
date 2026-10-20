@@ -1,4 +1,4 @@
-{ config, lib, pkgs, skillsCheckout, ... }:
+{ lib, pkgs, skills, ... }:
 {
   home.username = builtins.getEnv "USER";
   home.homeDirectory = builtins.getEnv "HOME";
@@ -17,18 +17,14 @@
     manpages.enable = false;
   };
 
-  # pi reads ~/.pi/agent/AGENTS.md as its global context file. The file belongs to
-  # the skills repository, which owns the rules, and the out-of-store link to it
-  # keeps an edit there immediately visible at the target path.
-  #
-  # dsh-agent-instructions@0.2.0-rc.2 reads the user-global file at
-  # $DSH_HOME/AGENTS.md. The dsh layer is Linux-only, so the link follows it.
+  # pi reads ~/.pi/agent/AGENTS.md as its global context file.
+  # dsh reads its user-global file at $DSH_HOME/AGENTS.md.
   home.file = {
-    ".pi/agent/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${skillsCheckout}/AGENTS.md";
-    # Pi appends this one to the system prompt on every turn. The rules live there.
-    ".pi/agent/APPEND_SYSTEM.md".source = config.lib.file.mkOutOfStoreSymlink "${skillsCheckout}/APPEND_SYSTEM.md";
+    ".pi/agent/AGENTS.md".source = "${skills}/AGENTS.md";
+    # Pi appends this one to the system prompt on every turn.
+    ".pi/agent/APPEND_SYSTEM.md".source = "${skills}/APPEND_SYSTEM.md";
   } // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
-    ".dsh/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${skillsCheckout}/AGENTS.md";
+    ".dsh/AGENTS.md".source = "${skills}/AGENTS.md";
   };
 
   imports = [

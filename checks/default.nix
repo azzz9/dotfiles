@@ -2,6 +2,7 @@
 # these, so a check cannot drift between them.
 { self, pkgs, platformMachines }:
 let
+  skillsSource = self.inputs.skills;
   parseGeneratedConfigs = host:
     let
       activationPackage = self.homeConfigurations.${host}.activationPackage;
@@ -17,6 +18,23 @@ let
       done
       zsh -n "$files/.zshrc"
       lua -e "assert(loadfile('$files/.config/nvim/init.lua'))"
+      require_link() {
+        local file="$1" expected="$2" target
+        if [ ! -L "$files/$file" ]; then
+          echo "generated-configs: ${host} $file is not a symlink" >&2
+          exit 1
+        fi
+        target=$(readlink -e "$files/$file" || true)
+        if [ "$target" != "$expected" ]; then
+          echo "generated-configs: ${host} $file resolves to '$target', not '$expected'" >&2
+          exit 1
+        fi
+      }
+      require_link .pi/agent/AGENTS.md "${skillsSource}/AGENTS.md"
+      require_link .pi/agent/APPEND_SYSTEM.md "${skillsSource}/APPEND_SYSTEM.md"
+      ${pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
+        require_link .dsh/AGENTS.md "${skillsSource}/AGENTS.md"
+      ''}
       # The hermes unit gets a PATH of store paths, so a command the agent
       # shells out to is absent unless modules/hermes.nix lists it. systemd-run
       # scopes each cron worker into its own transient unit, and without it on

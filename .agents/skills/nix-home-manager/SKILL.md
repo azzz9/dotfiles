@@ -26,8 +26,9 @@ nix build --dry-run .#homeConfigurations.nix-desktop.activationPackage --impure 
   stashes the pins and pulls. `dotfiles apply` does not check.
 - In the agent sandbox, prefix Nix with `XDG_CACHE_HOME=/tmp/nix-cache`, or Nix
   fails with `unable to open database file`.
-- `hosts/default.nix` links the rules files out of the skills checkout, so an
-  edit there is live without a rebuild.
+- `hosts/default.nix` links the rules files from the `skills` flake input, so
+  `flake.lock` pins them. Edit the skills checkout, then run `dotfiles upgrade`
+  (or `nix flake update skills` and `dotfiles apply`).
 - Activation calls `nix profile add`; `scripts/dotfiles.sh` rewrites
   `profile install` to `profile add` for Determinate Nix.
 
