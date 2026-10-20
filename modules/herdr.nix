@@ -6,6 +6,8 @@ in
   # herdr agent multiplexer, https://github.com/ogulcancelik/herdr
   home.packages = [
     pkgs.herdr
+    # worktree-layout moves a tab over the socket API.
+    pkgs.netcat-openbsd
     (pkgs.writeShellApplication {
       name = "wt-clean";
       runtimeInputs = [
