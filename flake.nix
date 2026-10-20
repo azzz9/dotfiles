@@ -68,7 +68,7 @@
         nix-desktop = {
           system = "x86_64-linux";
           nixos = ./hosts/platform/nixos/machines/nix-desktop;
-          home = [ ./modules/niri.nix ./modules/ime.nix ];
+          home = [ ./modules/niri.nix ./modules/fcitx5.nix ];
         };
         macbook = { system = "aarch64-darwin"; };
         # The gateway is a systemd user service, so only this machine asks for

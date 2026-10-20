@@ -213,7 +213,8 @@ on.
 
 `hosts/platform/nixos/modules/` holds the capability modules, and nothing
 device-specific. `common.nix` has what every NixOS machine shares, `desktop.nix`
-the GUI stack, and `headless.nix` the minimum for a machine without a display.
+the GUI stack, `fcitx5.nix` the fcitx5 input method and its Meltype addon, and
+`headless.nix` the minimum for a machine without a display.
 Every scalar there is a `lib.mkDefault`, so a machine's `configuration.nix` wins.
 Two cannot be defaults: the user's `shell`, which the adoption drops from the
 copy, and `services.displayManager.defaultSession`, which NixOS itself defaults.

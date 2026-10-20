@@ -3,28 +3,7 @@
 # hardware-configuration.nix. Every scalar is a default, so this machine's own
 # configuration.nix can set it; lists and attrsets merge already.
 { lib, pkgs, serein, ... }:
-
-let
-  meltype = pkgs.callPackage ../pkgs/meltype.nix { };
-in
 {
-  i18n.inputMethod = {
-    enable = lib.mkDefault true;
-    type = lib.mkDefault "fcitx5";
-    fcitx5.addons = [
-      pkgs.fcitx5-mozc
-      meltype
-    ];
-    fcitx5.waylandFrontend = lib.mkDefault true;
-  };
-
-  # The addon dlopens its core from a path compiled into it. The default is
-  # /opt/meltype and the package cannot move it, so point that path at the store
-  # instead of threading an environment variable into whatever starts fcitx5.
-  systemd.tmpfiles.rules = [
-    "L+ /opt/meltype - - - - ${meltype}/share/meltype"
-  ];
-
   services.xserver.enable = lib.mkDefault true;
 
   services.displayManager.sddm.enable = lib.mkDefault true;
