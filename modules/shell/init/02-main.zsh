@@ -33,14 +33,6 @@ gqcd() {
   [[ -n "$dir" ]] && builtin cd "$dir"
 }
 
-# Jump to a sub-root (monorepo package) in the current tree via roots + fzf.
-rcd() {
-  emulate -L zsh
-  local dir
-  dir="$(roots 2>/dev/null | fzf --prompt='roots> ')" || return 1
-  [[ -n "$dir" ]] && builtin cd "$dir"
-}
-
 # Interactively switch git worktrees with fzf (uses git-wt listing).
 # NB: do not name the local "path" -- in zsh `path` is tied to `PATH`
 # and `local path` would empty PATH inside the function.

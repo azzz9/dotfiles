@@ -4,6 +4,7 @@
   imports = [
     ../../modules/common.nix
     ../../modules/desktop.nix
+    ../../modules/fcitx5.nix
     ./hardware-configuration.nix
     ./hardware-nvidia.nix
   ];

@@ -21,14 +21,13 @@ nix build --dry-run .#homeConfigurations.nix-desktop.activationPackage --impure 
 - `git add` a new file before any Nix command. The flake sees tracked files
   only, and `scripts/`, `modules/herdr/worktree-layout/`, and the Lua tree are
   read by name, so an unadded file fails with `path ... does not exist`.
-- `dotfiles upgrade` needs a clean tree. `dotfiles sync` refuses only on a
-  change outside the pins (`upgrade_paths` in `scripts/dotfiles.sh`), then
-  stashes the pins and pulls. `dotfiles apply` does not check.
+- `dotfiles sync` refuses any dirty path before it pulls. `dotfiles apply` does
+  not check, so it can activate the current tree with local edits.
 - In the agent sandbox, prefix Nix with `XDG_CACHE_HOME=/tmp/nix-cache`, or Nix
   fails with `unable to open database file`.
 - `hosts/default.nix` links the rules files from the `skills` flake input, so
-  `flake.lock` pins them. Edit the skills checkout, then run `dotfiles upgrade`
-  (or `nix flake update skills` and `dotfiles apply`).
+  `flake.lock` pins them. Edit the skills checkout, then run
+  `nix flake update skills` and `dotfiles apply`.
 - Activation calls `nix profile add`; `scripts/dotfiles.sh` rewrites
   `profile install` to `profile add` for Determinate Nix.
 
@@ -42,7 +41,7 @@ flake copy carries no `.git`.
 `bootstrap` drives `setup-system.sh` against fixture PATHs, and
 `dotfiles-cli` drives `scripts/dotfiles.sh` against fixture git repositories,
 with the nix build and the activation it feeds stubbed. `pin-names` compares
-`modules/pin-names.txt` with the flake packages `dotfiles upgrade` bumps, so a
+`modules/pin-names.txt` with the flake packages `bump-pins.sh` bumps, so a
 pin that one side names and the other does not fails before a push.
 
 A failed check reads `nix log .#checks.<system>.<check>`.

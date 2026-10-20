@@ -66,6 +66,14 @@ esac
 STUB
 chmod +x "$work/bin/curl"
 
+# Answers the OSV read, so a scenario decides what it sees.
+printf '{"results":[]}\n' > "$work/osv.json"
+cat > "$work/bin/osv-scanner" <<STUB
+#!$BASH
+cat "$work/osv.json"
+STUB
+chmod +x "$work/bin/osv-scanner"
+
 # status asks the hostname and the running generation. The hostname file lets a
 # scenario be a different machine without rewriting the stub.
 printf 'test\n' > "$work/hostname"
@@ -116,8 +124,10 @@ fixture() {
   # The stubs read these, so a scenario never sees the previous one's answers.
   printf '[]\n' > "$work/issues.json"
   printf '{}\n' > "$work/advisories.json"
+  printf '{"results":[]}\n' > "$work/osv.json"
   rm -f "$work/allow-flake-update"
   rm -rf "$XDG_RUNTIME_DIR/dotfiles.lockdir" "$HOME/.local/state/home-manager"
+  rm -rf "$HOME/.local/state/dotfiles"
   rm -rf "$HOME/.pi"
   printf 'test\n' > "$work/hostname"
   printf '/nix/store/00000000000000000000000000000000-home-manager-generation.drv\n' > "$work/running.drv"
@@ -135,6 +145,7 @@ push_from_other() {
   printf '%s\n' "$2" > "$other/$1"
   git -C "$other" commit -qam "$3"
   git -C "$other" push -q
+  git -C "$other" rev-parse HEAD
 }
 
 # The runner carries the two values dotfiles.sh reads and the scripts it runs.
@@ -210,81 +221,39 @@ scenario_end() {
   fi
 }
 
-printf 'dotfiles CLI check: %s\n' "$src"
-
-scenario 'sync refuses an edit outside the pins'
+scenario 'sync refuses a dirty tree'
 fixture
 machine_clone
 push_from_other modules/nvim.nix 'nvim v2-other' 'chore(nvim): other'
 printf 'nvim v2-mine\n' > "$machine/modules/nvim.nix"
 run_cli sync
-# The whole refusal, because git's own error text also names the path.
 refusal="dotfiles sync: local or untracked changes found in $machine; skipping
 modules/nvim.nix
 dotfiles sync: commit, stash, or discard local changes first"
 expect_eq 'sync exits 0 when it refuses' 0 "$cli_rc"
-expect_out_has 'the refusal lists the foreign path' "$refusal"
-expect_out_lacks 'the refusal does not list the pins' 'flake.lock'
+expect_out_has 'the refusal lists the dirty path' "$refusal"
 expect_out_lacks 'the refusal does not activate' '[stub] activate'
-expect_eq 'sync leaves the foreign edit untouched' 'nvim v2-mine' "$(cat "$machine/modules/nvim.nix")"
-expect_eq 'sync leaves the foreign edit modified' ' M modules/nvim.nix' "$(git -C "$machine" status --porcelain)"
-expect_eq 'sync stashes nothing when it refuses' '' "$(git -C "$machine" stash list)"
+expect_eq 'sync leaves the edit untouched' 'nvim v2-mine' "$(cat "$machine/modules/nvim.nix")"
+expect_eq 'sync leaves the edit modified' ' M modules/nvim.nix' "$(git -C "$machine" status --porcelain)"
+expect_eq 'sync leaves HEAD where it was' "$head_before" "$(git -C "$machine" rev-parse HEAD)"
 expect_origin_unmoved 'sync leaves the origin branch alone'
 scenario_end
 
-scenario 'sync stashes the pins, pulls, and applies'
+scenario 'sync refuses a dirty pin'
 fixture
 machine_clone
 push_from_other modules/nvim.nix 'nvim v2-other' 'chore(nvim): other'
 printf 'lock v2-mine\n' > "$machine/flake.lock"
 run_cli sync
-expect_eq 'sync exits 0' 0 "$cli_rc"
-expect_out_has 'sync activates the pulled checkout' '[stub] activate (profile add)'
-expect_out_has 'sync runs pi_reconcile' '[stub] pi_reconcile'
-expect_out_has 'sync names the stash holding the pins' "dotfiles sync: the pins this machine had are in stash@{0} and are no longer active."
-expect_eq 'sync lands the pulled nvim change' 'nvim v2-other' "$(cat "$machine/modules/nvim.nix")"
-expect_eq 'sync drops the stashed pin from the tree' 'lock v1' "$(cat "$machine/flake.lock")"
-run_cli status
-expect_out_has 'status names the stash sync left' 'stash:    1 sync stash(es)'
-expect_eq 'sync leaves a clean tree' '' "$(git -C "$machine" status --porcelain)"
-expect_eq 'sync keeps the pins in stash@{0}' "stash@{0}: On main: dotfiles sync: this machine's pins" "$(git -C "$machine" stash list)"
-expect_eq 'sync leaves HEAD on the pulled commit' "$(git -C "$origin" rev-parse main)" "$(git -C "$machine" rev-parse HEAD)"
+expect_eq 'sync exits 0 when it refuses' 0 "$cli_rc"
+expect_out_has 'the refusal lists the pin' 'flake.lock'
+expect_out_lacks 'the refusal does not activate' '[stub] activate'
+expect_eq 'sync leaves the pin alone' 'lock v2-mine' "$(cat "$machine/flake.lock")"
+expect_eq 'sync drops no stash' '' "$(git -C "$machine" stash list)"
 expect_origin_unmoved 'sync leaves the origin branch alone'
 scenario_end
 
-scenario 'sync lands the flake.lock the other machine pushed'
-fixture
-machine_clone
-push_from_other flake.lock 'lock v3-other' 'chore(deps): other'
-printf 'lock v2-mine\n' > "$machine/flake.lock"
-run_cli sync
-expect_eq 'sync exits 0' 0 "$cli_rc"
-expect_out_has 'sync names the stash holding the pins' "dotfiles sync: the pins this machine had are in stash@{0} and are no longer active."
-expect_eq 'sync lands the pushed flake.lock' 'lock v3-other' "$(cat "$machine/flake.lock")"
-expect_eq 'sync leaves a clean tree' '' "$(git -C "$machine" status --porcelain)"
-expect_eq 'sync keeps the pins in stash@{0}' "stash@{0}: On main: dotfiles sync: this machine's pins" "$(git -C "$machine" stash list)"
-expect_origin_unmoved 'sync leaves the origin branch alone'
-scenario_end
-
-scenario 'sync restores the pins when the pull cannot fast-forward'
-fixture
-machine_clone
-printf 'nvim v2-mine\n' > "$machine/modules/nvim.nix"
-git -C "$machine" commit -qam 'chore(nvim): mine'
-push_from_other modules/pi.nix 'pi v2-other' 'chore(pi): other'
-printf 'lock v2-mine\n' > "$machine/flake.lock"
-run_cli sync
-expect_eq 'sync exits 1 when the pull cannot fast-forward' 1 "$cli_rc"
-expect_out_lacks 'sync does not activate after a failed pull' '[stub] activate'
-expect_out_has 'sync reports the pins it restored' "restored this machine's pins after the failed pull"
-expect_eq 'sync keeps the local flake.lock content' 'lock v2-mine' "$(cat "$machine/flake.lock")"
-expect_eq 'sync leaves the flake.lock modified' ' M flake.lock' "$(git -C "$machine" status --porcelain)"
-expect_eq 'sync pops the stash after the failed pull' '' "$(git -C "$machine" stash list)"
-expect_eq 'sync leaves the branch where it was' "$head_before" "$(git -C "$machine" rev-parse HEAD)"
-expect_origin_unmoved 'sync leaves the origin branch alone'
-scenario_end
-
-scenario 'sync applies a clean tree without stashing'
+scenario 'sync applies a clean tree'
 fixture
 machine_clone
 push_from_other modules/nvim.nix 'nvim v2-other' 'chore(nvim): other'
@@ -292,99 +261,30 @@ run_cli sync
 expect_eq 'sync exits 0 on a clean tree' 0 "$cli_rc"
 expect_out_has 'sync activates the pulled checkout' '[stub] activate (profile add)'
 expect_out_has 'sync runs pi_reconcile' '[stub] pi_reconcile'
-expect_out_lacks 'sync reports no stash on a clean tree' 'stash@{0}'
 expect_eq 'sync lands the pulled nvim change' 'nvim v2-other' "$(cat "$machine/modules/nvim.nix")"
 expect_eq 'sync leaves a clean tree' '' "$(git -C "$machine" status --porcelain)"
-expect_eq 'sync stashes nothing on a clean tree' '' "$(git -C "$machine" stash list)"
 expect_eq 'sync leaves HEAD on the pulled commit' "$(git -C "$origin" rev-parse main)" "$(git -C "$machine" rev-parse HEAD)"
+expect_eq 'sync records the applied commit' "$(git -C "$origin" rev-parse main)" "$(tail -n 1 "$HOME/.local/state/dotfiles/applied.log" | awk '{print $1}')"
 expect_origin_unmoved 'sync leaves the origin branch alone'
 scenario_end
 
-scenario 'sync refuses when the pins and a foreign edit are both dirty'
+scenario 'rollback applies the commit applied before the current one'
 fixture
 machine_clone
-push_from_other modules/nvim.nix 'nvim v2-other' 'chore(nvim): other'
-printf 'lock v2-mine\n' > "$machine/flake.lock"
-printf 'nvim v2-mine\n' > "$machine/modules/nvim.nix"
 run_cli sync
-refusal="dotfiles sync: local or untracked changes found in $machine; skipping
-modules/nvim.nix
-dotfiles sync: commit, stash, or discard local changes first"
-dirty=" M flake.lock
- M modules/nvim.nix"
-expect_eq 'sync exits 0 when it refuses' 0 "$cli_rc"
-expect_out_has 'the refusal lists the foreign path' "$refusal"
-expect_out_lacks 'the refusal does not list the pins' 'flake.lock'
-expect_out_lacks 'the refusal does not activate' '[stub] activate'
-expect_eq 'sync keeps both edits in place' "$dirty" "$(git -C "$machine" status --porcelain)"
-expect_eq 'sync stashes nothing when it refuses' '' "$(git -C "$machine" stash list)"
-expect_eq 'sync leaves the pin content alone' 'lock v2-mine' "$(cat "$machine/flake.lock")"
-expect_eq 'sync leaves the foreign edit alone' 'nvim v2-mine' "$(cat "$machine/modules/nvim.nix")"
-expect_origin_unmoved 'sync leaves the origin branch alone'
-scenario_end
-
-scenario 'upgrade refuses a mixed tree before it rewrites any pin'
-fixture
-machine_clone
-printf 'lock v2-mine\n' > "$machine/flake.lock"
-printf 'nvim v2-mine\n' > "$machine/modules/nvim.nix"
-run_cli upgrade
-# upgrade rewrites the pins, so its refusal lists the dirty pins as well as the
-# foreign path. sync's refusal names only the foreign path, because sync stashes
-# the pins and pulls over them.
-dirty=" M flake.lock
- M modules/nvim.nix"
-upgrade_refusal="dotfiles upgrade: local or untracked changes found in $machine; skipping
-flake.lock
-modules/nvim.nix
-dotfiles upgrade: commit, stash, or discard local changes first"
-expect_eq 'upgrade exits 0 when it refuses' 0 "$cli_rc"
-expect_out_has 'the refusal lists both the pins and the foreign path' "$upgrade_refusal"
-expect_out_lacks 'upgrade never runs nix flake update' 'flake update'
-expect_out_lacks 'upgrade does not activate' '[stub] activate'
-expect_eq 'upgrade keeps both edits in place' "$dirty" "$(git -C "$machine" status --porcelain)"
-expect_eq 'upgrade stashes nothing' '' "$(git -C "$machine" stash list)"
-expect_eq 'upgrade leaves the pin content alone' 'lock v2-mine' "$(cat "$machine/flake.lock")"
-expect_eq 'upgrade leaves the foreign edit alone' 'nvim v2-mine' "$(cat "$machine/modules/nvim.nix")"
-expect_origin_unmoved 'upgrade leaves the origin branch alone'
-scenario_end
-
-scenario 'upgrade pulls before it bumps'
-fixture
-machine_clone
+first="$(git -C "$machine" rev-parse HEAD)"
 push_from_other modules/nvim.nix 'nvim v2-other' 'chore(nvim): other'
-run_cli upgrade
-# The stub refuses every nix call but the build. Reaching that refusal in the
-# run that also moved HEAD to the pulled commit pins the pull ahead of the bump.
-expect_eq 'upgrade exits 1 when the bump fails' 1 "$cli_rc"
-expect_out_has 'the stub refused the bump' 'nix stub: refusing'
-expect_out_has 'the bump was reached' 'flake update'
-expect_out_has 'the failed bump restores the pins' 'restored flake.lock after failure'
-expect_eq 'upgrade leaves HEAD on the pulled commit' "$(git -C "$origin" rev-parse main)" "$(git -C "$machine" rev-parse HEAD)"
-expect_eq 'upgrade lands the pulled worktree' 'nvim v2-other' "$(cat "$machine/modules/nvim.nix")"
-expect_eq 'upgrade leaves a clean tree' '' "$(git -C "$machine" status --porcelain)"
-expect_origin_unmoved 'upgrade leaves the origin branch alone'
+run_cli sync
+expect_eq 'the second sync lands the newer commit' 'nvim v2-other' "$(cat "$machine/modules/nvim.nix")"
+run_cli rollback
+expect_eq 'rollback exits 0' 0 "$cli_rc"
+expect_eq 'rollback checks out the earlier applied commit' "$first" "$(git -C "$machine" rev-parse HEAD)"
+expect_eq 'rollback lands the earlier content' 'nvim v1' "$(cat "$machine/modules/nvim.nix")"
+expect_out_has 'rollback reports where it landed' "applied ${first:0:7}"
+run_cli rollback
+expect_eq 'a second rollback returns to the later commit' "$(git -C "$origin" rev-parse main)" "$(git -C "$machine" rev-parse HEAD)"
 scenario_end
 
-scenario 'upgrade leaves the pins alone when the pull cannot fast-forward'
-fixture
-machine_clone
-printf 'nvim v2-mine\n' > "$machine/modules/nvim.nix"
-git -C "$machine" commit -qam 'chore(nvim): mine'
-push_from_other modules/pi.nix 'pi v2-other' 'chore(pi): other'
-run_cli upgrade
-# The branch diverged, so the pull fails before pin_scratch exists and before
-# any backup is taken. The three paths upgrade rewrites stay as they were.
-expect_eq 'upgrade exits 1 when the pull cannot fast-forward' 1 "$cli_rc"
-expect_out_has 'upgrade reports the pins are untouched' 'dotfiles upgrade: the pull failed; the pins are untouched'
-expect_out_lacks 'upgrade never reaches the bump' 'flake update'
-expect_eq 'upgrade leaves flake.lock alone' 'lock v1' "$(cat "$machine/flake.lock")"
-expect_eq 'upgrade leaves the pinned-packages file alone' 'pins v1' "$(cat "$machine/modules/pinned-packages.nix")"
-expect_eq 'upgrade leaves modules/pi.nix alone' 'pi v1' "$(cat "$machine/modules/pi.nix")"
-expect_eq 'upgrade stashes nothing' '' "$(git -C "$machine" stash list)"
-expect_eq 'upgrade leaves the branch where it was' "$head_before" "$(git -C "$machine" rev-parse HEAD)"
-expect_eq 'upgrade leaves a clean tree' '' "$(git -C "$machine" status --porcelain)"
-expect_origin_unmoved 'upgrade leaves the origin branch alone'
 scenario_end
 
 scenario 'audit fails on a store match the baseline does not hold'
@@ -440,18 +340,6 @@ expect_out_has 'audit names the advisory title' 'Command Injection'
 expect_out_has 'audit names the npm pin that is behind' 'behind fixturepkg 1.0.0 -> 9.9.9'
 scenario_end
 
-scenario 'upgrade reads the audit after it moves the pins'
-fixture
-machine_clone
-printf '[{"number":111,"title":"fixturepkg: security issues < 1.2.4"}]\n' > "$work/issues.json"
-touch "$work/allow-flake-update"
-run_cli upgrade
-expect_eq 'upgrade exits 0 when the audit finds a match' 0 "$cli_rc"
-expect_out_has 'upgrade reaches the audit' 'dotfiles audit: store -'
-expect_out_has 'upgrade names the new match' 'new   #111 fixturepkg 1.2.3'
-expect_out_has 'upgrade says the audit did not fail the upgrade' 'the audit above exited non-zero; the upgrade itself is applied'
-scenario_end
-
 scenario 'audit reads the tarball rows and their deps'
 fixture
 machine_clone
@@ -483,15 +371,19 @@ expect_out_has 'audit counts the row and its dep' 'npm - 2 rows'
 expect_out_has 'audit reads the vendored dependency' 'behind fixturedep 2.0.0 -> 9.9.9'
 scenario_end
 
-scenario 'upgrade bumps an npm spec'
+scenario 'audit reads osv'
 fixture
 machine_clone
-printf '{"rows": [{"spec": "npm:fixturepkg@1.0.0"}]}\n' > "$machine/modules/pi.nix"
-git -C "$machine" commit -qam 'chore(pi): an npm row'
-touch "$work/allow-flake-update"
-run_cli upgrade
-expect_eq 'upgrade exits 0' 0 "$cli_rc"
-expect_eq 'upgrade bumps the npm spec' '{"rows": [{"spec": "npm:fixturepkg@9.9.9"}]}' "$(cat "$machine/modules/pi.nix")"
+printf '{"results":[{"packages":[{"package":{"name":"fixturepkg","version":"1.2.3"},"vulnerabilities":[{"id":"GHSA-aaaa"}]}]}]}\n' > "$work/osv.json"
+mkdir -p "$HOME/.pi/agent/npm"
+printf '{}\n' > "$HOME/.pi/agent/npm/package-lock.json"
+run_cli audit
+expect_eq 'audit exits 1 on the new source' 1 "$cli_rc"
+expect_out_has 'audit names the osv match' 'new   GHSA-aaaa fixturepkg@1.2.3'
+run_cli audit --update
+expect_eq 'audit --update exits 0' 0 "$cli_rc"
+baseline="$(cat "$machine/scripts/audit-baseline.txt")"
+expect_eq 'audit --update records the osv match' present "$(out_has "$baseline" 'osv GHSA-aaaa fixturepkg@1.2.3')"
 scenario_end
 
 scenario 'audit --declared reads the flake instead of the store'
