@@ -3,6 +3,21 @@ set -euo pipefail
 
 herdr=${HERDR_BIN_PATH:-herdr}
 
+# Herdr's CLI has no tab move, so the reorder goes through the socket API.
+move_tab_first() {
+  local tab=$1 socket=${HERDR_SOCKET_PATH:-$HOME/.config/herdr/herdr.sock} response
+  if ! command -v nc >/dev/null 2>&1; then
+    printf 'worktree-layout: nc is missing, cannot move tab %s\n' "$tab" >&2
+    return 0
+  fi
+  response=$(jq -nc --arg tab "$tab" \
+    '{id:"worktree-layout",method:"tab.move",params:{tab_id:$tab,insert_index:0}}' |
+    nc -U "$socket" -w 2 | head -n 1 || true)
+  if [[ -z $response || $(jq -r '.error.code // empty' <<<"$response" 2>/dev/null) != "" ]]; then
+    printf 'worktree-layout: tab.move did not answer for %s\n' "$tab" >&2
+  fi
+}
+
 # Boundary: the event payload is the only untrusted input. Parse it once here;
 # everything after this point relies on the workspace id being present.
 event=${HERDR_PLUGIN_EVENT_JSON:-}
@@ -11,10 +26,18 @@ if [[ -z $event ]]; then
   exit 1
 fi
 
-ws=$(jq -r '.data.workspace.workspace_id // ""' <<<"$event")
+kind=$(jq -r '.data.type // ""' <<<"$event")
+ws=$(jq -r '.data.workspace.workspace_id // .data.workspace_id // ""' <<<"$event")
+focused=$(jq -r '.data.workspace.focused // false' <<<"$event")
 if [[ -z $ws ]]; then
   printf 'worktree-layout: event carries no workspace id\n' >&2
   exit 1
+fi
+
+# Herdr appends a new tab after the existing tabs, so a background worktree
+# waits for its agent before the layout is built.
+if [[ $kind == worktree_created || $kind == worktree_opened ]] && [[ $focused != true ]]; then
+  exit 0
 fi
 
 # worktree.create and worktree.open also emit workspace.created, where the
@@ -29,6 +52,30 @@ fi
 # workspace is ours: one tab holding one root pane.
 tabs=$("$herdr" tab list --workspace "$ws")
 first_tab=$(jq -r '.result.tabs[0].tab_id // ""' <<<"$tabs")
+
+if [[ $kind == pane_agent_detected ]] &&
+  [[ $("$herdr" workspace get "$ws" | jq -r '.result.workspace.worktree.is_linked_worktree // false') != true ]]; then
+  exit 0
+fi
+
+# Move the tab, not its pane: teleport compares the saved tab and pane ids.
+if [[ $kind == pane_agent_detected ]]; then
+  pane=$(jq -r '.data.pane_id // ""' <<<"$event")
+  released=$(jq -r '.data.released // false' <<<"$event")
+  first_tab_agent_status=$(jq -r '.result.tabs[0].agent_status // "unknown"' <<<"$tabs")
+  agent_tab=""
+  if [[ -n $pane ]]; then
+    agent_tab=$("$herdr" pane get "$pane" |
+      jq -r --arg ws "$ws" '.result.pane | select(.workspace_id == $ws) | .tab_id // ""')
+  fi
+  if [[ $released == false && -n $agent_tab && $agent_tab != "$first_tab" ]]; then
+    case $first_tab_agent_status in
+      idle | working | blocked) ;;
+      *) move_tab_first "$agent_tab" ;;
+    esac
+  fi
+fi
+
 panes=$("$herdr" pane list --workspace "$ws" |
   jq -c --arg tab "$first_tab" '[.result.panes[] | select(.tab_id == $tab)]')
 root_pane=$(jq -r 'if length == 1 then .[0].pane_id else empty end' <<<"$panes")
@@ -67,6 +114,13 @@ scratch|
 scratch|
 LAYOUT
 
+root_agent=$(jq -r '.[0].agent // ""' <<<"$panes")
+root_pane_idle_shell=true
+if [[ $(jq -r '.data.already_open // false' <<<"$event") == true ]]; then
+  root_pane_idle_shell=$("$herdr" pane process-info --pane "$root_pane" |
+    jq -r '.result.process_info | .shell_pid != null and (.shell_pid == .foreground_process_group_id)')
+fi
+
 total=${#labels[@]}
 start=0
 while ((start < total)); do
@@ -100,3 +154,10 @@ while ((start < total)); do
 
   start=$end
 done
+
+# Start pi only after the layout exists. Its detection hook runs concurrently,
+# and a workspace that still holds one tab would pass the pristine check and
+# build a second layout.
+if [[ $focused == true && -z $root_agent && $root_pane_idle_shell == true ]]; then
+  "$herdr" pane run "$root_pane" pi
+fi
