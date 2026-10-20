@@ -72,8 +72,66 @@ let
     }
     # Compact, expandable TUI tool rows, with its own bundled theme.
     { input = "pi-compact-tools"; }
+    # Lazy senior dev mode: one prompt plus the review, audit, debt, gain and
+    # help skills a person types. The extension imports only its own files, so
+    # the published tarball is the source.
+    { tarball = {
+        name = "@dietrichgebert/ponytail";
+        version = "5.3.2";
+        url = "https://registry.npmjs.org/@dietrichgebert/ponytail/-/ponytail-5.3.2.tgz";
+        hash = "sha256-0ujvL5jo9wv0D/zT/xV2NP4TslcuEK1wpi/CbbbebcU=";
+      };
+    }
   ];
-  rows = baseRows ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+  # fff-node calls a Rust cdylib through ffi-rs, so a system pins the two
+  # prebuilt binaries npm would pick from the manifest's optionalDependencies.
+  # They need glibc and, on ffi-rs, libgcc_s, with no rpath, and node maps both,
+  # so the row needs no autoPatchelfHook.
+  fffNative = {
+    x86_64-linux = [
+      { name = "@yuuang/ffi-rs-linux-x64-gnu"; version = "1.3.7";
+        url = "https://registry.npmjs.org/@yuuang/ffi-rs-linux-x64-gnu/-/ffi-rs-linux-x64-gnu-1.3.7.tgz";
+        hash = "sha256-BCBwMehwlllH0mf4Z4IDVXGbyTBlt3u0GPN3zjOvREM=";
+      }
+      { name = "@ff-labs/fff-bin-linux-x64-gnu"; version = "0.11.0";
+        url = "https://registry.npmjs.org/@ff-labs/fff-bin-linux-x64-gnu/-/fff-bin-linux-x64-gnu-0.11.0.tgz";
+        hash = "sha256-NsXwm34xXk4YcPwjEd+uOS0PbmGX88CwaX4V2Ng0Tr8=";
+      }
+    ];
+    aarch64-darwin = [
+      { name = "@yuuang/ffi-rs-darwin-arm64"; version = "1.3.7";
+        url = "https://registry.npmjs.org/@yuuang/ffi-rs-darwin-arm64/-/ffi-rs-darwin-arm64-1.3.7.tgz";
+        hash = "sha256-TM5t92ZAnva/NibUZkR4R9nH2X2oGewl8X20mdt672g=";
+      }
+      { name = "@ff-labs/fff-bin-darwin-arm64"; version = "0.11.0";
+        url = "https://registry.npmjs.org/@ff-labs/fff-bin-darwin-arm64/-/fff-bin-darwin-arm64-0.11.0.tgz";
+        hash = "sha256-BQR/OxUERaNerK0TWhU3y6ARuBWMteKP0y9XxZDv6vc=";
+      }
+    ];
+  };
+  # FFF adds fffind and fffgrep beside pi's own tools, and the mode that replaces
+  # find and grep is opt-in. The SDK loads on first use, and this host is node,
+  # so fff-node is vendored and fff-bun is not: the bun loader only runs as a
+  # fallback the node loader has already answered.
+  fffRow = {
+    tarball = {
+      name = "@ff-labs/pi-fff";
+      version = "0.11.0";
+      url = "https://registry.npmjs.org/@ff-labs/pi-fff/-/pi-fff-0.11.0.tgz";
+      hash = "sha256-0lystSl0qMmb4ez4igulVEWUAqiFB5jMci4IsIjSHeM=";
+      deps = [
+        { name = "@ff-labs/fff-node"; version = "0.11.0";
+          url = "https://registry.npmjs.org/@ff-labs/fff-node/-/fff-node-0.11.0.tgz";
+          hash = "sha256-gS/LFf8Sb8xpQDZuXCqbkWQFWimARVuP0Vhv5+BZSPc=";
+        }
+        { name = "ffi-rs"; version = "1.3.7";
+          url = "https://registry.npmjs.org/ffi-rs/-/ffi-rs-1.3.7.tgz";
+          hash = "sha256-gcELutWG0iAJHEIp+CCk0FVlEQwLq2ZBvwIbbffrQ0w=";
+        }
+      ] ++ fffNative.${pkgs.stdenv.hostPlatform.system};
+    };
+  };
+  rows = baseRows ++ [ fffRow ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
     # The API key stays machine-local in ~/.pi/agent/ollama_cloud.json.
     { tarball = {
         name = "pi-ollama-cloud-link";
