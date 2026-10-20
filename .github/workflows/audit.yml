@@ -10,8 +10,9 @@ name: Audit
 
 on:
   schedule:
-    # Sunday 22:00 UTC, Monday 07:00 JST.
-    - cron: "0 22 * * 0"
+    # Every day at 22:00 UTC, 07:00 JST. The Pins job runs at 03:00 JST, so
+    # this reads what it landed.
+    - cron: "0 22 * * *"
   workflow_dispatch:
 
 permissions:
