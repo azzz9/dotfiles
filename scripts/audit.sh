@@ -1,22 +1,25 @@
 #!/usr/bin/env bash
 # The package audit. dotfiles-cli.nix inlines this file into the `dotfiles` CLI,
-# which passes arguments and supplies two helpers, nix_cmd and registry_latest:
+# which passes arguments and supplies one helper, nix_cmd:
 #
 #   audit_packages <repo> <machine> <tmp_dir> <pi_module> <update> <declared>
 #
-# It reports by return code, so `dotfiles upgrade` can read it as a report and
-# still call the upgrade applied.
+# It reports by return code, so `dotfiles audit` and the Pins workflow can read
+# it as a report.
 #
-# Two sources are checked, because they are pinned in different ways.
+# Three sources are checked, because they are pinned in different ways.
 #
 #   the store   what this machine has, read from the closure of the running
 #               system and of its Home Manager generation, against the open
-#               issues NixOS/nixpkgs labels "1.severity: security". With
+#               issues NixOS/nixpkgs labels `1.severity: security`. With
 #               <declared> set it reads the packages the flake names for the
-#               machine instead, because a runner has no store and realising
-#               one there costs gigabytes.
+#               machine instead, because a runner has no store and realising one
+#               there costs gigabytes.
 #   npm rows    the versions modules/pi.nix pins, against the npm registry's
 #               advisories
+#   osv         the npm packages pi installed, with their transitive
+#               dependencies, against the OSV database. Skipped when pi has
+#               left no lockfile.
 #
 # A store match is a lead, not a verdict. A store path carries a version and
 # the issue usually does not, so the report prints both and leaves the call to
@@ -87,11 +90,6 @@ audit_nixpkgs_issues() {
   done
 }
 
-# "<issue number>\t<package>\t<version>\t<title>" for every store path whose
-# package name an open issue names. A store path reads <name>-<version>, but
-# both halves may hold hyphens (glibc-2.44-25), so the longest issue name that
-# prefixes the basename wins and the rest is the version. Output suffixes are
-# dropped by keeping the shortest version per package.
 audit_match_issues() {
   awk -F'\t' '
     NR == FNR {
@@ -144,6 +142,13 @@ audit_match_issues() {
 # "<name>\t<version>" for every npm row modules/pi.nix pins: an `npm:` spec,
 # and a tarball row or one of its `deps`, which pin a bare name and version on
 # their own lines.
+# The latest version published for an npm package; empty on any doubt.
+registry_latest() {
+  local encoded
+  encoded="$(printf '%s' "$1" | sed 's|/|%2F|')"
+  curl -fsS --max-time 30 "https://registry.npmjs.org/${encoded}" | jq -r '."dist-tags".latest'
+}
+
 audit_npm_specs() {
   local name spec
   {
@@ -168,6 +173,17 @@ audit_npm_advisories() {
     split("\n") | map(select(length > 0) | split("\t") | {(.[0]): [.[1]]}) | add // {}')"
   curl -fsS --max-time 30 -X POST -H 'Content-Type: application/json' \
     -d "$body" "https://registry.npmjs.org/-/npm/v1/security/advisories/bulk"
+}
+
+# OSV covers the npm packages pi installed with their transitive dependencies,
+# which the registry advisory read above does not see.
+audit_osv_findings() {
+  local lockfile="${HOME}/.pi/agent/npm/package-lock.json"
+  if [ ! -f "$lockfile" ]; then
+    return 0
+  fi
+  osv-scanner scan source --lockfile "$lockfile" --format json 2>/dev/null |
+    jq -r '.results[]?.packages[]? | .package as $p | .vulnerabilities[]? | "osv \(.id) \($p.name)@\($p.version)"' 2>/dev/null || true
 }
 
 audit_packages() {
@@ -236,7 +252,7 @@ audit_packages() {
       continue
     fi
     # Only a newer version is worth naming. A registry that went backwards is a
-    # pin problem, and `dotfiles upgrade` already refuses to make that move.
+    # pin problem, and `bump-pins.sh` already refuses to make that move.
     if [ "$(printf '%s\n' "$version" "$newest" | sort -V | tail -n 1)" = "$newest" ]; then
       behind="$behind$name $version -> $newest"$'\n'
     fi
@@ -245,6 +261,7 @@ audit_packages() {
   {
     awk -F'\t' '{ printf "nixpkgs %s %s\n", $1, $2 }' "$matches_file"
     printf '%s' "$findings" | awk -F'\t' 'NF > 0 { printf "npm %s@%s/%s\n", $1, $2, $3 }'
+    audit_osv_findings
   } | LC_ALL=C sort -u > "$current_file"
 
   if [ -f "$baseline" ]; then
@@ -289,10 +306,20 @@ audit_packages() {
     done
   fi
 
+  osv_new="$(LC_ALL=C comm -13 "$accepted_file" "$current_file" | grep -c '^osv ' || true)"
+  if [ "${osv_new:-0}" -gt 0 ]; then
+    printf 'dotfiles audit: osv - %s new advisory(ies)\n' "$osv_new"
+    LC_ALL=C comm -13 "$accepted_file" "$current_file" | grep '^osv ' |
+      while read -r _ id pkg; do
+        printf 'dotfiles audit:   new   %s %s\n' "$id" "$pkg"
+      done
+  fi
+
   if [ "$update" = 1 ]; then
     {
       awk -F'\t' '{ printf "nixpkgs %s %s # %s\n", $1, $2, $3 }' "$matches_file"
       printf '%s' "$findings" | awk -F'\t' 'NF > 0 { printf "npm %s@%s/%s # %s %s\n", $1, $2, $3, $4, $5 }'
+      grep '^osv ' "$current_file" || true
     } | LC_ALL=C sort -u > "$baseline"
     printf 'dotfiles audit: wrote %s new; %s recorded lines no longer match\n' \
       "$(wc -l < "$baseline")" "$stale_count"

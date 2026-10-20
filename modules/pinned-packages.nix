@@ -1,6 +1,6 @@
 # Derivations this repo pins because nixpkgs does not package them. Every
 # updatable derivation keeps the shape nix-update needs (pname, version, and a
-# src whose rev or url embeds ${version}), so `dotfiles upgrade` bumps it with
+# src whose rev or url embeds ${version}), so `bump-pins.sh` bumps it with
 # `nix-update --flake <name>` and no hand edit. modules/pin-names.txt names the
 # ones it bumps. codediff-watcher reads its version from nixpkgs'
 # codediff-nvim instead and is not in that list.
@@ -134,20 +134,8 @@ let
     '';
   };
 
-  roots = pkgs.buildGoModule rec {
-    pname = "roots";
-    version = "0.4.2";
-    src = pkgs.fetchFromGitHub {
-      owner = "k1LoW";
-      repo = "roots";
-      rev = "v${version}";
-      hash = "sha256-neK1K3Emam70LJR/oVi1Gn0dNM+OC6X5TyAufQJE7BQ=";
-    };
-    vendorHash = "sha256-po/kY9zXId2qvk3oNgdrgFLEbVIWedYjfqMfdX4J5Ls=";
-    ldflags = [ "-s" "-w" ];
-  };
 in
 {
   inherit debugpyPython nomicfoundationSolidityLanguageServer codediffWatcher herdrNvim;
-  inherit prettierPluginSolidity prettierPluginSolidityDist roots solhint;
+  inherit prettierPluginSolidity prettierPluginSolidityDist solhint;
 }

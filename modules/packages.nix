@@ -14,20 +14,35 @@ in
       ghq
       git-wt
       delta
-      yazi
       fd
       ripgrep
       jq
       tree                    # directory structure visualization
       yq-go                   # YAML processor
+
+      # --- Shell ---
       shellcheck              # shell script linter
       shfmt                   # shell script formatter
-      poppler-utils
-      ffmpegthumbnailer
-      p7zip
-      imagemagick
-      resvg
-      tree-sitter
+      bash-language-server    # LSP
+
+      # --- YAML / JSON / TOML ---
+      yaml-language-server          # LSP (yaml)
+      yamllint                    # linter (yaml)
+      vscode-json-languageserver  # LSP (json, jsonc)
+      taplo                       # LSP + formatter (toml)
+
+      # --- CSS / HTML ---
+      vscode-css-languageserver   # LSP
+      vscode-html-languageserver  # LSP
+      stylelint                   # linter (css)
+      htmlhint                    # linter (html)
+
+      # --- Markdown ---
+      markdownlint-cli        # linter
+
+      # --- Security ---
+      osv-scanner             # OSV scan of the npm lockfile
+
       pkgs."nerd-fonts"."jetbrains-mono"
 
       # --- Lua ---
@@ -46,14 +61,13 @@ in
       biome                       # formatter + linter (biome.json projects)
       prettier                    # formatter
       prettierd                   # formatter (daemon)
-      eslint                      # linter
       eslint_d                    # linter (daemon)
       mise                        # tool version manager; versions belong to each environment
       bun                         # the agent's TypeScript runtime
       vscode-js-debug             # DAP debugger (Node.js / Chrome)
 
       # --- C / C++ ---
-      clang-tools           # LSP (clangd) + clang-tidy
+      clang-tools           # LSP (clangd) + clang-format + clang-tidy
 
       # --- Nix ---
       nil                       # LSP
@@ -66,7 +80,7 @@ in
       # nixpkgs unstable made python3.14 the default interpreter, but
       # slither-analyzer's dependency chain (web3 -> eth-tester ->
       # py-evm 0.12.1-beta.1) does not support python3.14 yet, which
-      # breaks `dotfiles upgrade`. Use the python3.13 build of
+      # breaks the Pins workflow. Use the python3.13 build of
       # slither-analyzer (a self-contained CLI tool) until upstream
       # py-evm adds python3.14 support.
       python313.pkgs.slither-analyzer              # linter / static analysis
@@ -82,9 +96,5 @@ in
       unar
       xclip
       wl-clipboard
-    ])
-    ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin (with pkgs; [
-      terminal-notifier
-    ])
-    ++ [ pinned.roots ];
+    ]);
 }

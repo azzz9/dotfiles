@@ -128,7 +128,7 @@ in
         }
         for (line in is_package) {
           if (!(line in listed) && !(line in is_exempt)) {
-            printf "pin-names: %s is a flake package but modules/pin-names.txt does not list it, so dotfiles upgrade never bumps it\n", line > "/dev/stderr"
+            printf "pin-names: %s is a flake package but modules/pin-names.txt does not list it, so bump-pins.sh never bumps it\n", line > "/dev/stderr"
             bad = 1
           }
         }
