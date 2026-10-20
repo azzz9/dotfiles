@@ -517,17 +517,14 @@
     "skills": {
       "flake": false,
       "locked": {
-        "lastModified": 1792497458,
-        "narHash": "sha256-ulWmUY3n3e0wpSTda1fr1GkC6+y+bSuZKE0qczctiGs=",
-        "owner": "azzz9",
-        "repo": "skills",
-        "rev": "91a4192dd1a9618c27c360b52d0ae62a8ca59707",
-        "type": "github"
+        "lastModified": 1792522967,
+        "narHash": "sha256-RlG4YBvQPufRzn7ll/qmEbsnAAcNCz3ktz+WGfFBo+w=",
+        "path": "/home/azzz/worktrees/skills/pi-skills-architecture-review",
+        "type": "path"
       },
       "original": {
-        "owner": "azzz9",
-        "repo": "skills",
-        "type": "github"
+        "path": "/home/azzz/worktrees/skills/pi-skills-architecture-review",
+        "type": "path"
       }
     },
     "systems": {

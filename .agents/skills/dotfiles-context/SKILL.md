@@ -58,11 +58,10 @@ Repo-local skills are the only skills this repo ships. They sit in
 `.agents/skills/` at the repo root, where pi discovers them as project skills
 once the project is trusted.
 
-The skills repository (`skills`) ships the skills, the `comment-sicko` subagent, and the
-four delegation tiers (`fast`, `standard`, `deep`, `intent`), plus the two files that load on
-every turn: `APPEND_SYSTEM.md`, which pi appends to the system prompt, and `AGENTS.md`, which pi
-reads as a context file. Both link from the `skills` flake input, so `flake.lock`
-pins them.
+The skills repository (`skills`) ships the skills and the two files that load on every turn:
+`APPEND_SYSTEM.md`, which pi appends to the system prompt, and `AGENTS.md`, which pi reads as a
+context file. Both link from the `skills` flake input, so `flake.lock` pins them. The reviewer is
+the only subagent, and it comes from `pi-subagents`.
 
 `modules/pi.nix` owns the package rows. Four rows are `flake = false` inputs in
 `flake.nix`, and the five npm packages are published tarballs Nix unpacks into
@@ -89,12 +88,12 @@ Provider extensions are machine-local and
 deliberately not Nix-managed. Install a provider extension under
 `~/.pi/agent/extensions/<name>/`, where pi auto-discovers it.
 
-The delegation assignment is the exception. `modules/pi/model-tiers.nix` holds one
-row per machine, and each row carries the model and the thinking effort for a tier
-agent, the PR reviewer, or `comment-sicko`. `modules/pi.nix` renders those rows
-into the `subagents` key of `settings.json` with the same merge as every other
-key, so the assert there fails evaluation on a malformed slug, an undefined
-thinking value, or an agent name absent from both pinned packages.
+The reviewer assignment is the exception. `modules/pi/subagent-models.nix` holds
+one row per machine, and each row carries the model and the thinking effort for the
+reviewer. `modules/pi.nix` renders those rows into the `subagents` key of
+`settings.json` with the same merge as every other key, so the assert there fails
+evaluation on a malformed slug, an undefined thinking value, or a reviewer name
+absent from `pi-subagents`.
 
 The macbook row names explicit `github-copilot/<id>` slugs, which its Copilot
 Enterprise plan allows. Copilot Free and Copilot Student are the plans that

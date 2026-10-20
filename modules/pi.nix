@@ -151,9 +151,9 @@ let
     # selection, so a plain "codemode" here would replace read/bash/edit/write.
     defaultTools = [ "+codemode" ];
     markdown = { mermaid = "final"; };
-    # The tier agents carry no model, so the host binds one per tier here. The
-    # merge below adds this key to the local settings.json like any other.
-    subagents = modelTiers.subagentsFor machine;
+    # The reviewer carries no model, so the host binds one here. The merge below
+    # adds this key to the local settings.json like any other.
+    subagents = subagentModels.subagentsFor machine;
   };
   # Every other key is carried over untouched: objects are merged, scalars
   # replaced. The file stays a regular file so pi can keep writing it.
@@ -164,12 +164,12 @@ let
     mode = "silent";
   };
   # pi-subagents resolves an override by the agent's own name, so a row under a
-  # misspelled name would be silently unused. Both agent packages own names here,
-  # the skills package for the tiers and pi-subagents for the builtins.
+  # misspelled name would be unused. The reviewer's name comes from
+  # pi-subagents.
   agentNamesIn = dir: map (lib.removeSuffix ".md") (builtins.attrNames (builtins.readDir dir));
-  pinnedAgents = agentNamesIn "${piPackagePaths.skills}/agents" ++ agentNamesIn "${piPackagePaths.pi-subagents}/agents";
-  modelTiers = import ./pi/model-tiers.nix { knownAgents = pinnedAgents; };
-  assignmentProblems = modelTiers.problemsFor modelTiers.rows;
+  pinnedAgents = agentNamesIn "${piPackagePaths.pi-subagents}/agents";
+  subagentModels = import ./pi/subagent-models.nix { knownAgents = pinnedAgents; };
+  assignmentProblems = subagentModels.problemsFor subagentModels.rows;
   # A filter path is relative to the pinned package and may carry a + or !
   # prefix. An upstream rename would silently stop narrowing, so every path is
   # checked against the store path the row actually loads.
@@ -201,7 +201,7 @@ let
 
     if [ -e "$settings" ]; then
       ${pkgs.jq}/bin/jq --slurpfile declared ${piManagedSettingsJson} \
-        '. * $declared[0]' "$settings" > "$merged"
+        'del(.subagents) * $declared[0]' "$settings" > "$merged"
     else
       cp ${piManagedSettingsJson} "$merged"
     fi

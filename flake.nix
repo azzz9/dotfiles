@@ -30,7 +30,8 @@
     serein.url = "github:ViceVerse-cz/Serein";
     # Pi loads these from the store paths Nix fetches for them. flake.lock
     # records the revision, so `nix flake update <name>` is what moves a pin.
-    skills = { url = "github:azzz9/skills"; flake = false; };
+    # The local path points at the reviewer-only skills branch until it merges.
+    skills = { url = "path:/home/azzz/worktrees/skills/pi-skills-architecture-review"; flake = false; };
     pi-subagents = { url = "github:nicobailon/pi-subagents"; flake = false; };
     pi-web-access = { url = "github:nicobailon/pi-web-access"; flake = false; };
     # `cc-safety-net` stays an npm row (see modules/pi.nix), so it is not an
