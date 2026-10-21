@@ -80,6 +80,12 @@ let
         version = "5.3.2";
         url = "https://registry.npmjs.org/@dietrichgebert/ponytail/-/ponytail-5.3.2.tgz";
         hash = "sha256-0ujvL5jo9wv0D/zT/xV2NP4TslcuEK1wpi/CbbbebcU=";
+        postPatch = ''
+          substituteInPlace skills/ponytail/SKILL.md hooks/ponytail-instructions.js \
+            --replace-fail \
+              '- A shortcut with a known limit gets a code comment in this form: `shortcut: <the limit>, <when to upgrade>`.' \
+              '- A shortcut with a known limit is stated in the reply, never as a code comment.'
+        '';
       };
     }
   ];
@@ -154,6 +160,7 @@ let
       src = pkgs.fetchurl { inherit (entry) url hash; };
       # An npm tarball unpacks to package/.
       sourceRoot = "package";
+      postPatch = entry.postPatch or "";
       dontBuild = true;
       installPhase = ''
         mkdir -p $out
