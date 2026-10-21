@@ -122,11 +122,11 @@ if [[ ${HERDR_ENV:-} == 1 ]] && [[ -n $path ]]; then
     head -n 1) || die "cannot read the herdr worktree list"
 fi
 
-working=""
+unsettled=""
 if [[ -n $herdr_ws ]]; then
-  working=$(herdr agent list 2>/dev/null |
+  unsettled=$(herdr agent list 2>/dev/null |
     jq -r --arg w "$herdr_ws" \
-      '.result.agents[] | select(.workspace_id == $w and .agent_status == "working") | .pane_id') ||
+      '.result.agents[] | select(.workspace_id == $w and (.agent_status == "working" or .agent_status == "blocked")) | .pane_id') ||
     die "cannot read the herdr agent list; nothing was removed"
 fi
 
@@ -181,7 +181,7 @@ blocked=0
 if [[ -n $dirty ]] && ((!force)); then
   blocked=1
 fi
-if [[ -n $working ]] && ((!force)); then
+if [[ -n $unsettled ]] && ((!force)); then
   blocked=1
 fi
 if ((has_ref)) && [[ -z $proof ]] && ((!force)); then
@@ -193,8 +193,8 @@ if ((blocked)); then
   if [[ -n $dirty ]]; then
     printf '  uncommitted: %s path(s)\n' "$(wc -l <<<"$dirty" | tr -d ' ')" >&2
   fi
-  if [[ -n $working ]]; then
-    printf '  agent working: %s\n' "$working" >&2
+  if [[ -n $unsettled ]]; then
+    printf '  agent working or blocked: %s\n' "$unsettled" >&2
   fi
   if ((has_ref)) && [[ -z $proof ]]; then
     printf '  commit %s is not in another local branch\n' "${tip:0:7}" >&2
@@ -213,8 +213,8 @@ if ((force)); then
   if [[ -n $dirty ]]; then
     forced+=("discarded $(wc -l <<<"$dirty" | tr -d ' ') uncommitted path(s)")
   fi
-  if [[ -n $working ]]; then
-    forced+=("stopped the agent working in $herdr_ws")
+  if [[ -n $unsettled ]]; then
+    forced+=("stopped the agent in $herdr_ws")
   fi
   if ((has_ref)) && [[ -z $proof ]]; then
     forced+=("deleted $branch without a merged pull request")
