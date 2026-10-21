@@ -17,10 +17,10 @@ let
   # The rows every machine gets. The Linux-only row is appended below, because
   # the filter assert must not force pkgs while config is computed.
   baseRows = [
-    { input = "pi-subagents"; npmDepsHash = "sha256-862hXsUJ7CSVSntkV1Iv4z5E2On8v5BJSbM9iIYe+GY=";
+    { input = "pi-subagents"; npmDepsHash = "sha256-0eDwWHfFmxouY8uf0VURFYn6dWbDnh6x1Hj8AaARCvc=";
       filter = { prompts = [ ]; skills = [ "!skills/council-mode" ]; };
     }
-    { input = "pi-web-access"; npmDepsHash = "sha256-BvAI68JpqJKNcg8luJ3d250C/YISUf13EItMgrJVrV4="; }
+    { input = "pi-web-access"; npmDepsHash = "sha256-Emyw5LJdSEkb9Kg7Do6iobY6KslF3rkHxRI0EP6eEiY="; }
     # The rules load from APPEND_SYSTEM.md every turn, so the menu lists only the
     # skills a person types.
     { input = "skills"; }
