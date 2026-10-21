@@ -34,12 +34,6 @@ if [[ -z $ws ]]; then
   exit 1
 fi
 
-# Herdr appends a new tab after the existing tabs, so a background worktree
-# waits for its agent before the layout is built.
-if [[ $kind == worktree_created || $kind == worktree_opened ]] && [[ $focused != true ]]; then
-  exit 0
-fi
-
 # worktree.create and worktree.open also emit workspace.created, where the
 # checkout arrives as workspace provenance instead of a worktree record.
 base=$(jq -r '.data.worktree.path // ""' <<<"$event")
