@@ -61,12 +61,12 @@ let
 
   herdrNvim = pkgs.vimUtils.buildVimPlugin rec {
     pname = "herdr-nvim";
-    version = "1.1.0";
+    version = "1.2.1";
     src = pkgs.fetchFromGitHub {
       owner = "ChmaraX";
       repo = "herdr-nvim";
       rev = "v${version}";
-      hash = "sha256-q44Qt73XzNNipwF3hHr3Hzg0EReC3tz2bKB/l4ZBqiE=";
+      hash = "sha256-EghtchK820sWZmq67qdHhKSWkLnG2CqLza/dmUqNNi0=";
     };
     meta = {
       description = "Neovim annotations for Herdr agents";
@@ -115,14 +115,14 @@ let
 
   solhint = pkgs.buildNpmPackage rec {
     pname = "solhint";
-    version = "6.2.4";
+    version = "6.2.5";
     src = pkgs.fetchFromGitHub {
       owner = "protofire";
       repo = "solhint";
       rev = "v${version}";
-      hash = "sha256-A5breqJ+tY2/eAMxiCGrNdQJvg7ofOsdCVLssXL8IVY=";
+      hash = "sha256-F5RBbq544SK76rtWqYYQU5N6UgQFIMGMPKHJeehnbOE=";
     };
-    npmDepsHash = "sha256-X/qTFf/UPRiKQfOWv8hToleU3EOTiD44T+NyHyN0MVY=";
+    npmDepsHash = "sha256-s3SVKjyh4UkMvRLeQO8joo0Ng2m+9ljCiqojyiw3wFw=";
     dontNpmBuild = true;
   };
 
