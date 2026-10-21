@@ -64,3 +64,5 @@ nixpkgs 574991 libx11 # 1.8.13
 nixpkgs 574993 libxi # 1.8.3
 nixpkgs 574995 libxrender # 0.9.12
 nixpkgs 574997 libxpm # 3.5.19
+nixpkgs 576513 libressl # 4.3.2
+nixpkgs 576802 bind # 9.20.29
