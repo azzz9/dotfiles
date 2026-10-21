@@ -120,11 +120,11 @@
         "uv2nix": "uv2nix"
       },
       "locked": {
-        "lastModified": 1792599405,
-        "narHash": "sha256-nckl00BzG1G1BTtg4jyxLCgfHcRlkKnYq1STlFvupI8=",
+        "lastModified": 1792616837,
+        "narHash": "sha256-YzSHKLHZ2Umxc02ACX9bNl6HnJhCMc9+rK73MQGb0kY=",
         "owner": "NousResearch",
         "repo": "hermes-agent",
-        "rev": "4d04303818b61bf3aa09278af48356315515965b",
+        "rev": "20e3417cec9f3a9f7da08e00acaf5dc3926e5b80",
         "type": "github"
       },
       "original": {
@@ -161,11 +161,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792600829,
-        "narHash": "sha256-cGcSsR7pXapHvuwVCqJ1+uttKY74rMgbxktE0WhuGyg=",
+        "lastModified": 1792605213,
+        "narHash": "sha256-J73EBU30r2hXvHCcBtaigQDAIu/GGPYk1nc6P9THcmg=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "975cea5f20d2a5e7e008f68da9043e7bb5c0e928",
+        "rev": "ab97a5d09e0f2aa7339cfd35ec5824fd6653e27c",
         "type": "github"
       },
       "original": {
@@ -369,11 +369,11 @@
         "nixpkgs-darwin-x64": "nixpkgs-darwin-x64"
       },
       "locked": {
-        "lastModified": 1792593553,
-        "narHash": "sha256-YjDusycltvV++A1vpZrVJ/xCP8oCUQXNNgAzpEbk91s=",
+        "lastModified": 1792615484,
+        "narHash": "sha256-uzDyvP53f8CVe4op9WFfOkwMuAE4hZOTKFRmC8DcKr0=",
         "owner": "earendil-works",
         "repo": "pi",
-        "rev": "bd3c9b823762b7383954aa49e13ee350471015fe",
+        "rev": "02726086d11c2911aa872959e308b90d69182392",
         "type": "github"
       },
       "original": {
