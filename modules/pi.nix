@@ -281,9 +281,6 @@ assert lib.assertMsg (assignmentProblems == [ ] && filterProblems == [ ])
   programs.pi-coding-agent = {
     enable = true;
     package = piFlake.packages.${pkgs.stdenv.hostPlatform.system}.pi;
-    extraPackages = with pkgs; [
-      nodejs
-    ];
   };
   # The compact-tools extension reads this at startup. A store symlink, so the
   # style comes from the repo instead of a local edit.
