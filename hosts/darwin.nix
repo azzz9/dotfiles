@@ -2,6 +2,8 @@
 # the shared modules carry no platform test.
 { config, lib, pkgs, ... }:
 {
+  imports = [ ../modules/meltype.nix ];
+
   dotfiles.platform = "darwin";
 
   # The Nix profile directories are not on the login shell's default PATH on
