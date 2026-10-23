@@ -269,7 +269,6 @@ Conditionals live in the files below, each next to what it configures.
 | `hosts/platform/darwin.nix` | sessionPath entries and the GC launchd argument split |
 | `hosts/platform/linux.nix` | sessionPath entries and the XDG user dirs |
 | `modules/ghostty.nix` | `config` against `config.ghostty`, with different content |
-| `modules/hunk.nix` | the ld-linux wrapper on Linux, upstream on Darwin |
 | `modules/packages.nix` | unar, xclip, wl-clipboard on Linux, terminal-notifier on Darwin |
 | `modules/pinned-packages.nix` | the per-system codediff-watcher hash and `autoPatchelfHook` on Linux |
 

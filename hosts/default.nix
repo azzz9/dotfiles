@@ -30,13 +30,10 @@
     ../modules/dotfiles.nix
     ../modules/pi.nix
     ../modules/gh.nix
-    ../modules/gh-dash.nix
     ../modules/git.nix
-    ../modules/hunk.nix
     ../modules/lazygit.nix
     ../modules/shell.nix
     ../modules/herdr.nix
-    ../modules/tuios.nix
     ../modules/ghostty.nix
     ../modules/nvim.nix
     ../modules/packages.nix

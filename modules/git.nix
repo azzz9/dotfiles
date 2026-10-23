@@ -23,8 +23,8 @@
     git config --global wt.nocopy 'node_modules/'
     git config --global wt.hook 'if [ -f pnpm-lock.yaml ]; then corepack pnpm install --frozen-lockfile; elif [ -f package-lock.json ]; then npm ci; fi'
 
-    # hunk is the git pager; it falls back to normal paging for non-diff output.
-    git config --global core.pager "hunk pager"
+    # delta renders diffs, as it does for lazygit in modules/lazygit.nix.
+    git config --global core.pager "delta"
 
     # Sign commits by default with SSH keys. user.signingkey is machine-specific
     # and set by hand: git config --global user.signingkey ~/.ssh/signing_key.pub

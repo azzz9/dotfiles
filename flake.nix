@@ -11,15 +11,6 @@
       url = "github:nix-community/nixvim";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    hunk = {
-      url = "github:modem-dev/hunk";
-      # bun2nix (hunk's input) evaluates flake.formatter for every system in
-      # github:nix-systems/default, including x86_64-darwin, which unstable
-      # nixpkgs (26.11+) dropped. That transitive eval throws even when building
-      # for x86_64-linux and breaks the Pins workflow, so pin hunk to 26.05 (the
-      # last branch with x86_64-darwin) instead of following our nixpkgs.
-      inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
-    };
     # Pi's own flake builds the CLI from source. It tracks main rather than the
     # ref upstream offers consumers (`stable`): that branch advances only after
     # a release tag's flake builds on every system, so it lags main whenever the
@@ -44,7 +35,7 @@
   };
 
   outputs =
-    { self, nixpkgs, home-manager, nixvim, hunk, pi, serein
+    { self, nixpkgs, home-manager, nixvim, pi, serein
     , skills, pi-subagents, pi-web-access, pi-compact-tools
     , hermes-agent, ...
     }:
@@ -94,7 +85,6 @@
             worktreeRoot = "worktrees";
             inherit skills machineNames piPackagePaths;
             machine = name;
-            hunk = hunk;
             piFlake = pi;
             # modules/hermes.nix imports this input's Home Manager module.
             hermesAgent = hermes-agent;
