@@ -1,6 +1,6 @@
 id = "local.worktree-layout"
 name = "Worktree Layout"
-version = "0.4.0"
+version = "0.5.0"
 min_herdr_version = "0.9.3"
 description = "Lay out a fresh workspace or worktree as the fixed agents, diff, and scratch tabs, with the agent's tab first."
 platforms = ["linux", "macos"]
@@ -15,8 +15,4 @@ command = ["bash", "layout.sh"]
 
 [[events]]
 on = "worktree.opened"
-command = ["bash", "layout.sh"]
-
-[[events]]
-on = "pane.agent_detected"
 command = ["bash", "layout.sh"]
