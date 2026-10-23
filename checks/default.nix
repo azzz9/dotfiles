@@ -85,7 +85,8 @@ in
   '';
   # modules/pin-names.txt and flake.nix's packages must name the same set: a pin
   # in one and not the other is never bumped or never builds. `dotfiles` is the
-  # CLI and codediff-watcher takes its version from nixpkgs, so neither is bumped.
+  # CLI and codediff-watcher has its own per-platform step in bump-pins.sh, so
+  # neither is listed here.
   pin-names = pkgs.runCommand "pin-names" {
     nativeBuildInputs = [ pkgs.gawk ];
   } ''

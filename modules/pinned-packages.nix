@@ -2,8 +2,9 @@
 # updatable derivation keeps the shape nix-update needs (pname, version, and a
 # src whose rev or url embeds ${version}), so `bump-pins.sh` bumps it with
 # `nix-update --flake <name>` and no hand edit. modules/pin-names.txt names the
-# ones it bumps. codediff-watcher is not in that list: its version tracks the
-# one codediff-nvim's installer downloads, which the build compares against.
+# ones it bumps. codediff-watcher is not in that list: it needs one archive per
+# platform, so bump-pins.sh reads the version from the pinned plugin and measures
+# every archive in its own step.
 { pkgs }:
 let
   # codediff-watcher tracks the release codediff-nvim's installer downloads.

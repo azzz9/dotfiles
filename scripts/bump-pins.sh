@@ -60,6 +60,55 @@ bump_pins() {
   done
 }
 
+# codediff-watcher's version is the one codediff-nvim's installer downloads, and
+# each release names one archive per platform. Read that version from the pinned
+# plugin, then measure every archive so the version and its hashes move in one
+# step; the watcher's own build check fails when the plugin and the pin drift.
+bump_codediff_watcher() {
+  cp "$pins_file" "$pin_scratch"
+  if ! update_codediff_watcher; then
+    cp "$pin_scratch" "$pins_file"
+    echo "bump-pins: bumping codediff-watcher failed; kept its previous pin" >&2
+  fi
+}
+
+update_codediff_watcher() {
+  local current version src hash system os arch old url
+  current="$(sed -n 's/^  codediffWatcherVersion = "\([^"]*\)";$/\1/p' "$pins_file")"
+  if [ -z "$current" ]; then
+    echo "bump-pins: no codediffWatcherVersion in $pins_file" >&2
+    return 1
+  fi
+  if ! src="$(nix_cmd build --no-link --print-out-paths --impure --expr "
+    let
+      flake = builtins.getFlake \"$PWD\";
+      pkgs = import flake.inputs.nixpkgs { system = builtins.currentSystem; };
+    in pkgs.vimPlugins.codediff-nvim.src
+  ")"; then
+    echo "bump-pins: no built codediff-nvim source; kept the pin at $current" >&2
+    return 1
+  fi
+  version="$(sed -n 's/^local VERSION = "\([^"]*\)"$/\1/p' "$src/lua/codediff/core/installer/watcher.lua")"
+  if [ -z "$version" ] || [ "$version" = "$current" ]; then
+    return 0
+  fi
+  for system in x86_64-linux aarch64-darwin; do
+    case "$system" in
+      x86_64-linux) os=linux; arch=x64 ;;
+      aarch64-darwin) os=macos; arch=arm64 ;;
+    esac
+    url="https://github.com/esmuellert/codediff/releases/download/v${version}/codediff-watcher-${version}-${os}-${arch}.tar.gz"
+    old="$(sed -n "/^    \"$system\" = {/,/^    };/ s/^      hash = \"\([^\"]*\)\";$/\1/p" "$pins_file")"
+    if ! hash="$(nix_cmd store prefetch-file --json "$url" | sed -n 's/.*"hash": *"\([^"]*\)".*/\1/p')" || [ -z "$hash" ] || [ -z "$old" ]; then
+      echo "bump-pins: could not measure codediff-watcher for $system; kept the pin at $current" >&2
+      return 1
+    fi
+    sed -i "s|$old|$hash|" "$pins_file"
+  done
+  sed -i "s|^  codediffWatcherVersion = \"$current\";|  codediffWatcherVersion = \"$version\";|" "$pins_file"
+  echo "bump-pins: bumped codediff-watcher $current -> $version"
+}
+
 # The pi rows pin published npm tarballs, and the dependencies they vendor under
 # node_modules are rows too. The helper follows the registry and keeps a
 # vendored dependency on the version its parent names. The whole set is
@@ -108,5 +157,6 @@ fi
 # After the flake update on purpose: a release that needs a newer toolchain
 # than the previous nixpkgs carried can still be bumped in the same run.
 bump_pins
+bump_codediff_watcher
 bump_pi_tarballs
 refresh_pi_npm_hashes

@@ -171,10 +171,11 @@ than nixpkgs carries, restores that one file and warns, so one blocked release
 does not stop the run. A failed build or activation restores `flake.lock`, the
 pins file, and `modules/pi.nix`.
 
-`codediff-watcher` keeps the watcher version that codediff-nvim's installer
-downloads as a literal, and its build fails when the plugin's `watcher.lua`
-names a different one, so the two never drift silently. Its per-system release
-hashes stay hand-edited when the plugin itself moves.
+`codediff-watcher` pins the watcher version that codediff-nvim's installer
+downloads, and `bump-pins.sh` reads it from the pinned plugin and measures both
+platform archives, so the version and its hashes move in one step. Its own build
+fails when the plugin's `watcher.lua` names a different one, so the two never
+drift silently.
 
 Adding a pinned package means giving it `pname`, `version`, and a `src` built
 from `${version}`, listing it in `pin_names`, and exposing it as a flake
