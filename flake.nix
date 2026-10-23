@@ -72,6 +72,14 @@
       };
       # The names the `dotfiles` CLI and its completion offer.
       machineNames = nixpkgs.lib.attrNames machines;
+      # Everything the common layer needs that is not a per-machine fact. A
+      # machine repository spreads this into extraSpecialArgs, so the flake
+      # inputs stay owned here.
+      homeArgs = { machine, machineNames, repoDir, worktreeRoot ? "worktrees" }: {
+        inherit machine machineNames repoDir worktreeRoot skills piPackagePaths;
+        piFlake = pi;
+        hermesAgent = hermes-agent;
+      };
       mkHomeConfiguration = name: { system, home ? [ ], checkout ? defaultCheckout, ... }:
         home-manager.lib.homeManagerConfiguration {
           pkgs = import nixpkgs {
@@ -80,15 +88,7 @@
               "barbar.nvim"
             ];
           };
-          extraSpecialArgs = {
-            repoDir = checkout;
-            worktreeRoot = "worktrees";
-            inherit skills machineNames piPackagePaths;
-            machine = name;
-            piFlake = pi;
-            # modules/hermes.nix imports this input's Home Manager module.
-            hermesAgent = hermes-agent;
-          };
+          extraSpecialArgs = homeArgs { inherit machineNames; machine = name; repoDir = checkout; };
           modules = [
             ./hosts/default.nix
             nixvim.homeModules.nixvim
@@ -146,6 +146,13 @@
     in
     {
       inherit homeConfigurations nixosConfigurations;
+      # The common layer on its own, for a machine repository that builds its own
+      # home configuration: spread `homeArgs` into extraSpecialArgs and add this
+      # module to the module list.
+      homeManagerModules.default = {
+        imports = [ ./hosts/default.nix nixvim.homeModules.nixvim ];
+      };
+      lib.homeArgs = homeArgs;
       packages = forAllSystems mkPackages;
       checks = forAllSystems mkChecks;
     };
