@@ -79,11 +79,7 @@ in
       pinned.prettierPluginSolidity                 # formatter plugin
     ])
     ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux (with pkgs; [
-      # Temporary: unar fails to link on Darwin because ld64 crashes with
-      # `Trace/BPT trap: 5`. Move it back to the common package list once
-      # nixos-unstable includes NixOS/nixpkgs#536365.
-      unar
-      xclip
+      # nvim sets clipboard=unnamedplus, so yanking needs wl-copy on Wayland.
       wl-clipboard
     ]);
 }
