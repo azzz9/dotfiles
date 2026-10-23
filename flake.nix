@@ -16,9 +16,6 @@
     # a release tag's flake builds on every system, so it lags main whenever the
     # newest tag does not build.
     pi.url = "github:earendil-works/pi";
-    # Serein, the Wayland-native Discord client, is not in nixpkgs. It keeps its
-    # own locked nixpkgs: a `follows` here would change the derivation.
-    serein.url = "github:ViceVerse-cz/Serein";
     # Pi loads these from the store paths Nix fetches for them. flake.lock
     # records the revision, so `nix flake update <name>` is what moves a pin.
     skills = { url = "github:azzz9/skills"; flake = false; };
@@ -35,7 +32,7 @@
   };
 
   outputs =
-    { self, nixpkgs, home-manager, nixvim, pi, serein
+    { self, nixpkgs, home-manager, nixvim, pi
     , skills, pi-subagents, pi-web-access, pi-compact-tools
     , hermes-agent, ...
     }:
@@ -51,14 +48,13 @@
       piPackagePaths = {
         inherit skills pi-subagents pi-web-access pi-compact-tools;
       };
-      # One table for every machine. The key names homeConfigurations.<name>,
-      # and nixosConfigurations.<name> for a row that carries a nixos path. The
-      # key is the machine's hostname, so the CLI and the bootstrap resolve a
-      # machine with no mapping table of their own.
+      # One table for every machine. The key names homeConfigurations.<name>
+      # and is the machine's hostname, so the CLI and the bootstrap resolve a
+      # machine with no mapping table of their own. The OS side of each machine
+      # lives in its own repository.
       machines = {
         nix-desktop = {
           system = "x86_64-linux";
-          nixos = ./hosts/platform/nixos/machines/nix-desktop;
           home = [ ./hosts/linux.nix ./modules/niri.nix ./modules/fcitx5.nix ];
         };
         macbook = {
@@ -69,7 +65,6 @@
         # the module.
         nix-server = {
           system = "x86_64-linux";
-          nixos = ./hosts/platform/nixos/machines/nix-server;
           home = [ ./hosts/linux.nix ./modules/hermes.nix ];
         };
       };
@@ -96,14 +91,6 @@
             ./hosts/default.nix
             nixvim.homeModules.nixvim
           ] ++ home;
-        };
-      # The NixOS system layer. Each machine directory imports the shared
-      # modules and its own hardware-configuration.nix.
-      mkNixosSystem = _: { system, nixos, ... }:
-        nixpkgs.lib.nixosSystem {
-          inherit system;
-          specialArgs = { serein = serein.packages.${system}.serein; };
-          modules = [ nixos ];
         };
       # The pinned derivations in modules/pinned-packages.nix, exposed as
       # flake packages so `nix-update --flake <name>` (the bump the Pins
@@ -144,11 +131,9 @@
           inherit self pkgs platformMachines;
         };
       homeConfigurations = nixpkgs.lib.mapAttrs mkHomeConfiguration machines;
-      # Only the rows that carry a nixos path have a system configuration.
-      nixosConfigurations = nixpkgs.lib.mapAttrs mkNixosSystem (nixpkgs.lib.filterAttrs (_: m: m ? nixos) machines);
     in
     {
-      inherit homeConfigurations nixosConfigurations;
+      inherit homeConfigurations;
       # The common layer on its own, for a machine repository that builds its own
       # home configuration: spread `homeArgs` into extraSpecialArgs and add this
       # module to the module list.

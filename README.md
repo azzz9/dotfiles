@@ -2,7 +2,9 @@
 
 Home Manager + Nix flake setup for x86_64 Linux (Ubuntu, Arch, NixOS) and Apple
 Silicon macOS. Every machine gets one user environment, described by a row in
-`flake.nix`. A NixOS machine gets a system configuration from the same flake too.
+`flake.nix`. The NixOS system layer of a machine lives in its own repository,
+[azzz9/machines](https://github.com/azzz9/machines), which this repository does
+not depend on.
 
 ## Install
 
@@ -27,14 +29,17 @@ MACHINE=macbook GIT_NAME="your-name" GIT_EMAIL="your-noreply@users.noreply.githu
 The script installs the system packages it needs, and Nix when Nix is missing.
 It clones the repository to `~/src/github.com/azzz9/dotfiles`, which is the ghq
 root, so `ghq list` shows it with no registration. It applies the Home Manager
-profile for `MACHINE`. On NixOS it also applies the system configuration, which
-sets the hostname to `MACHINE`, and asks for your password once.
+profile for `MACHINE`. On NixOS it also clones the machines repository, adopts
+the machine there when the row is new, and applies the system configuration,
+which sets the hostname to `MACHINE`. The system switch asks for your password
+once.
 
 `MACHINE` must name a row the repository carries. The rows today are
 `nix-desktop`, `macbook`, and `nix-server`, and `flake.nix`'s `machines` table is
 the source. NixOS is the exception to the rule. There a new name adopts the
-machine, by writing `hardware-configuration.nix`, copying
-`/etc/nixos/configuration.nix` in, writing `default.nix`, and adding the row.
+machine in the machines repository, by writing `hardware-configuration.nix`,
+copying `/etc/nixos/configuration.nix` in, writing `default.nix`, and adding the
+row to that repository's table.
 
 `git config core.hooksPath .githooks` in the checkout runs `scripts/check.sh`
 before every push, the same set CI builds.
@@ -100,13 +105,11 @@ and a lock left behind by a killed run is reclaimed instead of blocking every
 run after it.
 
 On a NixOS machine, `apply`, `sync`, and `upgrade` change the user environment
-only. A pull that touches `hosts/platform/nixos/` needs the system command below
-as well.
-
-The system configuration applies on its own:
+only. The system layer is a separate checkout, and a change there needs the
+system command below as well.
 
 ```bash
-sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#<machine> --impure
+sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/machines#<machine>
 ```
 
 ## What is installed
@@ -125,9 +128,10 @@ sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#<machine> --im
 Where it lives:
 
 ```
-flake.nix             # the machines table, homeConfigurations, nixosConfigurations, checks
+flake.nix             # the machines table, homeConfigurations, homeManagerModules, checks
 hosts/default.nix     # the Home Manager entry point and the rules links
-hosts/platform/       # the per-platform differences, and the NixOS layer
+hosts/linux.nix       # what a Linux machine's home adds, imported by its row
+hosts/darwin.nix      # what the macOS machine's home adds, imported by its row
 modules/              # one module per capability, named for what it configures
 scripts/              # the dotfiles CLI, the bootstrap, and the check set
 .agents/skills/       # the skills that only make sense in this repository

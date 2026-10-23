@@ -42,27 +42,6 @@
         "type": "github"
       }
     },
-    "flake-parts_3": {
-      "inputs": {
-        "nixpkgs-lib": [
-          "serein",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1788450739,
-        "narHash": "sha256-glZLQlzIn1fXH6PazR2iUmTo7kzzyYSshrWhLS9TqCU=",
-        "owner": "hercules-ci",
-        "repo": "flake-parts",
-        "rev": "31729ca8cbdb4fa927b34e5f4353e6a83f39e993",
-        "type": "github"
-      },
-      "original": {
-        "owner": "hercules-ci",
-        "repo": "flake-parts",
-        "type": "github"
-      }
-    },
     "hermes-agent": {
       "inputs": {
         "flake-parts": "flake-parts",
@@ -187,22 +166,6 @@
       },
       "original": {
         "owner": "NixOS",
-        "ref": "nixos-unstable",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
-    "nixpkgs_4": {
-      "locked": {
-        "lastModified": 1790689126,
-        "narHash": "sha256-ilerN1WLSvF+HMjziC/Wv99J5y02maDH+6hZPwsORKg=",
-        "owner": "nixos",
-        "repo": "nixpkgs",
-        "rev": "b4fd65b198c599cbe814fcb9f42d25d021595ec9",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nixos",
         "ref": "nixos-unstable",
         "repo": "nixpkgs",
         "type": "github"
@@ -378,27 +341,7 @@
         "pi-compact-tools": "pi-compact-tools",
         "pi-subagents": "pi-subagents",
         "pi-web-access": "pi-web-access",
-        "serein": "serein",
         "skills": "skills"
-      }
-    },
-    "serein": {
-      "inputs": {
-        "flake-parts": "flake-parts_3",
-        "nixpkgs": "nixpkgs_4"
-      },
-      "locked": {
-        "lastModified": 1792592375,
-        "narHash": "sha256-K0cQgSsfNJ3TXAAc+7kTEmbW8KyNnjVInyRoyRnG/nU=",
-        "owner": "ViceVerse-cz",
-        "repo": "Serein",
-        "rev": "c2842aa762ca633e0ed4ba986c460a59ce6435fe",
-        "type": "github"
-      },
-      "original": {
-        "owner": "ViceVerse-cz",
-        "repo": "Serein",
-        "type": "github"
       }
     },
     "skills": {
