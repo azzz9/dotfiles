@@ -40,6 +40,9 @@ jobs:
             experimental-features = nix-command flakes
 
       - name: Audit the declared packages
+        # Actions' bash is the one with pipefail, so a failed nix run fails this
+        # step instead of vanishing into tee.
+        shell: bash
         env:
           # flake.nix reads this back through builtins.getEnv, and the CLI
           # refuses a checkout it cannot find.
@@ -62,7 +65,7 @@ jobs:
             echo "no new match"
             exit 0
           fi
-          branch="pi/audit-$(date -u +%Y-%m-%d)"
+          branch="pi/audit-$(date -u +%Y-%m-%d)-${{ github.run_id }}"
           git switch -c "$branch"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

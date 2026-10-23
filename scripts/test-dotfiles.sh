@@ -403,6 +403,11 @@ expect_out_has 'audit --declared --update leaves the file for a commit' 'commit 
 baseline="$(cat "$machine/scripts/audit-baseline.txt")"
 expect_eq 'audit --declared --update adds the new match' present "$(out_has "$baseline" 'nixpkgs 111 fixturepkg # 1.2.3')"
 expect_eq 'audit --declared --update keeps the line only the store holds' present "$(out_has "$baseline" 'nixpkgs 999 ghostpkg # 1.0')"
+recorded="$(cat "$machine/scripts/audit-baseline.txt")"
+run_cli audit --declared --update
+expect_eq 'a second --declared --update exits 0' 0 "$cli_rc"
+expect_out_has 'a second --declared --update adds nothing' 'added 0 line(s)'
+expect_eq 'a second --declared --update leaves the file alone' "$recorded" "$(cat "$machine/scripts/audit-baseline.txt")"
 run_cli audit --declared
 expect_eq 'a rerun after the record exits 0' 0 "$cli_rc"
 expect_out_has 'a rerun after the record reports no new match' '(0 new)'

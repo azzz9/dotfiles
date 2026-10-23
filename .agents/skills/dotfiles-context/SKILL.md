@@ -135,7 +135,7 @@ flake.nix names for the machine instead, which is a subset of the closure and
 all a runner without a store can read. `scripts/audit-baseline.txt` holds what
 was already read, and
 only a match outside it fails the store audit, so the file is part of the working
-tree like the pins `bump-pins.sh` moves. Only the store audit reads or prunes
+tree like the pins `bump-pins.sh` moves. Only the store audit prunes
 that file. `--declared --update` adds the lines it found and prunes nothing,
 because its set is a subset of the store's, and a new match in a declared run is
 a report rather than a failure.
