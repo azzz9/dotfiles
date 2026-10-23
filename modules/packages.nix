@@ -73,16 +73,7 @@ in
       statix                    # linter (static analysis)
       deadnix                   # linter (unused bindings)
 
-      # --- Solidity ---
-      foundry                                      # forge, cast, anvil
-      # nixpkgs unstable made python3.14 the default interpreter, but
-      # slither-analyzer's dependency chain (web3 -> eth-tester ->
-      # py-evm 0.12.1-beta.1) does not support python3.14 yet, which
-      # breaks the Pins workflow. Use the python3.13 build of
-      # slither-analyzer (a self-contained CLI tool) until upstream
-      # py-evm adds python3.14 support.
-      python313.pkgs.slither-analyzer              # linter / static analysis
-      solc                                         # compiler
+      # --- Solidity (Hardhat toolchain) ---
       pinned.nomicfoundationSolidityLanguageServer  # LSP
       pinned.solhint                                # linter
       pinned.prettierPluginSolidity                 # formatter plugin
