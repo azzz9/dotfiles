@@ -20,7 +20,9 @@ cd "$(dirname "$0")/.."
 nix_cmd() { nix --extra-experimental-features "nix-command flakes" "$@"; }
 
 if [ "${1:-full}" = "--no-build" ]; then
-  nix_cmd flake check --impure --no-build
+  # --all-systems evaluates the other platform's checks too, and with them the
+  # activation package of the machine that platform carries.
+  nix_cmd flake check --impure --no-build --all-systems
   exit 0
 fi
 
