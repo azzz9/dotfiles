@@ -43,18 +43,15 @@ in
 
     # Ordering against Home Manager's own content (plugins < 910, shellInit
     # 1000): 01-setup before plugins, 02-main after them, mise and 03-tail after
-    # shellInit.
+    # shellInit. programs.mise contributes the interactive activate at 1000.
     initContent = lib.mkMerge [
       (lib.mkOrder 500 initPreamble)
       (lib.mkOrder 550 (readZsh "01-setup.zsh"))
       (lib.mkOrder 910 (readZsh "02-main.zsh"))
-      (lib.mkOrder 1090 ''
-        eval "$(${pkgs.mise}/bin/mise activate zsh)"
-      '')
       (lib.mkOrder 1100 (readZsh "03-tail.zsh"))
     ];
-    # Use shims in .zshenv so SSH and other non-interactive zsh processes can
-    # resolve environment-owned mise tools without relying on prompt hooks.
+    # Shims in .zshenv let SSH and other non-interactive zsh processes resolve
+    # mise tools without the interactive activate.
     envExtra = ''
       export LC_MESSAGES=en_US.UTF-8
       export LANGUAGE=en_US:en
@@ -64,6 +61,15 @@ in
       export PATH="${config.home.homeDirectory}/.nix-profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
       eval "$(${pkgs.mise}/bin/mise activate zsh --shims)"
     '';
+  };
+
+  # mutableSettings keeps the hand-written global config authoritative: Home
+  # Manager writes its settings to conf.d/50-home-manager.toml instead of
+  # replacing the file mise's own commands edit.
+  programs.mise = {
+    enable = true;
+    enableZshIntegration = true;
+    mutableSettings = true;
   };
 
   programs.fzf = {

@@ -62,7 +62,6 @@ in
       prettier                    # formatter
       prettierd                   # formatter (daemon)
       eslint_d                    # linter (daemon)
-      mise                        # tool version manager; versions belong to each environment
       vscode-js-debug             # DAP debugger (Node.js / Chrome)
 
       # --- C / C++ ---
