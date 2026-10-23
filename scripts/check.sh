@@ -20,9 +20,17 @@ cd "$(dirname "$0")/.."
 nix_cmd() { nix --extra-experimental-features "nix-command flakes" "$@"; }
 
 if [ "${1:-full}" = "--no-build" ]; then
-  # --all-systems evaluates the other platform's checks too, and with them the
-  # activation package of the machine that platform carries.
-  nix_cmd flake check --impure --no-build --all-systems
+  # `nix flake check --no-build` cannot serve as the fast path: it refuses the
+  # import-from-derivation that evaluating a home configuration needs, because
+  # modules/hermes.nix reads uv.lock out of the hermes source. `nix eval` allows
+  # it, and the loop names every machine rather than this host's platform.
+  hosts="$(nix_cmd eval --impure --raw --expr \
+    'builtins.concatStringsSep " " (builtins.attrNames (builtins.getFlake (builtins.toString ./.)).homeConfigurations)')"
+  for host in $hosts; do
+    echo "[check] evaluate homeConfigurations.$host"
+    nix_cmd eval --impure --raw ".#homeConfigurations.$host.activationPackage.drvPath" > /dev/null
+  done
+  echo "[check] ok (evaluation only)"
   exit 0
 fi
 
