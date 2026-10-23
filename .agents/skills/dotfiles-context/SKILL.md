@@ -51,8 +51,8 @@ so `flake.lock` pins them:
 
 The input is the same one `modules/pi.nix` hands pi, so the rules and the skill
 files come from one revision. Editing `~/src/github.com/azzz9/skills` has no
-effect until the pin moves. The `Pins` workflow moves it weekly; by hand, run
-`nix flake update skills` and then `dotfiles apply`.
+effect until the pin moves. To move it, run `nix flake update skills` and then
+`dotfiles apply`.
 
 Repo-local skills are the only skills this repo ships. They sit in
 `.agents/skills/` at the repo root, where pi discovers them as project skills
@@ -142,13 +142,14 @@ a report rather than a failure.
 
 The `Audit` workflow records what the declared run found into the baseline and
 opens a PR, so a new upstream issue reaches the reader as a diff and the
-schedule stays green. The `Pins` workflow reads the audit but is not held back by
-a match.
+schedule stays green. The pin bump is run by hand; run `dotfiles audit` after it
+and `dotfiles audit --update` to record a match you accept.
 
 ## Pins
 
-The `Pins` workflow moves every flake input and every `nix-update` pin in one
-run, through `scripts/bump-pins.sh`, and opens a PR for the files it moved.
+`scripts/bump-pins.sh` moves every flake input and every `nix-update` pin in one
+run. Run it by hand, run `scripts/check.sh` (the pre-push hook does too), then
+commit and push.
 
 | Pin | Moves with |
 |-----|------------|
@@ -168,8 +169,8 @@ either direction.
 
 A `nix-update` run that fails, for example because a release needs a newer Go
 than nixpkgs carries, restores that one file and warns, so one blocked release
-does not stop the run. A failed build or activation restores `flake.lock`, the
-pins file, and `modules/pi.nix`.
+does not stop the run. A failed build or activation fails `scripts/check.sh`, so
+nothing is committed until it passes.
 
 `codediff-watcher` pins the watcher version that codediff-nvim's installer
 downloads, and `bump-pins.sh` reads it from the pinned plugin and measures both

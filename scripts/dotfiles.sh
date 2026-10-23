@@ -26,7 +26,7 @@ what it found in scripts/audit-baseline.txt: the store audit rewrites the file,
 and --declared only adds to it, because that set is smaller. A new match fails
 the store audit and is a report for the declared one.
 
-The Pins workflow moves the pins weekly. To move one flake input by hand, run
+Move the pins by hand with scripts/bump-pins.sh. To move one flake input, run
 `nix flake update <input>`, commit flake.lock, then `dotfiles apply`.
 
 machine: the name of the machine to apply or report on. This machine's

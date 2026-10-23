@@ -71,11 +71,12 @@ The machine's name is its hostname and its row key, so none of these needs an
 argument. An argument names another machine, which is also the only reason to
 give one.
 
-`audit` also runs without being asked. The `Pins` workflow reads it before it
-opens the weekly pin PR, and the `Audit` workflow reads what the flake declares
-every day, because a runner has no store to read. A declared run cannot prune
-the baseline, so a new match there is recorded and opened as a PR instead of
-failing the job; the store audit on a machine still fails on one.
+`audit` also runs without being asked. The `Audit` workflow reads what the flake
+declares every day, because a runner has no store to read. A declared run cannot
+prune the baseline, so a new match there is recorded and opened as a PR instead
+of failing the job; the store audit on a machine still fails on one. Run
+`dotfiles audit` on the machine after a pin bump, and `dotfiles audit --update`
+to record a match you accept.
 
 `sync` refuses any dirty path, because `apply` would otherwise activate a
 half-finished edit. It checks out `main`, so a machine that rolled back returns
@@ -86,13 +87,13 @@ against `origin/main`, and `rollback` applies the commit applied before the
 current one. Both read the log, so "which commit was working" does not depend on
 memory.
 
-The `Pins` workflow moves the pins weekly, runs the checks and the audit, and
-opens a PR that auto-merge lands. To move one flake input by hand, run
+Move the pins by hand with `scripts/bump-pins.sh`, then run `scripts/check.sh`
+(the pre-push hook runs it too), commit, and push. To move one flake input, run
 `nix flake update <input>`, commit `flake.lock`, then `dotfiles apply`.
 
-The five npm rows in `modules/pi.nix` are tarballs, so `bump-pins.sh` leaves them
-alone. Move one by editing its version, URL, and the hash from
-`nix store prefetch-file`.
+The npm rows in `modules/pi.nix` are tarballs, and `bump-pins.sh` moves them to
+their registry latest, keeping each vendored dependency on the version its
+parent names.
 
 `status` changes nothing and never fetches. It reports how far the checkout is
 from the upstream as of the last fetch, which of the three pin files are
@@ -125,7 +126,7 @@ sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/machines#<machine>
 | Agents         | `pi` with the skills and the subagents                                      |
 | Hermes Agent   | The agent service on `nix-server` only, from the `hermes-agent` flake input   |
 | Tools          | The file, JSON, media, and language toolchains the shell assumes              |
-| Extra packages | The derivations nixpkgs lacks, pinned and bumped by the `Pins` workflow       |
+| Extra packages | The derivations nixpkgs lacks, pinned and bumped by `scripts/bump-pins.sh`     |
 
 Where it lives:
 

@@ -42,8 +42,8 @@ let
     }
     # The /btw side conversation. The published tarball carries the TypeScript
     # pi loads and has no runtime dependencies, so Nix unpacks it and pi loads it
-    # from the store. `pi_reconcile` never sees this row; the Pins workflow's
-    # tarball bump moves it.
+    # from the store. `pi_reconcile` never sees this row; the tarball bump in
+    # scripts/bump-pins.sh moves it.
     { tarball = {
         name = "pi-btw";
         version = "0.8.0";

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Moves every pin this repository carries, in one run. The Pins workflow runs
-# this weekly; to move a single flake input by hand, use
-# `nix flake update <input>` and commit the lock.
+# Moves every pin this repository carries, in one run. Run it by hand, then
+# `scripts/check.sh` and commit; the pre-push hook runs the same checks. To move a
+# single flake input, use `nix flake update <input>` and commit the lock.
 #
-# nix-update has to be on PATH for the derivations in modules/pinned-packages.nix,
-# and python3 for the pi tarball bump.
+# python3 runs the pi tarball bump, and nix-update comes from nixpkgs when it is
+# not on PATH.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -12,6 +12,14 @@ export NIX_CONFIG="${NIX_CONFIG:-}"$'\nextra-experimental-features = nix-command
 
 nix_cmd() {
   nix --extra-experimental-features "nix-command flakes" "$@"
+}
+
+nix_update() {
+  if command -v nix-update >/dev/null 2>&1; then
+    nix-update "$@"
+  else
+    nix run nixpkgs#nix-update -- "$@"
+  fi
 }
 
 pins_file="modules/pinned-packages.nix"
@@ -53,7 +61,7 @@ bump_pins() {
   for name in "${pin_names[@]}"; do
     cp "$pins_file" "$pin_scratch"
     echo "bump-pins: bumping $name"
-    if ! nix-update --flake "$name"; then
+    if ! nix_update --flake "$name"; then
       cp "$pin_scratch" "$pins_file"
       echo "bump-pins: bumping $name failed; kept its previous pin" >&2
     fi
