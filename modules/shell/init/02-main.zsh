@@ -66,7 +66,7 @@ _dotfiles() {
       case $words[1] in
         audit)
           _arguments -C \
-            '--update[record what it found in scripts/audit-baseline.txt instead of failing on it]' \
+            '--update[record what it found in scripts/audit-baseline.txt]' \
             '--declared[read the packages flake.nix names for this machine instead of the store]' \
             '*:machine:->machines'
           [[ $state == machines ]] && _describe -t machines 'machine' machines
