@@ -283,7 +283,6 @@ assert lib.assertMsg (assignmentProblems == [ ] && filterProblems == [ ])
     package = piFlake.packages.${pkgs.stdenv.hostPlatform.system}.pi;
     extraPackages = with pkgs; [
       nodejs
-      bun
     ];
   };
   # The compact-tools extension reads this at startup. A store symlink, so the

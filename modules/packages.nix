@@ -63,7 +63,6 @@ in
       prettierd                   # formatter (daemon)
       eslint_d                    # linter (daemon)
       mise                        # tool version manager; versions belong to each environment
-      bun                         # the agent's TypeScript runtime
       vscode-js-debug             # DAP debugger (Node.js / Chrome)
 
       # --- C / C++ ---
