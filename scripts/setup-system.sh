@@ -314,15 +314,16 @@ flake_machines() {
     "$repo_dir#homeConfigurations"
 }
 
-# MACHINE has to name a machine this repository can apply. NixOS adopts a name
-# the repository does not carry yet, because the adoption writes the row. The
-# other platforms have nothing that writes one, so a missing name stops the run
-# before anything is installed or applied.
+# MACHINE has to name a machine this repository can apply, on every platform:
+# Home Manager switches `$repo_dir#<machine>`, so a name without a row has no
+# home configuration to switch to. The adoption writes the OS row afterwards and
+# cannot invent the user environment.
 require_known_machine() {
   local repo_dir="$1"
   local machine="$2"
   local known=""
   local system="${arch}-linux"
+  local platform="linux.nix"
 
   if ! known="$(flake_machines "$repo_dir")"; then
     echo "Could not read the machine list from the flake. Home Manager reports an unknown machine itself." >&2
@@ -333,20 +334,16 @@ require_known_machine() {
     return 0
   fi
 
-  if [[ "$linux_distribution" == "nixos" ]]; then
-    echo "The repository does not carry '$machine' yet. The adoption below writes its row."
-    return 0
-  fi
-
   if [[ "$os_name" == "Darwin" ]]; then
     system="aarch64-darwin"
+    platform="darwin.nix"
   fi
 
   echo "MACHINE names '$machine', which the repository does not carry." >&2
   echo "Machines in flake.nix: $known" >&2
-  echo "Add this row to its machines block, then run the bootstrap again:" >&2
+  echo "Add this row to its machines table, with the home modules this machine needs, then run the bootstrap again:" >&2
   echo "" >&2
-  echo "        $machine = { system = \"$system\"; };" >&2
+  echo "        $machine = { system = \"$system\"; home = [ ./hosts/$platform ]; };" >&2
   exit 1
 }
 

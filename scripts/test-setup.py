@@ -119,10 +119,14 @@ class BootstrapTests(unittest.TestCase):
             if repo.is_dir():
                 shutil.copytree(skeleton, repo, dirs_exist_ok=True)
             # The OS repository: its flake carries the machine row the adoption
-            # edits, and machines/<name>/ is the directory it writes.
+            # edits, machines/<name>/ is the directory it writes, and modules/
+            # holds the imports the generated default.nix names.
             machines = home / "src/github.com/azzz9/machines"
             machines_skeleton = base / "machines-skeleton"
             (machines_skeleton / "machines").mkdir(parents=True)
+            (machines_skeleton / "modules").mkdir()
+            for module in ("common.nix", "desktop.nix", "headless.nix"):
+                (machines_skeleton / "modules" / module).write_text("{ }\n")
             (machines_skeleton / "flake.nix").write_text(MACHINES_FLAKE)
             if machine_entry:
                 machine_dir = machines_skeleton / "machines/nix-desktop"
@@ -332,9 +336,14 @@ esac
                     capture_output=True, timeout=20,
                 )
 
+            def tree_state(root):
+                return {str(path.relative_to(root)): path.read_bytes()
+                        for path in root.rglob("*") if path.is_file()}
+
             def repo_state():
-                return {str(path.relative_to(repo)): path.read_bytes()
-                        for path in repo.rglob("*") if path.is_file()}
+                # Adoption writes the OS checkout, so the second run has to leave
+                # both trees alone.
+                return (tree_state(repo), tree_state(machines))
 
             result = invoke()
             calls = log.read_text() if log.exists() else ""
@@ -509,13 +518,12 @@ esac
         self.assertTrue((machine_dir / "hardware-configuration.nix").is_file())
         self.assert_nix_parses(default)
         # Every import names a file the repository actually carries.
-        # The generated default.nix imports modules from the OS repository. The
-        # fixture does not build that tree, so check the real checkout when this
-        # machine has one, as assert_nix_parses does for Nix.
-        machines_repo = Path.home() / "src/github.com/azzz9/machines"
-        if machines_repo.is_dir():
-            for imported in ("common.nix", "desktop.nix"):
-                self.assertTrue((machines_repo / "modules" / imported).is_file())
+        # Every import names a file the OS repository carries.
+        for line in default.read_text().splitlines():
+            if "../../modules/" in line:
+                imported = line.split("../../modules/")[1].rstrip(";")
+                self.assertTrue((self.machines_of(repo) / "modules" / imported).is_file(),
+                                imported)
         flake = (self.machines_of(repo) / "flake.nix").read_text()
         self.assertIn("        nix-desktop = { system = \"x86_64-linux\"; };\n", flake)
         self.assertLess(flake.index("nix-desktop = {"), flake.index("      };"))
@@ -638,28 +646,27 @@ esac
                 self.assertNotIn("apt-get ", calls)
                 self.assertNotIn("home-manager", calls)
 
-    def test_machine_the_repository_does_not_carry_is_fatal_off_nixos(self):
-        for distro, system in (("macos", "aarch64-darwin"), ("ubuntu", "x86_64-linux")):
+    def test_machine_the_repository_does_not_carry_stops_the_run(self):
+        # Home Manager switches dotfiles#<machine> on every platform, so a name
+        # without a row stops before anything is installed. The row the message
+        # prints carries the platform module that default.nix asserts.
+        for distro, system, platform in (
+            ("macos", "aarch64-darwin", "darwin.nix"),
+            ("ubuntu", "x86_64-linux", "linux.nix"),
+            ("nixos", "x86_64-linux", "linux.nix"),
+        ):
             with self.subTest(distro=distro):
-                result, calls, _ = self.run_setup(distro=distro, tools=(), machine="newbox")
+                result, calls, _ = self.run_setup(
+                    distro=distro, machine="newbox",
+                    tools=("nix",) if distro == "nixos" else (),)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("Machines in flake.nix: nix-desktop macbook nix-server",
                               result.stderr)
-                self.assertIn(f'        newbox = {{ system = "{system}"; }};', result.stderr)
+                self.assertIn(
+                    f'        newbox = {{ system = "{system}"; '
+                    f'home = [ ./hosts/{platform} ]; }};', result.stderr)
                 self.assertNotIn("home-manager", calls)
-
-    def test_nixos_adopts_a_machine_the_repository_does_not_carry_yet(self):
-        result, calls, repo = self.run_setup(
-            existing_target=True, machine_entry=False, machine="newbox", hostname="newbox",
-            nixos_config_body=GUI_CONFIG, scratch_dir=self.persistent_scratch(),
-        )
-        self.assert_success(result, calls, repo)
-        self.assertIn("does not carry 'newbox' yet", result.stdout)
-        machine_dir = self.machines_of(repo) / "machines/newbox"
-        self.assertIn('networking.hostName = "newbox";',
-                      (machine_dir / "default.nix").read_text())
-        self.assertIn('        newbox = { system = "x86_64-linux"; };',
-                      (self.machines_of(repo) / "flake.nix").read_text())
+                self.assertNotIn("nixos-generate-config", calls)
 
     def test_macos_sets_the_hostname_from_the_machine(self):
         scratch = self.persistent_scratch()
