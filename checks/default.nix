@@ -129,6 +129,14 @@ in
     bash ${self}/scripts/test-dotfiles.sh ${self}/scripts/dotfiles.sh
     touch $out
   '';
+  # The pi tarball bump rewrites modules/pi.nix by hand, so its parse and
+  # rewrite are checked here rather than only when a release moves.
+  pi-tarballs = pkgs.runCommand "pi-tarballs" {
+    nativeBuildInputs = [ pkgs.python3 ];
+  } ''
+    python3 ${self}/scripts/bump-pi-tarballs.py --selftest
+    touch $out
+  '';
   actionlint = pkgs.runCommand "actionlint" { nativeBuildInputs = [ pkgs.actionlint ]; } ''
     actionlint ${self}/.github/workflows/*.yml
     touch $out

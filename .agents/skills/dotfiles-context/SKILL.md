@@ -154,13 +154,15 @@ run, through `scripts/bump-pins.sh`, and opens a PR for the files it moved.
 |-----|------------|
 | nixpkgs and every other flake input | `nix flake update`, which rewrites `flake.lock` |
 | the pi packages | `flake.lock` alone, because `modules/pi.nix` hands pi each input's store path |
-| the five npm pi packages | a hand edit in `modules/pi.nix`: version, URL, and hash from `nix store prefetch-file`; a runtime dependency needs its own `deps` entry |
+| the pi npm tarballs | `scripts/bump-pi-tarballs.py`: the registry's latest, the version a parent names for a vendored dependency, and a hash from `nix store prefetch-file` |
 | `modules/pinned-packages.nix` | `nix-update`, one name at a time |
 
-The npm-source rows are the ones `modules/pi.nix` writes as an `npm:` spec, each
-with its reason recorded on the row. `bump_npm_pins` finds them with one
-`grep -o 'npm:...'` and moves each to the registry's latest. The `nix-update`
-names live in `modules/pin-names.txt`, one flake package name per line, and the
+`modules/pi.nix` pins each pi extension as a published npm tarball, and the
+runtime dependencies it vendors under node_modules are pinned the same way.
+`bump_pi_tarballs` runs `scripts/bump-pi-tarballs.py`, which moves every row to
+the registry's latest and keeps a vendored dependency on the version its
+parent's package.json names. The `nix-update` names live in
+`modules/pin-names.txt`, one flake package name per line, and the
 `pin-names` check fails when that file and `flake.nix`'s packages disagree in
 either direction.
 
@@ -169,9 +171,10 @@ than nixpkgs carries, restores that one file and warns, so one blocked release
 does not stop the run. A failed build or activation restores `flake.lock`, the
 pins file, and `modules/pi.nix`.
 
-`codediff-watcher`'s version is read from nixpkgs' `codediff-nvim` at eval time,
-so the watcher and the plugin never disagree; its per-system release hashes stay
-hand-edited when the plugin itself moves.
+`codediff-watcher` keeps the watcher version that codediff-nvim's installer
+downloads as a literal, and its build fails when the plugin's `watcher.lua`
+names a different one, so the two never drift silently. Its per-system release
+hashes stay hand-edited when the plugin itself moves.
 
 Adding a pinned package means giving it `pname`, `version`, and a `src` built
 from `${version}`, listing it in `pin_names`, and exposing it as a flake
