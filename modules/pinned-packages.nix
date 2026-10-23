@@ -2,25 +2,15 @@
 # updatable derivation keeps the shape nix-update needs (pname, version, and a
 # src whose rev or url embeds ${version}), so `bump-pins.sh` bumps it with
 # `nix-update --flake <name>` and no hand edit. modules/pin-names.txt names the
-# ones it bumps. codediff-watcher reads its version from nixpkgs'
-# codediff-nvim instead and is not in that list.
+# ones it bumps. codediff-watcher is not in that list: its version tracks the
+# one codediff-nvim's installer downloads, which the build compares against.
 { pkgs }:
 let
   # codediff-watcher tracks the release codediff-nvim's installer downloads.
-  # nixpkgs' vimPlugins.codediff-nvim ships the exact plugin source, so read
-  # the watcher VERSION out of it; a missing version line must fail the eval
-  # rather than hide a mismatch.
-  codediffWatcherVersion =
-    let
-      lua = builtins.readFile (
-        pkgs.vimPlugins.codediff-nvim.src + "/lua/codediff/core/installer/watcher.lua"
-      );
-      match = builtins.match ".*local VERSION = \"([^\"]+)\".*" lua;
-    in
-    if match == null then
-      throw "modules/pinned-packages.nix: no `local VERSION = \"<semver>\"` line found in codediff-nvim's lua/codediff/core/installer/watcher.lua; pin codediff-watcher by hand or update this extract"
-    else
-      builtins.head match;
+  # Reading the plugin's VERSION line here would mean reading a derivation during
+  # evaluation, which fails on a store that has not built it, so the version is
+  # written out and the build below fails when it drifts.
+  codediffWatcherVersion = "0.23.2";
 
   codediffWatcherTarget = {
     "x86_64-linux" = {
@@ -50,6 +40,16 @@ let
     ];
     installPhase = ''
       install -Dm755 codediff-watcher "$out/bin/codediff-watcher"
+    '';
+    # The plugin replaces a watcher whose version differs from its own, so the
+    # two have to agree. The source is readable only from a build.
+    doCheck = true;
+    nativeCheckInputs = [ pkgs.gnugrep ];
+    checkPhase = ''
+      runHook preCheck
+      grep -q 'local VERSION = "${codediffWatcherVersion}"' \
+        ${pkgs.vimPlugins.codediff-nvim.src}/lua/codediff/core/installer/watcher.lua
+      runHook postCheck
     '';
     meta = {
       description = "Native file watcher for codediff.nvim";
