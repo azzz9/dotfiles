@@ -137,7 +137,7 @@ let
       ] ++ fffNative.${pkgs.stdenv.hostPlatform.system};
     };
   };
-  rows = baseRows ++ [ fffRow ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+  rows = baseRows ++ [ fffRow ] ++ lib.optionals config.dotfiles.pi.linuxProviders [
     # The API key stays machine-local in ~/.pi/agent/ollama_cloud.json.
     { tarball = {
         name = "pi-ollama-cloud-link";
@@ -278,22 +278,32 @@ in
 assert lib.assertMsg (assignmentProblems == [ ] && filterProblems == [ ])
   "modules/pi.nix: ${lib.concatStringsSep "; " (assignmentProblems ++ filterProblems)}";
 {
-  programs.pi-coding-agent = {
-    enable = true;
-    package = piFlake.packages.${pkgs.stdenv.hostPlatform.system}.pi;
+  options.dotfiles.pi.linuxProviders = lib.mkOption {
+    type = lib.types.bool;
+    default = false;
+    description = "Add the ollama-cloud model link and the OpenAI model visibility extension, which describe the Linux machines' provider set.";
   };
-  # The compact-tools extension reads this at startup. A store symlink, so the
-  # style comes from the repo instead of a local edit.
-  home.file.".pi/agent/compact-tools.json".source = compactToolsConfig;
-  # The visible-model rules are hand-written for the providers the Linux
-  # machines carry; the macOS row keeps its own provider set.
-  home.file.".pi/agent/extensions/openai-model-visibility.ts" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
-    source = config.lib.file.mkOutOfStoreSymlink "${repoDir}/modules/pi/openai-model-visibility.ts";
-    force = true;
+
+  config = {
+    programs.pi-coding-agent = {
+      enable = true;
+      package = piFlake.packages.${pkgs.stdenv.hostPlatform.system}.pi;
+    };
+    # The compact-tools extension reads this at startup. A store symlink, so the
+    # style comes from the repo instead of a local edit.
+    home.file.".pi/agent/compact-tools.json".source = compactToolsConfig;
+    # The visible-model rules are hand-written for the providers the Linux
+    # machines carry; the macOS row keeps its own provider set.
+    home.file.".pi/agent/extensions/openai-model-visibility.ts" =
+      lib.mkIf config.dotfiles.pi.linuxProviders {
+        source = config.lib.file.mkOutOfStoreSymlink "${repoDir}/modules/pi/openai-model-visibility.ts";
+        force = true;
+      };
+    # Runs before linkGeneration so the first switch can still read the old store
+    # symlink and carry the local keys into the regular file.
+    home.activation.piSettings =
+      lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''
+        run ${piSettingsMerge}
+      '';
   };
-  # Runs before linkGeneration so the first switch can still read the old store
-  # symlink and carry the local keys into the regular file.
-  home.activation.piSettings = lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''
-    run ${piSettingsMerge}
-  '';
 }

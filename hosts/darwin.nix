@@ -1,8 +1,9 @@
-# Settings only macOS needs. Everything shared lives in ../default.nix.
-# The guard stays here because `imports` cannot read `pkgs` without forcing
-# `config`, and the Home Manager module system reports that as infinite recursion.
+# Settings only macOS needs. A machine takes this module by importing it, so
+# the shared modules carry no platform test.
 { config, lib, pkgs, ... }:
-lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
+{
+  dotfiles.platform = "darwin";
+
   # The Nix profile directories are not on the login shell's default PATH on
   # macOS, and Homebrew's own shellenv runs after these entries.
   home.sessionPath = [
@@ -18,4 +19,12 @@ lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
     "--delete-older-than"
     "30d"
   ];
+
+  # Ghostty loads `config` after `config.ghostty`, and versions before 1.2.3
+  # only read `config`, so this name works on either version.
+  xdg.configFile."ghostty/config" = {
+    text = builtins.readFile ../modules/ghostty/config.ghostty
+      + builtins.readFile ../modules/ghostty/config.macos;
+    force = true;
+  };
 }

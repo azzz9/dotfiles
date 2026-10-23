@@ -262,14 +262,16 @@ and the asserts that fail evaluation.
 
 ## OS differences
 
-Conditionals live in the files below, each next to what it configures.
+No shared module tests the platform. A machine names its platform by importing
+`hosts/linux.nix` or `hosts/darwin.nix` in its `home` list, and the import is
+what carries that platform's PATH, GC scheduling, terminal config placement,
+and package set. `hosts/default.nix` asserts that one was imported.
 
-| File | What it separates |
-|------|-------------------|
-| `hosts/platform/darwin.nix` | sessionPath entries and the GC launchd argument split |
-| `hosts/platform/linux.nix` | sessionPath entries and the XDG user dirs |
-| `modules/ghostty.nix` | `config` against `config.ghostty`, with different content |
-| `modules/packages.nix` | wl-clipboard on Linux |
+| Where | What it carries |
+|------|------------------|
+| `hosts/darwin.nix` | sessionPath entries, the GC launchd argument split, and Ghostty's `config` containing both fragments |
+| `hosts/linux.nix` | sessionPath entry, the XDG user dirs, wl-clipboard, Ghostty's binary and `config.ghostty` |
+| `modules/pi.nix` | the `dotfiles.pi.linuxProviders` option, which `hosts/linux.nix` turns on for the Linux provider set |
 | `modules/pinned-packages.nix` | the per-system codediff-watcher hash and `autoPatchelfHook` on Linux |
 
 A per-machine Home Manager difference would need `home = [ ... ];` in that

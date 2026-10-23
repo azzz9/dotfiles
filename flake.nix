@@ -59,15 +59,18 @@
         nix-desktop = {
           system = "x86_64-linux";
           nixos = ./hosts/platform/nixos/machines/nix-desktop;
-          home = [ ./modules/niri.nix ./modules/fcitx5.nix ];
+          home = [ ./hosts/linux.nix ./modules/niri.nix ./modules/fcitx5.nix ];
         };
-        macbook = { system = "aarch64-darwin"; };
+        macbook = {
+          system = "aarch64-darwin";
+          home = [ ./hosts/darwin.nix ];
+        };
         # The gateway is a systemd user service, so only this machine asks for
         # the module.
         nix-server = {
           system = "x86_64-linux";
           nixos = ./hosts/platform/nixos/machines/nix-server;
-          home = [ ./modules/hermes.nix ];
+          home = [ ./hosts/linux.nix ./modules/hermes.nix ];
         };
       };
       # The names the `dotfiles` CLI and its completion offer.

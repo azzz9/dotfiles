@@ -1,4 +1,4 @@
-{ lib, pkgs, ... }:
+{ pkgs, ... }:
 let
   pinned = import ./pinned-packages.nix { inherit pkgs; };
 in
@@ -77,9 +77,5 @@ in
       pinned.nomicfoundationSolidityLanguageServer  # LSP
       pinned.solhint                                # linter
       pinned.prettierPluginSolidity                 # formatter plugin
-    ])
-    ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux (with pkgs; [
-      # nvim sets clipboard=unnamedplus, so yanking needs wl-copy on Wayland.
-      wl-clipboard
     ]);
 }

@@ -1,0 +1,8 @@
+# Match the Kanagawa Dragon palette used by Neovim.
+theme = Kanagawa Dragon
+
+font-thicken = true
+font-thicken-strength = 128
+
+# Treat Option as Alt so herdr's pane navigation works consistently.
+macos-option-as-alt = true
