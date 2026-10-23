@@ -121,8 +121,8 @@ what sees a reconcile that failed offline. Only a run that
 mutates takes the lock, so `status` stays usable during a run; a second
 mutating run exits 1 rather than reading as applied, and a lock left by a killed
 run is reclaimed through the pid inside it. On NixOS these commands change the
-user environment only; a pull that touches `hosts/platform/nixos/` still needs a
-`nixos-rebuild switch --flake` run for the system layer.
+user environment only; the system layer is the `machines` repository, and a
+change there needs its own `nixos-rebuild switch --flake` run.
 
 `audit` is the only command that reaches the network. It reads the store
 closure of the running system and of the Home Manager generation, matches those
@@ -180,10 +180,10 @@ package.
 ## Machines
 
 One table in `flake.nix` names every machine. The key is the machine's hostname,
-which is also the `homeConfigurations` attribute, and the
-`nixosConfigurations` attribute for a row that carries a `nixos` path. The rows
-are `nix-desktop`, `macbook`, and `nix-server`. A row without a `nixos` path has
-a user environment only, which is every non-NixOS machine.
+which is also the `homeConfigurations` attribute. The rows are `nix-desktop`,
+`macbook`, and `nix-server`. A row names the user environment only; the system
+configuration of a NixOS machine lives in the `machines` repository, which this
+flake does not depend on.
 
 The bootstrap sets the hostname from `MACHINE`: `scutil` on macOS,
 `hostnamectl` and the `127.0.1.1` line of `/etc/hosts` on Ubuntu and Arch, and
@@ -193,12 +193,13 @@ reads `hostname` itself and drops a trailing `.local`, which is the suffix
 macOS reports its mDNS name with.
 
 Adding a machine is one bootstrap run with `MACHINE=<name>`. On NixOS the run
-also writes the machine's directory. On macOS, Ubuntu, and Arch it stops and
-prints the row to add instead, because the repository carries the machine's
-settings and the script cannot invent them.
+also writes the machine's directory and row in the `machines` checkout. On
+macOS, Ubuntu, and Arch it stops and prints the row to add instead, because the
+repository carries the machine's settings and the script cannot invent them.
 
-Renaming means the row key, the directory under `hosts/platform/nixos/machines/`
-for a NixOS row, and `networking.hostName`, then a run with `MACHINE=<new name>`.
+Renaming means the row key, the directory under `machines/<name>/` in the
+`machines` repository for a NixOS row, and `networking.hostName`, then a run with
+`MACHINE=<new name>`.
 Rename the row first. With the old key still in the repository, a NixOS run with
 a new name adopts a second machine rather than renaming the one in front of you.
 
@@ -211,7 +212,11 @@ DOTFILES_DIR=$PWD DOTFILES_MACHINES="nix-desktop macbook nix-server" bash script
 
 ## NixOS system layer
 
-`hosts/platform/nixos/machines/<name>/` is one directory per NixOS machine, and
+The system layer is not in this repository. `azzz9/machines` holds it, and this
+flake neither imports it nor pins it. The bootstrap clones it on NixOS, adopts a
+new machine there, and switches the system from that checkout.
+
+`machines/<name>/` is one directory per NixOS machine, and
 the directory name is the machine name. `default.nix` is the entry point,
 `hardware-configuration.nix` comes from `nixos-generate-config` on that machine,
 and anything that fits only one machine, such as its GPU, sits beside them as
@@ -219,7 +224,7 @@ and anything that fits only one machine, such as its GPU, sits beside them as
 copied from `/etc/nixos` at adoption, and that is where they are edited from then
 on.
 
-`hosts/platform/nixos/modules/` holds the capability modules, and nothing
+`modules/` there holds the capability modules, and nothing
 device-specific. `common.nix` has what every NixOS machine shares, `desktop.nix`
 the GUI stack, `fcitx5.nix` the fcitx5 input method and its Meltype addon, and
 `headless.nix` the minimum for a machine without a display.
@@ -227,12 +232,11 @@ Every scalar there is a `lib.mkDefault`, so a machine's `configuration.nix` wins
 Two cannot be defaults: the user's `shell`, which the adoption drops from the
 copy, and `services.displayManager.defaultSession`, which NixOS itself defaults.
 
-`hosts/platform/nixos/` feeds `nixosConfigurations.<machine>` in the same flake.
-No other platform evaluates it. The system configuration is a flake output, so it
-needs no `/etc/nixos` wiring:
+That repository's flake feeds `nixosConfigurations.<machine>`, so the system
+configuration needs no `/etc/nixos` wiring:
 
 ```bash
-sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/dotfiles#<machine> --impure
+sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/machines#<machine>
 ```
 
 The adoption picks `desktop.nix` when the copied configuration drives a GUI
@@ -266,15 +270,16 @@ and the asserts that fail evaluation.
 
 ## OS differences
 
-Conditionals live in the files below, each next to what it configures.
+No shared module tests the platform. A machine names its platform by importing
+`hosts/linux.nix` or `hosts/darwin.nix` in its `home` list, and the import is
+what carries that platform's PATH, GC scheduling, terminal config placement,
+and package set. `hosts/default.nix` asserts that one was imported.
 
-| File | What it separates |
-|------|-------------------|
-| `hosts/platform/darwin.nix` | sessionPath entries and the GC launchd argument split |
-| `hosts/platform/linux.nix` | sessionPath entries and the XDG user dirs |
-| `modules/ghostty.nix` | `config` against `config.ghostty`, with different content |
-| `modules/hunk.nix` | the ld-linux wrapper on Linux, upstream on Darwin |
-| `modules/packages.nix` | unar, xclip, wl-clipboard on Linux, terminal-notifier on Darwin |
+| Where | What it carries |
+|------|------------------|
+| `hosts/darwin.nix` | sessionPath entries, the GC launchd argument split, and Ghostty's `config` containing both fragments |
+| `hosts/linux.nix` | sessionPath entry, the XDG user dirs, wl-clipboard, Ghostty's binary and `config.ghostty` |
+| `modules/pi.nix` | the `dotfiles.pi.linuxProviders` option, which `hosts/linux.nix` turns on for the Linux provider set |
 | `modules/pinned-packages.nix` | the per-system codediff-watcher hash and `autoPatchelfHook` on Linux |
 
 A per-machine Home Manager difference would need `home = [ ... ];` in that

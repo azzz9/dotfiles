@@ -9,11 +9,10 @@ let
     in
     ''
       files=${activationPackage}/home-files
-      for f in .config/herdr/config.toml .config/hunk/config.toml; do
+      for f in .config/herdr/config.toml; do
         python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$files/$f"
       done
-      for f in .config/lazygit/config.yml .config/gh/config.yml \
-               .config/gh-dash/config.yml; do
+      for f in .config/lazygit/config.yml .config/gh/config.yml; do
         yq -e '.' "$files/$f" > /dev/null
       done
       zsh -n "$files/.zshrc"
@@ -63,21 +62,6 @@ in
     cd ${self}
     shellcheck -x scripts/*.sh .githooks/pre-push
     bash -n scripts/*.sh .githooks/pre-push
-    touch $out
-  '';
-  # Device facts belong in hosts/platform/nixos/machines/<name>/ next to that
-  # machine's hardware-configuration.nix, so a shared NixOS module cannot be
-  # evaluated by another machine by mistake. The directory check keeps the grep
-  # from passing silently after the tree moves.
-  no-device-config = pkgs.runCommand "no-device-config" {
-    nativeBuildInputs = [ pkgs.gnugrep ];
-  } ''
-    shared=${self}/hosts/platform/nixos/modules
-    test -d "$shared"
-    if grep -rnE 'hardware\.|/dev/disk|fileSystems|videoDrivers' "$shared"; then
-      echo "device-specific config belongs in hosts/platform/nixos/machines/<name>/" >&2
-      exit 1
-    fi
     touch $out
   '';
   # A live link that follows the environment points at whatever checkout ran the

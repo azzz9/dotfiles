@@ -1,0 +1,6 @@
+font-family = "RobotoMonoNoto-Mono"
+font-size = 10
+adjust-cell-width = -10%
+alpha-blending = linear
+background = #101010
+background-opacity = 0.9

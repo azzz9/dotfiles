@@ -13,6 +13,10 @@ export NIX_CONFIG="${NIX_CONFIG:-}"$'\nextra-experimental-features = nix-command
 
 DOTFILES_REPO_URL="${DOTFILES_REPO_URL:-https://github.com/azzz9/dotfiles.git}"
 DEFAULT_DOTFILES_DIR="${HOME}/src/github.com/azzz9/dotfiles"
+# The OS side of every machine lives in its own repository; the bootstrap only
+# reads it on NixOS, where it adopts the machine and switches the system.
+MACHINES_REPO_URL="${MACHINES_REPO_URL:-git@github.com:azzz9/machines.git}"
+DEFAULT_MACHINES_DIR="${HOME}/src/github.com/azzz9/machines"
 MACHINE="${MACHINE:-}"
 
 os_name="$(uname -s)"
@@ -37,6 +41,10 @@ run_as_root() {
 
 dotfiles_dir() {
   printf '%s\n' "${DOTFILES_DIR:-$DEFAULT_DOTFILES_DIR}"
+}
+
+machines_dir() {
+  printf '%s\n' "${MACHINES_DIR:-$DEFAULT_MACHINES_DIR}"
 }
 
 # Only x86_64 Linux and Apple Silicon macOS have machine rows, so reject any
@@ -279,6 +287,22 @@ ensure_dotfiles_repo() {
   git clone "$DOTFILES_REPO_URL" "$repo_dir"
 }
 
+ensure_machines_repo() {
+  local mdir="$1"
+
+  if [[ -d "$mdir/.git" ]]; then
+    return
+  fi
+
+  if [[ -e "$mdir" ]]; then
+    echo "$mdir exists but is not a git repository." >&2
+    exit 1
+  fi
+
+  mkdir -p "$(dirname "$mdir")"
+  git clone "$MACHINES_REPO_URL" "$mdir"
+}
+
 # The machines the repository carries, from the flake's own attr names. The
 # machines row key is a homeConfigurations attribute, so this is the list the
 # `dotfiles` CLI and its completion resolve a name against.
@@ -290,15 +314,16 @@ flake_machines() {
     "$repo_dir#homeConfigurations"
 }
 
-# MACHINE has to name a machine this repository can apply. NixOS adopts a name
-# the repository does not carry yet, because the adoption writes the row. The
-# other platforms have nothing that writes one, so a missing name stops the run
-# before anything is installed or applied.
+# MACHINE has to name a machine this repository can apply, on every platform:
+# Home Manager switches `$repo_dir#<machine>`, so a name without a row has no
+# home configuration to switch to. The adoption writes the OS row afterwards and
+# cannot invent the user environment.
 require_known_machine() {
   local repo_dir="$1"
   local machine="$2"
   local known=""
   local system="${arch}-linux"
+  local platform="linux.nix"
 
   if ! known="$(flake_machines "$repo_dir")"; then
     echo "Could not read the machine list from the flake. Home Manager reports an unknown machine itself." >&2
@@ -309,20 +334,16 @@ require_known_machine() {
     return 0
   fi
 
-  if [[ "$linux_distribution" == "nixos" ]]; then
-    echo "The repository does not carry '$machine' yet. The adoption below writes its row."
-    return 0
-  fi
-
   if [[ "$os_name" == "Darwin" ]]; then
     system="aarch64-darwin"
+    platform="darwin.nix"
   fi
 
   echo "MACHINE names '$machine', which the repository does not carry." >&2
   echo "Machines in flake.nix: $known" >&2
-  echo "Add this row to its machines block, then run the bootstrap again:" >&2
+  echo "Add this row to its machines table, with the home modules this machine needs, then run the bootstrap again:" >&2
   echo "" >&2
-  echo "        $machine = { system = \"$system\"; };" >&2
+  echo "        $machine = { system = \"$system\"; home = [ ./hosts/$platform ]; };" >&2
   exit 1
 }
 
@@ -379,8 +400,10 @@ prune_generated_hardware_config() {
 adopt_nixos_machine() {
   local repo_dir="$1"
   local machine="$2"
-  local relative_dir="hosts/platform/nixos/machines/$machine"
-  local machine_dir="$repo_dir/$relative_dir"
+  local mdir
+  local relative_dir="machines/$machine"
+  mdir="$(machines_dir)"
+  local machine_dir="$mdir/$relative_dir"
   local capability="" capability_reason="" marker="" generated="" line="" row=""
   local in_machines=0 inserted=0
   local in_users=0
@@ -467,8 +490,8 @@ EOF
 
   # The row exposes nixosConfigurations.<machine>, which the switch below
   # evaluates. Anchor on the machines block, so the insert lands inside it.
-  row="        $machine = { system = \"$arch-linux\"; nixos = ./$relative_dir; };"
-  if grep -qE "^[[:space:]]*$machine = \\{" "$repo_dir/flake.nix"; then
+  row="        $machine = { system = \"$arch-linux\"; };"
+  if grep -qE "^[[:space:]]*$machine = \\{" "$mdir/flake.nix"; then
     echo "flake.nix already carries the machines.$machine row. Left it alone."
   else
     while IFS= read -r line; do
@@ -481,19 +504,19 @@ EOF
       if [[ "$line" == "      machines = {"* ]]; then
         in_machines=1
       fi
-    done < "$repo_dir/flake.nix" > "$repo_dir/flake.nix.new"
+    done < "$mdir/flake.nix" > "$mdir/flake.nix.new"
 
     if [[ "$inserted" == 0 ]]; then
-      rm -f "$repo_dir/flake.nix.new"
+      rm -f "$mdir/flake.nix.new"
       echo "Cannot find the machines block in flake.nix. Add this row to it:" >&2
       printf '%s\n' "$row" >&2
       exit 1
     fi
-    mv "$repo_dir/flake.nix.new" "$repo_dir/flake.nix"
+    mv "$mdir/flake.nix.new" "$mdir/flake.nix"
   fi
 
   # Nix sees tracked files only, and the system switch below evaluates the flake.
-  git -C "$repo_dir" add -- "$relative_dir" flake.nix
+  git -C "$mdir" add -- "$relative_dir" flake.nix
 
   echo "Adopted machine '$machine'. Wrote:"
   echo "  $relative_dir/hardware-configuration.nix"
@@ -594,7 +617,7 @@ report_ready_name() {
 
   echo "This machine's hostname is '$current', not '$machine', so 'dotfiles' still needs one." >&2
   if [[ "$linux_distribution" == "nixos" ]]; then
-    echo "hosts/platform/nixos/machines/$machine/default.nix sets networking.hostName, and the switch above applies it." >&2
+    echo "machines/$machine/default.nix sets networking.hostName, and the switch above applies it." >&2
   fi
 }
 
@@ -625,24 +648,27 @@ main() {
   configure_git
   ensure_dotfiles_repo "$repo_dir"
   require_known_machine "$repo_dir" "$machine"
-  adopt_nixos_machine "$repo_dir" "$machine"
+  if [[ "$linux_distribution" == "nixos" ]]; then
+    ensure_machines_repo "$(machines_dir)"
+    adopt_nixos_machine "$repo_dir" "$machine"
+  fi
   apply_home_manager "$repo_dir" "$machine"
   sync_hostname "$machine"
 
-  if [[ "$linux_distribution" == "nixos" && -d "$repo_dir/hosts/platform/nixos/machines/$machine" ]]; then
+  if [[ "$linux_distribution" == "nixos" && -d "$(machines_dir)/machines/$machine" ]]; then
     # A copied machine configuration can collide with the repo's modules. Fail
     # here, naming the file to edit, rather than inside nixos-rebuild.
-    if ! nix_cmd eval --impure --raw \
-      "$repo_dir#nixosConfigurations.$machine.config.system.build.toplevel.drvPath" >/dev/null; then
+    if ! nix_cmd eval --raw \
+      "$(machines_dir)#nixosConfigurations.$machine.config.system.build.toplevel.drvPath" >/dev/null; then
       echo "The system configuration for '$machine' does not evaluate." >&2
-      echo "Resolve the conflict nix reported above in hosts/platform/nixos/machines/$machine/configuration.nix." >&2
+      echo "Resolve the conflict nix reported above in machines/$machine/configuration.nix." >&2
       exit 1
     fi
     # sudo resets the environment, so pass the features this script exported to
     # nixos-rebuild explicitly; a fresh NixOS has flakes off.
     echo "Applying the NixOS system configuration for '$machine'..."
     run_as_root env NIX_CONFIG="extra-experimental-features = nix-command flakes" \
-      nixos-rebuild switch --flake "$repo_dir#$machine" --impure
+      nixos-rebuild switch --flake "$(machines_dir)#$machine"
   fi
 
   if [[ "$should_reboot" == 1 && "${REBOOT:-0}" == 1 ]]; then

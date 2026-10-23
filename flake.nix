@@ -11,23 +11,11 @@
       url = "github:nix-community/nixvim";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    hunk = {
-      url = "github:modem-dev/hunk";
-      # bun2nix (hunk's input) evaluates flake.formatter for every system in
-      # github:nix-systems/default, including x86_64-darwin, which unstable
-      # nixpkgs (26.11+) dropped. That transitive eval throws even when building
-      # for x86_64-linux and breaks the Pins workflow, so pin hunk to 26.05 (the
-      # last branch with x86_64-darwin) instead of following our nixpkgs.
-      inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
-    };
     # Pi's own flake builds the CLI from source. It tracks main rather than the
     # ref upstream offers consumers (`stable`): that branch advances only after
     # a release tag's flake builds on every system, so it lags main whenever the
     # newest tag does not build.
     pi.url = "github:earendil-works/pi";
-    # Serein, the Wayland-native Discord client, is not in nixpkgs. It keeps its
-    # own locked nixpkgs: a `follows` here would change the derivation.
-    serein.url = "github:ViceVerse-cz/Serein";
     # Pi loads these from the store paths Nix fetches for them. flake.lock
     # records the revision, so `nix flake update <name>` is what moves a pin.
     skills = { url = "github:azzz9/skills"; flake = false; };
@@ -44,7 +32,7 @@
   };
 
   outputs =
-    { self, nixpkgs, home-manager, nixvim, hunk, pi, serein
+    { self, nixpkgs, home-manager, nixvim, pi
     , skills, pi-subagents, pi-web-access, pi-compact-tools
     , hermes-agent, ...
     }:
@@ -60,27 +48,36 @@
       piPackagePaths = {
         inherit skills pi-subagents pi-web-access pi-compact-tools;
       };
-      # One table for every machine. The key names homeConfigurations.<name>,
-      # and nixosConfigurations.<name> for a row that carries a nixos path. The
-      # key is the machine's hostname, so the CLI and the bootstrap resolve a
-      # machine with no mapping table of their own.
+      # One table for every machine. The key names homeConfigurations.<name>
+      # and is the machine's hostname, so the CLI and the bootstrap resolve a
+      # machine with no mapping table of their own. The OS side of each machine
+      # lives in its own repository.
       machines = {
         nix-desktop = {
           system = "x86_64-linux";
-          nixos = ./hosts/platform/nixos/machines/nix-desktop;
-          home = [ ./modules/niri.nix ./modules/fcitx5.nix ];
+          home = [ ./hosts/linux.nix ./modules/niri.nix ./modules/fcitx5.nix ];
         };
-        macbook = { system = "aarch64-darwin"; };
+        macbook = {
+          system = "aarch64-darwin";
+          home = [ ./hosts/darwin.nix ];
+        };
         # The gateway is a systemd user service, so only this machine asks for
         # the module.
         nix-server = {
           system = "x86_64-linux";
-          nixos = ./hosts/platform/nixos/machines/nix-server;
-          home = [ ./modules/hermes.nix ];
+          home = [ ./hosts/linux.nix ./modules/hermes.nix ];
         };
       };
       # The names the `dotfiles` CLI and its completion offer.
       machineNames = nixpkgs.lib.attrNames machines;
+      # Everything the common layer needs that is not a per-machine fact. A
+      # machine repository spreads this into extraSpecialArgs, so the flake
+      # inputs stay owned here.
+      homeArgs = { machine, machineNames, repoDir, worktreeRoot ? "worktrees" }: {
+        inherit machine machineNames repoDir worktreeRoot skills piPackagePaths;
+        piFlake = pi;
+        hermesAgent = hermes-agent;
+      };
       mkHomeConfiguration = name: { system, home ? [ ], checkout ? defaultCheckout, ... }:
         home-manager.lib.homeManagerConfiguration {
           pkgs = import nixpkgs {
@@ -89,28 +86,11 @@
               "barbar.nvim"
             ];
           };
-          extraSpecialArgs = {
-            repoDir = checkout;
-            worktreeRoot = "worktrees";
-            inherit skills machineNames piPackagePaths;
-            machine = name;
-            hunk = hunk;
-            piFlake = pi;
-            # modules/hermes.nix imports this input's Home Manager module.
-            hermesAgent = hermes-agent;
-          };
+          extraSpecialArgs = homeArgs { inherit machineNames; machine = name; repoDir = checkout; };
           modules = [
             ./hosts/default.nix
             nixvim.homeModules.nixvim
           ] ++ home;
-        };
-      # The NixOS system layer. Each machine directory imports the shared
-      # modules and its own hardware-configuration.nix.
-      mkNixosSystem = _: { system, nixos, ... }:
-        nixpkgs.lib.nixosSystem {
-          inherit system;
-          specialArgs = { serein = serein.packages.${system}.serein; };
-          modules = [ nixos ];
         };
       # The pinned derivations in modules/pinned-packages.nix, exposed as
       # flake packages so `nix-update --flake <name>` (the bump the Pins
@@ -151,11 +131,16 @@
           inherit self pkgs platformMachines;
         };
       homeConfigurations = nixpkgs.lib.mapAttrs mkHomeConfiguration machines;
-      # Only the rows that carry a nixos path have a system configuration.
-      nixosConfigurations = nixpkgs.lib.mapAttrs mkNixosSystem (nixpkgs.lib.filterAttrs (_: m: m ? nixos) machines);
     in
     {
-      inherit homeConfigurations nixosConfigurations;
+      inherit homeConfigurations;
+      # The common layer on its own, for a machine repository that builds its own
+      # home configuration: spread `homeArgs` into extraSpecialArgs and add this
+      # module to the module list.
+      homeManagerModules.default = {
+        imports = [ ./hosts/default.nix nixvim.homeModules.nixvim ];
+      };
+      lib.homeArgs = homeArgs;
       packages = forAllSystems mkPackages;
       checks = forAllSystems mkChecks;
     };

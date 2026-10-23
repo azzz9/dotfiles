@@ -17,10 +17,7 @@ in
         ];
         text = builtins.readFile ./herdr/wt-clean.sh;
       })
-    ]
-    # worktree-layout moves a tab over the socket API. macOS ships its own nc,
-    # and nixpkgs marks netcat-openbsd unavailable there.
-    ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.netcat-openbsd ];
+    ];
 
   xdg.configFile."herdr/config.toml".text = ''
     # Managed by Home Manager (modules/herdr.nix); do not edit directly.

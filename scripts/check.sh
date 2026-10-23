@@ -20,9 +20,10 @@ cd "$(dirname "$0")/.."
 nix_cmd() { nix --extra-experimental-features "nix-command flakes" "$@"; }
 
 if [ "${1:-full}" = "--no-build" ]; then
-  # `nix flake check --no-build` cannot serve as the fast path: deriving the
-  # checks forces bun2nix's cache-entry-creator, whose own dependencies have to
-  # be built, so it fails on a store that has not built hunk yet.
+  # `nix flake check --no-build` cannot serve as the fast path: it refuses the
+  # import-from-derivation that evaluating a home configuration needs, because
+  # modules/hermes.nix reads uv.lock out of the hermes source. `nix eval` allows
+  # it, and the loop names every machine rather than this host's platform.
   hosts="$(nix_cmd eval --impure --raw --expr \
     'builtins.concatStringsSep " " (builtins.attrNames (builtins.getFlake (builtins.toString ./.)).homeConfigurations)')"
   for host in $hosts; do
