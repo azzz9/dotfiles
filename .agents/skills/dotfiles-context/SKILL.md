@@ -134,12 +134,16 @@ lockfile pi leaves in `~/.pi/agent/npm`. `--declared` reads the packages
 flake.nix names for the machine instead, which is a subset of the closure and
 all a runner without a store can read. `scripts/audit-baseline.txt` holds what
 was already read, and
-only a match outside it fails the command, so the file is part of the working
-tree like the pins `bump-pins.sh` moves. Only the store audit reads or prunes
-that file.
+only a match outside it fails the store audit, so the file is part of the working
+tree like the pins `bump-pins.sh` moves. Only the store audit prunes
+that file. `--declared --update` adds the lines it found and prunes nothing,
+because its set is a subset of the store's, and a new match in a declared run is
+a report rather than a failure.
 
-The `Pins` workflow reads the audit before it opens its PR and stops on a match,
-because a bump that lands a fix should not also land a new issue.
+The `Audit` workflow records what the declared run found into the baseline and
+opens a PR, so a new upstream issue reaches the reader as a diff and the
+schedule stays green. The `Pins` workflow reads the audit but is not held back by
+a match.
 
 ## Pins
 
@@ -250,9 +254,9 @@ An optional Cachix cache speeds CI up. Set the repository variable `CACHIX_NAME`
 and the secret `CACHIX_AUTH_TOKEN` and the workflow configures the cache. Without
 a token CI uses the public cache only.
 
-A second workflow, `Audit`, runs weekly and on demand. It is not in the push
-path: it needs the network, and upstream issue churn must not fail an unrelated
-push.
+A second workflow, `Audit`, runs daily and on demand, records the new matches
+into the baseline, and opens a PR for them. It is not in the push path: it needs
+the network, and upstream issue churn must not fail an unrelated push.
 
 ## Checks
 

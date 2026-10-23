@@ -22,7 +22,9 @@ commands:
 
 audit reads this machine's store. --declared reads the packages flake.nix names
 for it instead, which is what a runner without a store can do. --update records
-what it found in scripts/audit-baseline.txt instead of failing on it.
+what it found in scripts/audit-baseline.txt: the store audit rewrites the file,
+and --declared only adds to it, because that set is smaller. A new match fails
+the store audit and is a report for the declared one.
 
 The Pins workflow moves the pins weekly. To move one flake input by hand, run
 `nix flake update <input>`, commit flake.lock, then `dotfiles apply`.

@@ -386,21 +386,31 @@ baseline="$(cat "$machine/scripts/audit-baseline.txt")"
 expect_eq 'audit --update records the osv match' present "$(out_has "$baseline" 'osv GHSA-aaaa fixturepkg@1.2.3')"
 scenario_end
 
-scenario 'audit --declared reads the flake instead of the store'
+scenario 'audit --declared reports a new match without failing'
 fixture
 machine_clone
 printf '[{"number":111,"title":"fixturepkg: security issues < 1.2.4"}]\n' > "$work/issues.json"
 printf 'nixpkgs 999 ghostpkg # 1.0\n' > "$machine/scripts/audit-baseline.txt"
 run_cli audit --declared
-expect_eq 'audit --declared exits 1 on a new match' 1 "$cli_rc"
+expect_eq 'audit --declared exits 0 on a new match' 0 "$cli_rc"
 expect_out_has 'audit --declared names its source' 'declared - 2 packages'
 expect_out_has 'audit --declared matches a declared name' 'new   #111 fixturepkg 1.2.3'
-expect_out_has 'audit --declared points at --update' 'record them with dotfiles audit --update'
+expect_out_has 'audit --declared says the workflow records it' 'the Audit workflow records these'
 expect_out_lacks 'audit --declared does not call a store-only line stale' 'no longer apply'
 run_cli audit --declared --update
-expect_eq 'audit --declared refuses --update' 1 "$cli_rc"
-expect_out_has 'audit --declared says why' 'reads a subset of it'
-expect_eq 'audit --declared leaves the baseline alone' 'nixpkgs 999 ghostpkg # 1.0' "$(cat "$machine/scripts/audit-baseline.txt")"
+expect_eq 'audit --declared --update exits 0' 0 "$cli_rc"
+expect_out_has 'audit --declared --update leaves the file for a commit' 'commit scripts/audit-baseline.txt'
+baseline="$(cat "$machine/scripts/audit-baseline.txt")"
+expect_eq 'audit --declared --update adds the new match' present "$(out_has "$baseline" 'nixpkgs 111 fixturepkg # 1.2.3')"
+expect_eq 'audit --declared --update keeps the line only the store holds' present "$(out_has "$baseline" 'nixpkgs 999 ghostpkg # 1.0')"
+recorded="$(cat "$machine/scripts/audit-baseline.txt")"
+run_cli audit --declared --update
+expect_eq 'a second --declared --update exits 0' 0 "$cli_rc"
+expect_out_has 'a second --declared --update adds nothing' 'added 0 line(s)'
+expect_eq 'a second --declared --update leaves the file alone' "$recorded" "$(cat "$machine/scripts/audit-baseline.txt")"
+run_cli audit --declared
+expect_eq 'a rerun after the record exits 0' 0 "$cli_rc"
+expect_out_has 'a rerun after the record reports no new match' '(0 new)'
 scenario_end
 
 scenario 'a run holding the lock makes the next one fail'

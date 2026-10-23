@@ -3,9 +3,10 @@
 # realising a closure there costs gigabytes: 13.6 GiB for a system and 5.9 GiB
 # for a home generation on this repository.
 #
-# The full closure is what `dotfiles audit` reads on the machine itself, and
-# The Pins workflow runs that before it opens its PR. This job is the clock for
-# the case where nothing gets upgraded for a while.
+# A declared set is a subset of the store's, so a run here can only add to
+# scripts/audit-baseline.txt. It records what it found and opens a PR, so the
+# schedule stays green and the new matches reach the reader as a diff. The store
+# audit on a machine is still what prunes the file.
 name: Audit
 
 on:
@@ -16,22 +17,19 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 jobs:
   audit:
-    name: Audit ${{ matrix.machine }}
+    name: Audit the declared packages
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        # The darwin home configuration evaluates here as well and only its
-        # package names are read, so every machine fits on one runner.
-        machine: [nix-desktop, macbook, nix-server]
 
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: main
 
       - name: Install Nix
         uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
@@ -42,6 +40,9 @@ jobs:
             experimental-features = nix-command flakes
 
       - name: Audit the declared packages
+        # Actions' bash is the one with pipefail, so a failed nix run fails this
+        # step instead of vanishing into tee.
+        shell: bash
         env:
           # flake.nix reads this back through builtins.getEnv, and the CLI
           # refuses a checkout it cannot find.
@@ -49,4 +50,37 @@ jobs:
           # An anonymous reader gets 60 requests an hour, which nine pages of
           # issues can exhaust. The job's own token lifts that.
           GH_TOKEN: ${{ github.token }}
-        run: nix run --impure .#dotfiles -- audit --declared ${{ matrix.machine }}
+        run: |
+          for machine in nix-desktop macbook nix-server; do
+            nix run --impure .#dotfiles -- audit --declared --update "$machine"
+          done 2>&1 | tee "$RUNNER_TEMP/audit.log"
+
+      # The record goes through a PR rather than a push, so the new lines land
+      # with a diff to read.
+      - name: Open a pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet; then
+            echo "no new match"
+            exit 0
+          fi
+          branch="pi/audit-$(date -u +%Y-%m-%d)-${{ github.run_id }}"
+          git switch -c "$branch"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(audit): record the new security matches"
+          git push -u origin "$branch"
+          {
+            echo "The declared audit found matches the baseline did not hold, and recorded them."
+            echo
+            echo '```'
+            grep -E 'new match|new   ' "$RUNNER_TEMP/audit.log" || true
+            echo '```'
+            echo
+            echo "Only the store audit prunes the file. Run dotfiles audit on a machine to read it again."
+          } > "$RUNNER_TEMP/body.md"
+          gh pr create \
+            --title "chore(audit): record the new security matches" \
+            --body-file "$RUNNER_TEMP/body.md"
+          gh pr merge --auto --squash

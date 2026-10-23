@@ -56,6 +56,8 @@ jobs:
       - name: Build the moved pins
         run: scripts/check.sh
 
+      # A new match is reported here and recorded by the Audit workflow, so it
+      # does not hold the pin PR back.
       - name: Audit the declared packages
         env:
           DOTFILES_DIR: ${{ github.workspace }}

@@ -68,7 +68,9 @@ give one.
 
 `audit` also runs without being asked. The `Pins` workflow reads it before it
 opens the weekly pin PR, and the `Audit` workflow reads what the flake declares
-every week, because a runner has no store to read.
+every day, because a runner has no store to read. A declared run cannot prune
+the baseline, so a new match there is recorded and opened as a PR instead of
+failing the job; the store audit on a machine still fails on one.
 
 `sync` refuses any dirty path, because `apply` would otherwise activate a
 half-finished edit. It checks out `main`, so a machine that rolled back returns
