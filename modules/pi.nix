@@ -29,14 +29,14 @@ let
     # under node_modules, which is what `pi install` would have produced.
     { tarball = {
         name = "@juicesharp/rpiv-ask-user-question";
-        version = "2.12.0";
-        url = "https://registry.npmjs.org/@juicesharp/rpiv-ask-user-question/-/rpiv-ask-user-question-2.12.0.tgz";
-        hash = "sha256-9AeJNjjxiTo3MERPRntO3Bkkzy0gauWE91JeHoroYPY=";
+        version = "2.13.10";
+        url = "https://registry.npmjs.org/@juicesharp/rpiv-ask-user-question/-/rpiv-ask-user-question-2.13.10.tgz";
+        hash = "sha256-ZDvfW0dVvuAoBXxNr/WR4VzkNIIX1ovrfkB1ds8OiEk=";
         deps = [{
           name = "@juicesharp/rpiv-config";
-          version = "2.12.0";
-          url = "https://registry.npmjs.org/@juicesharp/rpiv-config/-/rpiv-config-2.12.0.tgz";
-          hash = "sha256-5ZKpbqxsSPTx7n+pHvh/UOqCVeiH/wSuvHkEpL7Q8dQ=";
+          version = "2.13.10";
+          url = "https://registry.npmjs.org/@juicesharp/rpiv-config/-/rpiv-config-2.13.10.tgz";
+          hash = "sha256-DfQN4AfpA7IecPfOtLYTivcXaUh3NAu+UAz5wu8/JTw=";
         }];
       };
     }
@@ -56,18 +56,18 @@ let
     # only the published tarball carries the dist.
     { tarball = {
         name = "cc-safety-net";
-        version = "2.6.0";
-        url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.6.0.tgz";
-        hash = "sha256-hzfkiFdMYRxfm+BtEw9Mwx+/CWLkNqe5teAICi/JqIQ=";
+        version = "2.6.18";
+        url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.6.18.tgz";
+        hash = "sha256-GRrJicyWswqaALHBn7v7FKqBLU83WS2vZ1l/n6dQkeQ=";
       };
     }
     # Moves the running pi session to another directory or worktree, keeping the
     # conversation, and creates or removes the worktree through herdr.
     { tarball = {
         name = "pi-agent-teleport";
-        version = "0.2.5";
-        url = "https://registry.npmjs.org/pi-agent-teleport/-/pi-agent-teleport-0.2.5.tgz";
-        hash = "sha256-5iaLcgw3JjvrM//2brll+FOckXJsijvA4cFEe4O0wLI=";
+        version = "0.2.7";
+        url = "https://registry.npmjs.org/pi-agent-teleport/-/pi-agent-teleport-0.2.7.tgz";
+        hash = "sha256-9yW+e8sZAxLbzluZ6CBJC+HeZW6+2SEmYiVOeaMmSEg=";
       };
     }
     # Compact, expandable TUI tool rows, with its own bundled theme.
@@ -141,9 +141,9 @@ let
     # The API key stays machine-local in ~/.pi/agent/ollama_cloud.json.
     { tarball = {
         name = "pi-ollama-cloud-link";
-        version = "1.2.0";
-        url = "https://registry.npmjs.org/pi-ollama-cloud-link/-/pi-ollama-cloud-link-1.2.0.tgz";
-        hash = "sha256-Y+rc+ku3qJBzx0gEFmTrpRdeITAkQyq/sh1YWrGEpMY=";
+        version = "1.3.0";
+        url = "https://registry.npmjs.org/pi-ollama-cloud-link/-/pi-ollama-cloud-link-1.3.0.tgz";
+        hash = "sha256-sGsjHY+87bFAquBMa9hH0D8PQM0nN/KbWG9dB9yP4e8=";
       };
     }
   ];
