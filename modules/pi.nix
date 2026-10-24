@@ -17,7 +17,7 @@ let
   # The rows every machine gets. The Linux-only row is appended below, because
   # the filter assert must not force pkgs while config is computed.
   baseRows = [
-    { input = "pi-subagents"; npmDepsHash = "sha256-0eDwWHfFmxouY8uf0VURFYn6dWbDnh6x1Hj8AaARCvc=";
+    { input = "pi-subagents"; npmDepsHash = "sha256-QGZf89MAu0Miyl/Xf7e6Xi5PqVmrsLFg94K60GALBSE=";
       filter = { prompts = [ ]; skills = [ "!skills/council-mode" ]; };
     }
     { input = "pi-web-access"; npmDepsHash = "sha256-Emyw5LJdSEkb9Kg7Do6iobY6KslF3rkHxRI0EP6eEiY="; }
