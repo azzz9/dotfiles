@@ -84,7 +84,10 @@ replace_pin() {
     rm -f "$tmp"
     return 1
   fi
-  cat "$tmp" > "$file"
+  if ! cat "$tmp" > "$file"; then
+    rm -f "$tmp"
+    return 1
+  fi
   rm -f "$tmp"
 }
 
