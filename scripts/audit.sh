@@ -24,15 +24,13 @@
 # the issue usually does not, so the report prints both and leaves the call to
 # the reader. An npm advisory carries the vulnerable range, so it decides.
 #
-# scripts/audit-baseline.txt holds what was already read. Only matches outside
-# it fail the store audit, because nixpkgs keeps hundreds of security issues
-# open and a few of them always name a base package this machine carries. Text
-# after ` #` on a baseline line is for the reader and takes no part in the
-# comparison.
+# Every match is printed. nixpkgs keeps hundreds of security issues open and a
+# few of them always name a base package this machine carries, so the list is
+# longer than the set of things a person can act on. The report is read after a
+# pin bump, not every day.
 #
-# A declared run reads a subset of the store's names, so it can never prune the
-# file. `--declared --update` adds the lines it found and leaves the rest, and a
-# new match there is a lead for a person rather than a failure.
+# A declared run reads a subset of the store's names, so it reports fewer
+# matches than the store run.
 
 # The running Home Manager generation is the machine's actual set; building the
 # checkout is the fallback for a machine that has not applied yet.
@@ -191,16 +189,11 @@ audit_osv_findings() {
 }
 
 audit_packages() {
-  local repo="$1" machine="$2" tmp_dir="$3" pi_module="$4" update="$5" declared="$6"
-  local baseline="$repo/scripts/audit-baseline.txt"
+  local repo="$1" machine="$2" tmp_dir="$3" pi_module="$4" declared="$5"
   local issues_file="$tmp_dir/dotfiles-audit-issues.tsv"
   local matches_file="$tmp_dir/dotfiles-audit-matches.tsv"
-  local current_file="$tmp_dir/dotfiles-audit-current.txt"
-  local recorded_file="$tmp_dir/dotfiles-audit-recorded.txt"
-  local added_file="$tmp_dir/dotfiles-audit-added.txt"
-  local accepted_file="$tmp_dir/dotfiles-audit-accepted.txt"
-  local specs advisories versions findings newest behind source
-  local names issues matches newest_count stale_count
+  local specs advisories versions findings osv newest behind source
+  local names issues matches
 
   if ! audit_nixpkgs_issues > "$issues_file"; then
     # Reporting "no matches" from a failed fetch is the one wrong answer this
@@ -257,36 +250,14 @@ audit_packages() {
     fi
   done <<< "$specs"
 
-  {
-    awk -F'\t' '{ printf "nixpkgs %s %s # %s\n", $1, $2, $3 }' "$matches_file"
-    printf '%s' "$findings" | awk -F'\t' 'NF > 0 { printf "npm %s@%s/%s # %s %s\n", $1, $2, $3, $4, $5 }'
-    audit_osv_findings
-  } | LC_ALL=C sort -u > "$recorded_file"
-  sed -E 's/ +#.*//; /^$/d' "$recorded_file" | LC_ALL=C sort -u > "$current_file"
+  osv="$(audit_osv_findings)"
 
-  if [ -f "$baseline" ]; then
-    sed -E 's/ +#.*//; /^$/d' "$baseline" | LC_ALL=C sort -u > "$accepted_file"
-  else
-    : > "$accepted_file"
-  fi
-  newest_count="$(LC_ALL=C comm -13 "$accepted_file" "$current_file" | wc -l)"
-  # Only the store audit can say that a recorded match no longer applies. A line
-  # missing from the declared set says nothing, because that set is smaller.
-  stale_count=0
-  if [ "$declared" = 0 ]; then
-    stale_count="$(LC_ALL=C comm -23 "$accepted_file" "$current_file" | wc -l)"
-  fi
-
-  printf 'dotfiles audit: %s - %s packages, %s open issues, %s matches (%s new)\n' \
-    "$source" "$(printf '%s\n' "$names" | wc -l)" "$issues" "$matches" "$newest_count"
+  printf 'dotfiles audit: %s - %s packages, %s open issues, %s matches\n' \
+    "$source" "$(printf '%s\n' "$names" | wc -l)" "$issues" "$matches"
   while IFS=$'\t' read -r number name version title; do
-    if LC_ALL=C comm -13 "$accepted_file" "$current_file" | grep -qxF "nixpkgs $number $name"; then
-      printf 'dotfiles audit:   new   #%s %s %s\n' "$number" "$name" "$version"
-      printf 'dotfiles audit:         %s\n' "$title"
-      printf 'dotfiles audit:         https://github.com/NixOS/nixpkgs/issues/%s\n' "$number"
-    else
-      printf 'dotfiles audit:   known #%s %s %s\n' "$number" "$name" "$version"
-    fi
+    printf 'dotfiles audit:   #%s %s %s\n' "$number" "$name" "$version"
+    printf 'dotfiles audit:     %s\n' "$title"
+    printf 'dotfiles audit:     https://github.com/NixOS/nixpkgs/issues/%s\n' "$number"
   done < "$matches_file"
 
   printf 'dotfiles audit: npm - %s rows, %s advisories, %s behind\n' \
@@ -295,7 +266,7 @@ audit_packages() {
     "$(printf '%s' "$behind" | grep -c . || true)"
   if [ -n "$findings" ]; then
     printf '%s\n' "$findings" | while IFS=$'\t' read -r name version id severity title range; do
-      printf 'dotfiles audit:   new   %s %s %s %s\n' "$name" "$version" "$severity" "$range"
+      printf 'dotfiles audit:   %s %s %s %s\n' "$name" "$version" "$severity" "$range"
       printf 'dotfiles audit:         %s\n' "$title"
       printf 'dotfiles audit:         https://github.com/advisories/GHSA-%s\n' "$id"
     done
@@ -306,50 +277,12 @@ audit_packages() {
     done
   fi
 
-  osv_new="$(LC_ALL=C comm -13 "$accepted_file" "$current_file" | grep -c '^osv ' || true)"
-  if [ "${osv_new:-0}" -gt 0 ]; then
-    printf 'dotfiles audit: osv - %s new advisory(ies)\n' "$osv_new"
-    LC_ALL=C comm -13 "$accepted_file" "$current_file" | grep '^osv ' |
-      while read -r _ id pkg; do
-        printf 'dotfiles audit:   new   %s %s\n' "$id" "$pkg"
-      done
+  if [ -n "$osv" ]; then
+    printf 'dotfiles audit: osv - %s advisory(ies)\n' "$(printf '%s\n' "$osv" | grep -c .)"
+    printf '%s\n' "$osv" | while read -r _ id pkg; do
+      printf 'dotfiles audit:   %s %s\n' "$id" "$pkg"
+    done
   fi
 
-  if [ "$update" = 1 ]; then
-    if [ "$declared" = 1 ]; then
-      # A declared set is a subset of the store's, so this may only add a line:
-      # rewriting the file would drop a match that only the store holds.
-      LC_ALL=C comm -13 "$accepted_file" "$current_file" > "$added_file"
-      if [ -s "$added_file" ]; then
-        awk 'NR == FNR { want[$0] = 1; next }
-          { key = $0; sub(/ +#.*/, "", key); if (key in want) print }' \
-          "$added_file" "$recorded_file" >> "$baseline"
-        LC_ALL=C sort -u -o "$baseline" "$baseline"
-      fi
-      printf 'dotfiles audit: added %s line(s); only the store audit prunes the file\n' \
-        "$(wc -l < "$added_file")"
-    else
-      cat "$recorded_file" > "$baseline"
-      printf 'dotfiles audit: wrote %s; %s recorded lines no longer match\n' \
-        "$(wc -l < "$baseline")" "$stale_count"
-    fi
-    printf 'dotfiles audit: review and commit %s to keep the next audit on this set\n' \
-      "scripts/audit-baseline.txt"
-    return 0
-  fi
-
-  if [ "$newest_count" -gt 0 ]; then
-    if [ "$declared" = 1 ]; then
-      # A declared run is a subset of the store's, so a new match is a lead for a
-      # person rather than a failure.
-      printf 'dotfiles audit: %s new match(es); read them, then record them with dotfiles audit --update\n' "$newest_count"
-    else
-      printf 'dotfiles audit: %s new match(es); read them, then record them with dotfiles audit --update\n' "$newest_count"
-      return 1
-    fi
-  fi
-  if [ "$stale_count" -gt 0 ]; then
-    printf 'dotfiles audit: %s recorded match(es) no longer apply; prune them with dotfiles audit --update\n' "$stale_count"
-  fi
-  printf 'dotfiles audit: ok\n'
+  return 0
 }

@@ -72,9 +72,8 @@ The machine's name is its hostname and its row key, so none of these needs an
 argument. An argument names another machine, which is also the only reason to
 give one.
 
-`audit` is run by hand. Run it on the machine after a pin bump, and
-`dotfiles audit --update` to record a match you accept. A match outside the
-baseline fails the store audit.
+`audit` is run by hand. Run it on the machine after a pin bump; it prints every
+match, including the ones only a nixpkgs fix can clear.
 
 `sync` refuses any dirty path, because `apply` would otherwise activate a
 half-finished edit. It checks out `main`, so a machine that rolled back returns

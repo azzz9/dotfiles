@@ -132,18 +132,13 @@ package names against the open issues NixOS/nixpkgs labels
 `1.severity: security`, and reads the npm advisories for the rows
 `modules/pi.nix` pins. `osv-scanner`
 adds the transitive dependencies of the npm packages pi installed, from the
-lockfile pi leaves in `~/.pi/agent/npm`. `--declared` reads the packages
-flake.nix names for the machine instead, which is a subset of the closure and
-all a runner without a store can read. `scripts/audit-baseline.txt` holds what
-was already read, and
-only a match outside it fails the store audit, so the file is part of the working
-tree like the pins `bump-pins.sh` moves. Only the store audit prunes
-that file. `--declared --update` adds the lines it found and prunes nothing,
-because its set is a subset of the store's, and a new match in a declared run is
-a report rather than a failure.
+lockfile pi leaves in `~/.pi/agent/npm`. `--declared` reads the packages flake.nix names for the machine instead, which
+is a subset of the closure. Every match is printed and the report does not fail:
+the list is read after a pin bump, and most of it is a nixpkgs fix that has not
+landed yet.
 
-The pin bump and the audit are run by hand. Run `dotfiles audit` after a bump
-and `dotfiles audit --update` to record a match you accept.
+The pin bump and the audit are run by hand. Run `dotfiles audit` after a bump;
+it prints every match and does not fail.
 
 ## Pins
 
