@@ -85,7 +85,8 @@ in
   '';
   # modules/pin-names.txt and flake.nix's packages must name the same set: a pin
   # in one and not the other is never bumped or never builds. `dotfiles` is the
-  # CLI and codediff-watcher takes its version from nixpkgs, so neither is bumped.
+  # CLI and codediff-watcher has its own per-platform step in bump-pins.sh, so
+  # neither is listed here.
   pin-names = pkgs.runCommand "pin-names" {
     nativeBuildInputs = [ pkgs.gawk ];
   } ''
@@ -127,6 +128,14 @@ in
     nativeBuildInputs = [ pkgs.bash pkgs.coreutils pkgs.git pkgs.gnugrep pkgs.jq ];
   } ''
     bash ${self}/scripts/test-dotfiles.sh ${self}/scripts/dotfiles.sh
+    touch $out
+  '';
+  # The pi tarball bump rewrites modules/pi.nix by hand, so its parse and
+  # rewrite are checked here rather than only when a release moves.
+  pi-tarballs = pkgs.runCommand "pi-tarballs" {
+    nativeBuildInputs = [ pkgs.python3 ];
+  } ''
+    python3 ${self}/scripts/bump-pi-tarballs.py --selftest
     touch $out
   '';
   actionlint = pkgs.runCommand "actionlint" { nativeBuildInputs = [ pkgs.actionlint ]; } ''

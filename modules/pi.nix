@@ -29,21 +29,21 @@ let
     # under node_modules, which is what `pi install` would have produced.
     { tarball = {
         name = "@juicesharp/rpiv-ask-user-question";
-        version = "2.12.0";
-        url = "https://registry.npmjs.org/@juicesharp/rpiv-ask-user-question/-/rpiv-ask-user-question-2.12.0.tgz";
-        hash = "sha256-9AeJNjjxiTo3MERPRntO3Bkkzy0gauWE91JeHoroYPY=";
+        version = "2.15.0";
+        url = "https://registry.npmjs.org/@juicesharp/rpiv-ask-user-question/-/rpiv-ask-user-question-2.15.0.tgz";
+        hash = "sha256-Oz37Xyg26JfCiEpwqAr83ipTcK9M7Yoskn4O17+PuB8=";
         deps = [{
           name = "@juicesharp/rpiv-config";
-          version = "2.12.0";
-          url = "https://registry.npmjs.org/@juicesharp/rpiv-config/-/rpiv-config-2.12.0.tgz";
-          hash = "sha256-5ZKpbqxsSPTx7n+pHvh/UOqCVeiH/wSuvHkEpL7Q8dQ=";
+          version = "2.15.0";
+          url = "https://registry.npmjs.org/@juicesharp/rpiv-config/-/rpiv-config-2.15.0.tgz";
+          hash = "sha256-uLZ56plD19pYB1qyPoJ7YhBJJIyImOWLh2pvFaBqdTw=";
         }];
       };
     }
     # The /btw side conversation. The published tarball carries the TypeScript
     # pi loads and has no runtime dependencies, so Nix unpacks it and pi loads it
-    # from the store. `pi_reconcile` never sees this row, and the version and
-    # hash move by hand until a tarball bump joins the Pins workflow.
+    # from the store. `pi_reconcile` never sees this row; the tarball bump in
+    # scripts/bump-pins.sh moves it.
     { tarball = {
         name = "pi-btw";
         version = "0.8.0";
@@ -56,18 +56,18 @@ let
     # only the published tarball carries the dist.
     { tarball = {
         name = "cc-safety-net";
-        version = "2.6.0";
-        url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.6.0.tgz";
-        hash = "sha256-hzfkiFdMYRxfm+BtEw9Mwx+/CWLkNqe5teAICi/JqIQ=";
+        version = "2.6.19";
+        url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.6.19.tgz";
+        hash = "sha256-DBRAfiVBCmKKTSNBl/gC8bUJiNXWHl6xsumtXMU5jto=";
       };
     }
     # Moves the running pi session to another directory or worktree, keeping the
     # conversation, and creates or removes the worktree through herdr.
     { tarball = {
         name = "pi-agent-teleport";
-        version = "0.2.5";
-        url = "https://registry.npmjs.org/pi-agent-teleport/-/pi-agent-teleport-0.2.5.tgz";
-        hash = "sha256-5iaLcgw3JjvrM//2brll+FOckXJsijvA4cFEe4O0wLI=";
+        version = "0.2.7";
+        url = "https://registry.npmjs.org/pi-agent-teleport/-/pi-agent-teleport-0.2.7.tgz";
+        hash = "sha256-9yW+e8sZAxLbzluZ6CBJC+HeZW6+2SEmYiVOeaMmSEg=";
       };
     }
     # Compact, expandable TUI tool rows, with its own bundled theme.
@@ -141,9 +141,9 @@ let
     # The API key stays machine-local in ~/.pi/agent/ollama_cloud.json.
     { tarball = {
         name = "pi-ollama-cloud-link";
-        version = "1.2.0";
-        url = "https://registry.npmjs.org/pi-ollama-cloud-link/-/pi-ollama-cloud-link-1.2.0.tgz";
-        hash = "sha256-Y+rc+ku3qJBzx0gEFmTrpRdeITAkQyq/sh1YWrGEpMY=";
+        version = "1.3.0";
+        url = "https://registry.npmjs.org/pi-ollama-cloud-link/-/pi-ollama-cloud-link-1.3.0.tgz";
+        hash = "sha256-sGsjHY+87bFAquBMa9hH0D8PQM0nN/KbWG9dB9yP4e8=";
       };
     }
   ];

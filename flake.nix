@@ -93,8 +93,8 @@
           ] ++ home;
         };
       # The pinned derivations in modules/pinned-packages.nix, exposed as
-      # flake packages so `nix-update --flake <name>` (the bump the Pins
-      # workflow runs) can find and rewrite them. Build pkgs the same way
+      # flake packages so `nix-update --flake <name>` (the pin bump) can find
+      # and rewrite them. Build pkgs the same way
       # mkChecks does: these derivations need neither the unfree allowlist nor
       # the home configuration's package set.
       mkPackages = system:

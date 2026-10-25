@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Moves every pin this repository carries, in one run. The Pins workflow runs
-# this weekly; to move a single flake input by hand, use
-# `nix flake update <input>` and commit the lock.
+# Moves every pin this repository carries, in one run. Run it by hand, then
+# `scripts/check.sh` and commit; the pre-push hook runs the same checks. To move a
+# single flake input, use `nix flake update <input>` and commit the lock.
 #
-# nix-update has to be on PATH for the derivations in modules/pinned-packages.nix.
+# python3 runs the pi tarball bump, and nix-update comes from nixpkgs when it is
+# not on PATH.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -11,6 +12,14 @@ export NIX_CONFIG="${NIX_CONFIG:-}"$'\nextra-experimental-features = nix-command
 
 nix_cmd() {
   nix --extra-experimental-features "nix-command flakes" "$@"
+}
+
+nix_update() {
+  if command -v nix-update >/dev/null 2>&1; then
+    nix-update "$@"
+  else
+    nix run nixpkgs#nix-update -- "$@"
+  fi
 }
 
 pins_file="modules/pinned-packages.nix"
@@ -21,7 +30,8 @@ pi_module="modules/pi.nix"
 pin_names_file="modules/pin-names.txt"
 pin_names=()
 pin_scratch="$(mktemp "${TMPDIR:-/tmp}/dotfiles-pin-bump.XXXXXX")"
-trap 'rm -f "$pin_scratch"' EXIT
+pi_scratch="$(mktemp "${TMPDIR:-/tmp}/dotfiles-pi-bump.XXXXXX")"
+trap 'rm -f "$pin_scratch" "$pi_scratch"' EXIT
 
 read_pin_names() {
   local line
@@ -51,53 +61,106 @@ bump_pins() {
   for name in "${pin_names[@]}"; do
     cp "$pins_file" "$pin_scratch"
     echo "bump-pins: bumping $name"
-    if ! nix-update --flake "$name"; then
+    if ! nix_update --flake "$name"; then
       cp "$pin_scratch" "$pins_file"
       echo "bump-pins: bumping $name failed; kept its previous pin" >&2
     fi
   done
 }
 
-# The latest version published for an npm package; empty on any doubt.
-registry_latest() {
-  local encoded
-  encoded="$(printf '%s' "$1" | sed 's|/|%2F|')"
-  curl -fsS --max-time 30 "https://registry.npmjs.org/${encoded}" | jq -r '."dist-tags".latest'
+# codediff-watcher's version is the one codediff-nvim's installer downloads, and
+# each release names one archive per platform. Read that version from the pinned
+# plugin, then measure every archive so the version and its hashes move in one
+# step; the watcher's own build check fails when the plugin and the pin drift.
+# Rewrites one pin through a temporary file: BSD sed has no -i without a backup
+# suffix, and a rewrite that matched nothing must not read as success.
+replace_pin() {
+  local file="$1" old="$2" new="$3" tmp
+  if ! grep -qF -- "$old" "$file"; then
+    return 1
+  fi
+  tmp="$(mktemp)"
+  if ! sed "s|$old|$new|" "$file" > "$tmp" || ! grep -qF -- "$new" "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  cat "$tmp" > "$file"
+  rm -f "$tmp"
 }
 
-# `sort -V` ranks 0.2.0-rc.2 above 0.2.0. Compare a prerelease as a tilde
-# suffix, which sorts before the release.
-version_key() {
-  case "$1" in
-    *-*) printf '%s~%s' "${1%%-*}" "${1#*-}" ;;
-    *) printf '%s' "$1" ;;
-  esac
+bump_codediff_watcher() {
+  cp "$pins_file" "$pin_scratch"
+  if ! update_codediff_watcher; then
+    cp "$pin_scratch" "$pins_file"
+    echo "bump-pins: bumping codediff-watcher failed; kept its previous pin" >&2
+  fi
 }
 
-# The npm rows carry a literal version in $pi_module, and this moves each one to
-# the registry's latest, keeping the pin on any registry or ordering doubt. Two
-# of them cannot be git sources: the rpiv workspace has no pi manifest at its
-# root, and cc-safety-net's repository runs lefthook from a prepare script.
-bump_npm_pins() {
-  local latest ordering spec name current
+update_codediff_watcher() {
+  local current version src hash system os arch old url
+  current="$(sed -n 's/^  codediffWatcherVersion = "\([^"]*\)";$/\1/p' "$pins_file")"
+  if [ -z "$current" ]; then
+    echo "bump-pins: no codediffWatcherVersion in $pins_file" >&2
+    return 1
+  fi
+  if ! src="$(nix_cmd build --no-link --print-out-paths --impure --expr "
+    let
+      flake = builtins.getFlake \"$PWD\";
+      pkgs = import flake.inputs.nixpkgs { system = builtins.currentSystem; };
+    in pkgs.vimPlugins.codediff-nvim.src
+  ")"; then
+    echo "bump-pins: no built codediff-nvim source; kept the pin at $current" >&2
+    return 1
+  fi
+  if [ ! -r "$src/lua/codediff/core/installer/watcher.lua" ]; then
+    echo "bump-pins: codediff-nvim carries no watcher.lua; kept the pin at $current" >&2
+    return 1
+  fi
+  version="$(sed -n 's/^local VERSION = "\([^"]*\)"$/\1/p' "$src/lua/codediff/core/installer/watcher.lua")"
+  if [ -z "$version" ]; then
+    echo "bump-pins: no watcher VERSION in codediff-nvim; kept the pin at $current" >&2
+    return 1
+  fi
+  if [ "$version" = "$current" ]; then
+    return 0
+  fi
+  for system in x86_64-linux aarch64-darwin; do
+    case "$system" in
+      x86_64-linux) os=linux; arch=x64 ;;
+      aarch64-darwin) os=macos; arch=arm64 ;;
+    esac
+    url="https://github.com/esmuellert/codediff/releases/download/v${version}/codediff-watcher-${version}-${os}-${arch}.tar.gz"
+    old="$(sed -n "/^    \"$system\" = {/,/^    };/ s/^      hash = \"\([^\"]*\)\";$/\1/p" "$pins_file")"
+    if ! hash="$(nix_cmd store prefetch-file --json "$url" | sed -n 's/.*"hash": *"\([^"]*\)".*/\1/p')"; then
+      echo "bump-pins: could not fetch codediff-watcher for $system; kept the pin at $current" >&2
+      return 1
+    fi
+    if [ -z "$hash" ] || [ -z "$old" ]; then
+      echo "bump-pins: could not measure codediff-watcher for $system; kept the pin at $current" >&2
+      return 1
+    fi
+    if ! replace_pin "$pins_file" "$old" "$hash"; then
+      echo "bump-pins: could not rewrite the $system codediff hash; kept the pin at $current" >&2
+      return 1
+    fi
+  done
+  if ! replace_pin "$pins_file" "  codediffWatcherVersion = \"$current\";" "  codediffWatcherVersion = \"$version\";"; then
+    echo "bump-pins: could not rewrite codediffWatcherVersion; kept the pin at $current" >&2
+    return 1
+  fi
+  echo "bump-pins: bumped codediff-watcher $current -> $version"
+}
 
-  # npm rows carry their own version, for example `npm:cc-safety-net@2.4.6`.
-  while read -r spec; do
-    name="${spec#npm:}"
-    name="${name%@*}"
-    current="${spec##*@}"
-    latest="$(registry_latest "$name" || true)"
-    if [ -z "$latest" ] || [ "$latest" = "null" ]; then
-      echo "bump-pins: no registry latest for $name; kept the pin at $current" >&2
-      continue
-    fi
-    ordering="$(printf '%s\n' "$(version_key "$current")" "$(version_key "$latest")" | sort -V | tail -n 1)"
-    if [ "$ordering" != "$(version_key "$latest")" ] || [ "$latest" = "$current" ]; then
-      continue
-    fi
-    sed -i "s|\"$spec\"|\"npm:$name@$latest\"|" "$pi_module"
-    echo "bump-pins: bumped the $name npm pin $current -> $latest"
-  done < <(grep -o 'npm:[A-Za-z0-9@/._-]*@[0-9][0-9A-Za-z.+-]*' "$pi_module" | sort -u)
+# The pi rows pin published npm tarballs, and the dependencies they vendor under
+# node_modules are rows too. The helper follows the registry and keeps a
+# vendored dependency on the version its parent names. The whole set is
+# restored on any doubt, because a parent and its dependencies move together.
+bump_pi_tarballs() {
+  cp "$pi_module" "$pi_scratch"
+  if ! python3 scripts/bump-pi-tarballs.py; then
+    cp "$pi_scratch" "$pi_module"
+    echo "bump-pins: bumping the pi tarballs failed; kept their previous pins" >&2
+  fi
 }
 
 # Recomputes every npmDepsHash in modules/pi.nix from the package-lock.json of
@@ -136,5 +199,6 @@ fi
 # After the flake update on purpose: a release that needs a newer toolchain
 # than the previous nixpkgs carried can still be bumped in the same run.
 bump_pins
-bump_npm_pins
+bump_codediff_watcher
+bump_pi_tarballs
 refresh_pi_npm_hashes

@@ -4,7 +4,7 @@
 #
 #   audit_packages <repo> <machine> <tmp_dir> <pi_module> <update> <declared>
 #
-# It reports by return code, so `dotfiles audit` and the Pins workflow can read
+# It reports by return code, so `dotfiles audit` and the Audit workflow can read
 # it as a report.
 #
 # Three sources are checked, because they are pinned in different ways.
