@@ -72,6 +72,22 @@ bump_pins() {
 # each release names one archive per platform. Read that version from the pinned
 # plugin, then measure every archive so the version and its hashes move in one
 # step; the watcher's own build check fails when the plugin and the pin drift.
+# Rewrites one pin through a temporary file: BSD sed has no -i without a backup
+# suffix, and a rewrite that matched nothing must not read as success.
+replace_pin() {
+  local file="$1" old="$2" new="$3" tmp
+  if ! grep -qF -- "$old" "$file"; then
+    return 1
+  fi
+  tmp="$(mktemp)"
+  if ! sed "s|$old|$new|" "$file" > "$tmp" || ! grep -qF -- "$new" "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  cat "$tmp" > "$file"
+  rm -f "$tmp"
+}
+
 bump_codediff_watcher() {
   cp "$pins_file" "$pin_scratch"
   if ! update_codediff_watcher; then
@@ -96,8 +112,16 @@ update_codediff_watcher() {
     echo "bump-pins: no built codediff-nvim source; kept the pin at $current" >&2
     return 1
   fi
+  if [ ! -r "$src/lua/codediff/core/installer/watcher.lua" ]; then
+    echo "bump-pins: codediff-nvim carries no watcher.lua; kept the pin at $current" >&2
+    return 1
+  fi
   version="$(sed -n 's/^local VERSION = "\([^"]*\)"$/\1/p' "$src/lua/codediff/core/installer/watcher.lua")"
-  if [ -z "$version" ] || [ "$version" = "$current" ]; then
+  if [ -z "$version" ]; then
+    echo "bump-pins: no watcher VERSION in codediff-nvim; kept the pin at $current" >&2
+    return 1
+  fi
+  if [ "$version" = "$current" ]; then
     return 0
   fi
   for system in x86_64-linux aarch64-darwin; do
@@ -107,13 +131,23 @@ update_codediff_watcher() {
     esac
     url="https://github.com/esmuellert/codediff/releases/download/v${version}/codediff-watcher-${version}-${os}-${arch}.tar.gz"
     old="$(sed -n "/^    \"$system\" = {/,/^    };/ s/^      hash = \"\([^\"]*\)\";$/\1/p" "$pins_file")"
-    if ! hash="$(nix_cmd store prefetch-file --json "$url" | sed -n 's/.*"hash": *"\([^"]*\)".*/\1/p')" || [ -z "$hash" ] || [ -z "$old" ]; then
+    if ! hash="$(nix_cmd store prefetch-file --json "$url" | sed -n 's/.*"hash": *"\([^"]*\)".*/\1/p')"; then
+      echo "bump-pins: could not fetch codediff-watcher for $system; kept the pin at $current" >&2
+      return 1
+    fi
+    if [ -z "$hash" ] || [ -z "$old" ]; then
       echo "bump-pins: could not measure codediff-watcher for $system; kept the pin at $current" >&2
       return 1
     fi
-    sed -i "s|$old|$hash|" "$pins_file"
+    if ! replace_pin "$pins_file" "$old" "$hash"; then
+      echo "bump-pins: could not rewrite the $system codediff hash; kept the pin at $current" >&2
+      return 1
+    fi
   done
-  sed -i "s|^  codediffWatcherVersion = \"$current\";|  codediffWatcherVersion = \"$version\";|" "$pins_file"
+  if ! replace_pin "$pins_file" "  codediffWatcherVersion = \"$current\";" "  codediffWatcherVersion = \"$version\";"; then
+    echo "bump-pins: could not rewrite codediffWatcherVersion; kept the pin at $current" >&2
+    return 1
+  fi
   echo "bump-pins: bumped codediff-watcher $current -> $version"
 }
 

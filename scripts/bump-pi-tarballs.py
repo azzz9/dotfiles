@@ -63,9 +63,16 @@ def parse(text: str) -> dict[str, Entry]:
 
 
 def version_key(version: str):
-    base, _, prerelease = version.partition("-")
-    numbers = tuple(int(part) for part in re.findall(r"\d+", base))
-    return (numbers, 0 if prerelease else 1, prerelease)
+    core, _, prerelease = version.split("+", 1)[0].partition("-")
+    numbers = tuple(int(part) for part in re.findall(r"\d+", core))
+    identifiers = []
+    if prerelease:
+        for part in prerelease.split("."):
+            if part.isdigit():
+                identifiers.append((0, int(part), ""))
+            else:
+                identifiers.append((1, 0, part))
+    return (numbers, 0 if prerelease else 1, identifiers)
 
 
 def fetch_json(url: str):
@@ -101,34 +108,37 @@ def dependencies(meta) -> dict[str, str]:
     return declared
 
 
-def parents(entries: dict[str, Entry], registry: Registry) -> dict[str, set[str]]:
+def parents(entries: dict[str, Entry], effective: dict[str, str], registry: Registry) -> dict[str, set[str]]:
     found: dict[str, set[str]] = {}
-    for name, entry in entries.items():
-        for dependency in dependencies(registry.release(name, entry.version)):
+    for name in entries:
+        for dependency in dependencies(registry.release(name, effective[name])):
             if dependency in entries:
                 found.setdefault(dependency, set()).add(name)
     return found
 
 
-def target_for(spec: str, name: str, current: str, registry: Registry) -> str:
-    if EXACT.fullmatch(spec):
-        wanted = spec
-    else:
-        wanted = registry.latest(name)
-    return wanted if version_key(wanted) > version_key(current) else current
+def effective_versions(entries: dict[str, Entry], registry: Registry) -> dict[str, str]:
+    effective = {}
+    for name, entry in entries.items():
+        latest = registry.latest(name)
+        effective[name] = latest if version_key(latest) > version_key(entry.version) else entry.version
+    return effective
+
+
+class PlanError(Exception):
+    pass
 
 
 def plan(entries: dict[str, Entry], registry: Registry):
     """Every row that moves, as name -> (old version, new version, tarball)."""
-    owned = parents(entries, registry)
+    effective = effective_versions(entries, registry)
+    owned = parents(entries, effective, registry)
     updates = {}
+    targets: dict[str, set[str]] = {}
     for top in entries:
         if owned.get(top):
             continue
-        current = entries[top].version
-        if version_key(registry.latest(top)) <= version_key(current):
-            continue
-        queue = [(top, registry.latest(top))]
+        queue = [(top, effective[top])]
         seen = set()
         while queue:
             name, version = queue.pop(0)
@@ -136,16 +146,24 @@ def plan(entries: dict[str, Entry], registry: Registry):
                 continue
             seen.add((name, version))
             meta = registry.release(name, version)
-            if version_key(version) > version_key(entries[name].version):
-                newer = updates.get(name)
-                if newer is None or version_key(version) > version_key(newer[1]):
-                    updates[name] = (entries[name].version, version, meta["dist"]["tarball"])
+            if version != entries[name].version:
+                updates[name] = (entries[name].version, version, meta["dist"]["tarball"])
             for dependency, spec in dependencies(meta).items():
                 if dependency not in entries:
                     continue
-                queue.append(
-                    (dependency, target_for(spec, dependency, entries[dependency].version, registry))
-                )
+                if EXACT.fullmatch(spec):
+                    target = spec
+                else:
+                    target = registry.latest(dependency)
+                    if version_key(target) <= version_key(entries[dependency].version):
+                        target = entries[dependency].version
+                known = targets.setdefault(dependency, set())
+                known.add(target)
+                if len(known) > 1:
+                    raise PlanError(
+                        f"{dependency} needs one version but the pins ask for {', '.join(sorted(known))}"
+                    )
+                queue.append((dependency, target))
     return updates
 
 
@@ -202,7 +220,41 @@ def selftest() -> int:
     assert entries["parent"].version == "1.0.0"
     assert entries["child"].hash == "sha256-child"
     assert version_key("1.3.1-pre.1") < version_key("1.3.1")
+    assert version_key("1.3.1-pre.1") < version_key("1.3.1-pre.2")
+    assert version_key("1.0.0-rc.2") < version_key("1.0.0-rc.10")
+    assert version_key("1.0.0+build") == version_key("1.0.0")
     assert version_key("2.13.10") > version_key("2.12.0")
+
+    class Fake:
+        def __init__(self, latest, releases):
+            self._latest, self._releases = latest, releases
+        def latest(self, name):
+            return self._latest[name]
+        def release(self, name, version):
+            return self._releases[(name, version)]
+
+    def meta(deps=None):
+        return {"dist": {"tarball": "https://example.invalid/row.tgz"}, "dependencies": deps or {}}
+
+    exact = plan(entries, Fake(
+        {"parent": "1.1.0", "child": "1.2.0"},
+        {("parent", "1.0.0"): meta({"child": "1.0.0"}), ("child", "1.0.0"): meta(),
+         ("parent", "1.1.0"): meta({"child": "1.1.0"}), ("child", "1.1.0"): meta(),
+         ("child", "1.2.0"): meta()}))
+    assert exact["child"][1] == "1.1.0", exact
+
+    ranged = plan(entries, Fake(
+        {"parent": "1.1.0", "child": "1.2.0"},
+        {("parent", "1.0.0"): meta({"child": "1.0.0"}), ("child", "1.0.0"): meta(),
+         ("parent", "1.1.0"): meta({"child": "^1.0.0"}), ("child", "1.2.0"): meta()}))
+    assert ranged["child"][1] == "1.2.0", ranged
+
+    current_parent = plan(entries, Fake(
+        {"parent": "1.0.0", "child": "1.2.0"},
+        {("parent", "1.0.0"): meta({"child": "^1.0.0"}), ("child", "1.0.0"): meta(),
+         ("child", "1.2.0"): meta()}))
+    assert set(current_parent) == {"child"}, current_parent
+    assert current_parent["child"][1] == "1.2.0", current_parent
     assert EXACT.fullmatch("0.11.0") and not EXACT.fullmatch("^1.0.0")
     updates = {
         "parent": ("1.0.0", "1.1.0", "https://example.invalid/parent-1.1.0.tgz", "sha256-new"),
@@ -249,6 +301,13 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except (urllib.error.URLError, KeyError, ValueError, OSError, subprocess.CalledProcessError) as error:
+    except (
+        urllib.error.URLError,
+        KeyError,
+        ValueError,
+        OSError,
+        subprocess.CalledProcessError,
+        PlanError,
+    ) as error:
         print(f"bump-pins: the pi tarball bump stopped: {error}", file=sys.stderr)
         sys.exit(1)
