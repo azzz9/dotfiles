@@ -19,15 +19,15 @@ commands:
   rollback   apply the commit that was applied before the current one
   status     report what is out of date here, changing nothing
   sync       check out main, pull, then apply
+  upgrade    move every pin to its latest, then build and apply
 
-audit reads this machine's store. --declared reads the packages flake.nix names
-for it instead, which is what a runner without a store can do. --update records
-what it found in scripts/audit-baseline.txt: the store audit rewrites the file,
-and --declared only adds to it, because that set is smaller. A new match fails
-the store audit and is a report for the declared one.
+audit reads this machine's store and lists every match. --declared reads the
+packages flake.nix names for it instead, which is the subset a machine without a
+store can read.
 
-Move the pins by hand with scripts/bump-pins.sh. To move one flake input, run
-`nix flake update <input>`, commit flake.lock, then `dotfiles apply`.
+upgrade moves every pin with scripts/bump-pins.sh, then builds and applies.
+To move one flake input, run `nix flake update <input>`, commit flake.lock,
+then `dotfiles apply`.
 
 machine: the name of the machine to apply or report on. This machine's
          hostname is the default. An unknown name is listed against the names
@@ -45,19 +45,12 @@ if [ -z "$command" ] || [ "$command" = "-h" ] || [ "$command" = "--help" ]; then
 fi
 shift
 
-# audit is the only command that takes flags. Read them before the machine
-# argument, so `dotfiles audit --update` does not read --update as a machine.
-audit_update=0
+# audit is the only command that takes a flag. Read it before the machine
+# argument, so `dotfiles audit --declared` does not read --declared as a machine.
 audit_declared=0
-if [ "$command" = "audit" ]; then
-  while [ "${1:-}" = "--update" ] || [ "${1:-}" = "--declared" ]; do
-    if [ "$1" = "--update" ]; then
-      audit_update=1
-    else
-      audit_declared=1
-    fi
-    shift
-  done
+if [ "$command" = "audit" ] && [ "${1:-}" = "--declared" ]; then
+  audit_declared=1
+  shift
 fi
 
 # A machine argument names the attribute to apply. Otherwise this machine's
@@ -390,7 +383,7 @@ case "$command" in
     record_applied
     ;;
   audit)
-    audit_packages "$repo" "$machine" "$tmp_dir" "$pi_module" "$audit_update" "$audit_declared"
+    audit_packages "$repo" "$machine" "$tmp_dir" "$pi_module" "$audit_declared"
     ;;
   rollback)
     previous="$(previous_applied_sha)"
@@ -415,6 +408,36 @@ case "$command" in
     git pull --ff-only
     apply_home_and_reconcile
     record_applied
+    ;;
+  upgrade)
+    read_dirty_paths
+    if [ "${#own_dirty[@]}" -gt 0 ] || [ "${#foreign_dirty[@]}" -gt 0 ]; then
+      refuse_dirty "${own_dirty[@]}" "${foreign_dirty[@]}"
+    fi
+    if ! bash scripts/bump-pins.sh; then
+      echo "dotfiles upgrade: the pin bump failed; nothing was applied" >&2
+      exit 1
+    fi
+    apply_home_and_reconcile
+    record_applied
+    # `herdr plugin update` only refetches the ref recorded at install time, so a
+    # tag or commit never moves. Installing again takes the latest.
+    if command -v herdr >/dev/null 2>&1; then
+      for source in ChmaraX/herdr-nvim kryptamine/herdr-auto-title; do
+        if ! herdr plugin install "$source" --yes >/dev/null; then
+          echo "dotfiles upgrade: could not reinstall the $source herdr plugin; the upgrade itself is applied" >&2
+        fi
+      done
+    fi
+    # The pins just moved, which is when a new issue can start matching. Stay a
+    # report: the pins are already applied, and failing would call a finished
+    # upgrade broken.
+    audit_packages "$repo" "$machine" "$tmp_dir" "$pi_module" 0 ||
+      echo "dotfiles upgrade: the audit above could not run; the upgrade itself is applied" >&2
+    if [ -n "$(git status --porcelain -- "${pin_paths[@]}")" ]; then
+      echo "dotfiles upgrade: these files moved; review and commit them, or the other machines keep their own pins:"
+      git status --porcelain -- "${pin_paths[@]}"
+    fi
     ;;
   *)
     echo "dotfiles: unknown command: $command" >&2

@@ -29,6 +29,12 @@ FIELD = {
     "hash": re.compile(r'hash = "([^"]+)";'),
 }
 EXACT = re.compile(r"\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.+-]+)?")
+SUPPORTED = re.compile(
+    r"\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.+-]+)?"
+    r"|[\^~]\d+(?:\.\d+){0,2}"
+    r"|\d+(?:\.\d+){1,2}(?:\.x)?"
+    r"|\*"
+)
 
 
 class Entry:
@@ -75,6 +81,65 @@ def version_key(version: str):
     return (numbers, 0 if prerelease else 1, identifiers)
 
 
+def _numbers(text: str) -> tuple[int, ...]:
+    return tuple(int(n) for n in re.findall(r"\d+", text.split("+")[0].partition("-")[0]))
+
+
+def _floor(numbers: tuple[int, ...]):
+    return version_key(".".join(str(n) for n in numbers) + ".0" * max(0, 3 - len(numbers)))
+
+
+def _ceiling(numbers: tuple[int, ...], operator: str):
+    if operator == "~" and len(numbers) > 1:
+        return version_key(f"{numbers[0]}.{numbers[1] + 1}.0")
+    if operator == "^" and numbers[0] == 0 and len(numbers) > 1:
+        if numbers[1]:
+            return version_key(f"0.{numbers[1] + 1}.0")
+        return version_key(f"0.0.{numbers[2] + 1}") if len(numbers) > 2 else version_key("0.1.0")
+    return version_key(f"{numbers[0] + 1}.0.0")
+
+
+def _partial_ceiling(numbers: tuple[int, ...]):
+    if len(numbers) >= 2:
+        return version_key(f"{numbers[0]}.{numbers[1] + 1}.0")
+    return version_key(f"{numbers[0] + 1}.0.0")
+
+
+def _prerelease_allowed(version: str, spec: str) -> bool:
+    if "-" not in version.split("+")[0]:
+        return True
+    core = _numbers(version)
+    return any("-" in part and _numbers(part) == core for part in spec.split())
+
+
+def _comparator(version: str, part: str) -> bool:
+    if part == "*":
+        return True
+    operator = ""
+    for prefix in ("^", "~"):
+        if part.startswith(prefix):
+            operator, part = prefix, part[len(prefix):]
+            break
+    numbers = _numbers(part)
+    current = version_key(version)
+    floor = _floor(numbers)
+    if operator:
+        return floor <= current < _ceiling(numbers, operator)
+    if len(numbers) < 3:
+        return floor <= current < _partial_ceiling(numbers)
+    return current == version_key(part)
+
+
+def satisfies(version: str, spec: str) -> bool:
+    parts = spec.split()
+    for part in parts:
+        if "||" in part or not SUPPORTED.fullmatch(part):
+            raise PlanError(f"cannot evaluate the range {spec!r}")
+    if not parts or not _prerelease_allowed(version, spec):
+        return False
+    return all(_comparator(version, part) for part in parts)
+
+
 def fetch_json(url: str):
     request = urllib.request.Request(url, headers={"User-Agent": "dotfiles-bump-pins"})
     with urllib.request.urlopen(request, timeout=60) as response:
@@ -93,6 +158,9 @@ class Registry:
 
     def latest(self, name: str) -> str:
         return self.document(name)["dist-tags"]["latest"]
+
+    def versions(self, name: str) -> list[str]:
+        return list(self.document(name)["versions"])
 
     def release(self, name: str, version: str):
         versions = self.document(name)["versions"]
@@ -129,17 +197,42 @@ class PlanError(Exception):
     pass
 
 
+def resolve(name: str, specs: list[str], entries: dict[str, Entry], registry: Registry) -> str:
+    exact = sorted({spec for spec in specs if EXACT.fullmatch(spec)})
+    if len(exact) > 1:
+        raise PlanError(f"{name} is pinned to {', '.join(exact)} by different parents")
+    if exact:
+        for spec in specs:
+            if not satisfies(exact[0], spec):
+                raise PlanError(f"{name} {exact[0]} does not satisfy {spec}")
+        return exact[0]
+    published = [
+        version
+        for version in registry.versions(name)
+        if all(satisfies(version, spec) for spec in specs)
+    ]
+    if published:
+        return max(published, key=version_key)
+    if all(satisfies(entries[name].version, spec) for spec in specs):
+        return entries[name].version
+    raise PlanError(
+        f"{name} has no version satisfying {', '.join(sorted(set(specs)))}"
+    )
+
+
 def plan(entries: dict[str, Entry], registry: Registry):
     """Every row that moves, as name -> (old version, new version, tarball)."""
     effective = effective_versions(entries, registry)
     owned = parents(entries, effective, registry)
-    updates = {}
-    targets: dict[str, set[str]] = {}
-    for top in entries:
-        if owned.get(top):
-            continue
-        queue = [(top, effective[top])]
+    roots = [name for name in entries if not owned.get(name)]
+    if not roots:
+        raise PlanError("every row is owned by another row; the dependency graph is cyclic")
+    chosen = dict(effective)
+    for _ in range(len(entries) + 1):
+        wanted: dict[str, list[str]] = {}
+        updates = {}
         seen = set()
+        queue = [(name, chosen[name]) for name in roots]
         while queue:
             name, version = queue.pop(0)
             if (name, version) in seen or name not in entries:
@@ -151,20 +244,24 @@ def plan(entries: dict[str, Entry], registry: Registry):
             for dependency, spec in dependencies(meta).items():
                 if dependency not in entries:
                     continue
-                if EXACT.fullmatch(spec):
-                    target = spec
-                else:
-                    target = registry.latest(dependency)
-                    if version_key(target) <= version_key(entries[dependency].version):
-                        target = entries[dependency].version
-                known = targets.setdefault(dependency, set())
-                known.add(target)
-                if len(known) > 1:
-                    raise PlanError(
-                        f"{dependency} needs one version but the pins ask for {', '.join(sorted(known))}"
-                    )
-                queue.append((dependency, target))
-    return updates
+                wanted.setdefault(dependency, []).append(spec)
+                queue.append((dependency, chosen[dependency]))
+        resolved = {}
+        blocked = None
+        for name, specs in wanted.items():
+            try:
+                resolved[name] = resolve(name, specs, entries, registry)
+            except PlanError as error:
+                blocked = blocked or error
+        changed = {
+            name: version for name, version in resolved.items() if chosen[name] != version
+        }
+        if not changed:
+            if blocked:
+                raise blocked
+            return updates
+        chosen.update(changed)
+    raise PlanError("the dependency requirements do not settle")
 
 
 def prefetch(url: str) -> str:
@@ -213,6 +310,49 @@ FIXTURE = """  rows = [
   ];
 """
 
+TWO_PARENTS = """  rows = [
+    { tarball = {
+        name = "parent-a";
+        version = "1.0.0";
+        url = "https://registry.npmjs.org/parent-a/-/parent-a-1.0.0.tgz";
+        hash = "sha256-pa";
+      };
+    }
+    { tarball = {
+        name = "parent-b";
+        version = "1.0.0";
+        url = "https://registry.npmjs.org/parent-b/-/parent-b-1.0.0.tgz";
+        hash = "sha256-pb";
+      };
+    }
+    { tarball = {
+        name = "child";
+        version = "1.0.0";
+        url = "https://registry.npmjs.org/child/-/child-1.0.0.tgz";
+        hash = "sha256-child";
+      };
+    }
+  ];
+"""
+
+GRAPH = """  rows = [
+    { tarball = { name = "root"; version = "1.0.0";
+        url = "https://registry.npmjs.org/root/-/root-1.0.0.tgz"; hash = "sha256-root"; }; }
+    { tarball = { name = "child"; version = "1.0.0";
+        url = "https://registry.npmjs.org/child/-/child-1.0.0.tgz"; hash = "sha256-child"; }; }
+    { tarball = { name = "grandchild"; version = "1.0.0";
+        url = "https://registry.npmjs.org/grandchild/-/grandchild-1.0.0.tgz"; hash = "sha256-gc"; }; }
+  ];
+"""
+
+CYCLE = """  rows = [
+    { tarball = { name = "a"; version = "1.0.0";
+        url = "https://registry.npmjs.org/a/-/a-1.0.0.tgz"; hash = "sha256-a"; }; }
+    { tarball = { name = "b"; version = "1.0.0";
+        url = "https://registry.npmjs.org/b/-/b-1.0.0.tgz"; hash = "sha256-b"; }; }
+  ];
+"""
+
 
 def selftest() -> int:
     entries = parse(FIXTURE)
@@ -232,6 +372,8 @@ def selftest() -> int:
             return self._latest[name]
         def release(self, name, version):
             return self._releases[(name, version)]
+        def versions(self, name):
+            return [version for (package, version) in self._releases if package == name]
 
     def meta(deps=None):
         return {"dist": {"tarball": "https://example.invalid/row.tgz"}, "dependencies": deps or {}}
@@ -265,6 +407,66 @@ def selftest() -> int:
     assert 'hash = "sha256-child-new";' in rendered, rendered
     assert "sha256-parent" not in rendered, rendered
     assert rendered.count("name = ") == 2, rendered
+    both = parse(TWO_PARENTS)
+    exact_wins = plan(both, Fake(
+        {"parent-a": "1.0.0", "parent-b": "1.0.0", "child": "1.2.0"},
+        {("parent-a", "1.0.0"): meta({"child": "1.1.0"}),
+         ("parent-b", "1.0.0"): meta({"child": "^1.0.0"}),
+         ("child", "1.0.0"): meta(), ("child", "1.1.0"): meta(),
+         ("child", "1.2.0"): meta()}))
+    assert exact_wins["child"][1] == "1.1.0", exact_wins
+
+    major_bound = plan(entries, Fake(
+        {"parent": "1.0.0", "child": "2.0.0"},
+        {("parent", "1.0.0"): meta({"child": "^1.0.0"}), ("child", "1.0.0"): meta(),
+         ("child", "2.0.0"): meta()}))
+    assert "child" not in major_bound, major_bound
+
+    assert satisfies("1.5.0", "^1.0.0")
+    assert not satisfies("2.0.0", "^1.0.0")
+    assert satisfies("0.1.9", "^0.1.0")
+    assert not satisfies("0.2.0", "^0.1.0")
+    assert satisfies("1.0.9", "~1.0.0")
+    assert not satisfies("1.1.0", "~1.0.0")
+    assert satisfies("3.0.0", "*")
+    assert satisfies("1.2.9", "1.2")
+    assert not satisfies("1.9.0", "1.2")
+    assert not satisfies("1.9.0", "1.2.x")
+    assert not satisfies("2.0.0-beta.1", "^1.0.0")
+    assert satisfies("1.0.0-rc.1", "1.0.0-rc.1")
+    for unsupported in (
+        ">=1.0.0 <2.0.0",
+        "<=1.2",
+        ">1.2",
+        "^1.0.0 || ^2.0.0",
+        "next",
+        "garbage",
+    ):
+        try:
+            satisfies("1.5.0", unsupported)
+        except PlanError:
+            pass
+        else:
+            raise AssertionError(unsupported)
+
+    settled = plan(parse(GRAPH), Fake(
+        {"root": "1.0.0", "child": "2.0.0", "grandchild": "2.0.0"},
+        {("root", "1.0.0"): meta({"child": "1.0.0", "grandchild": "1.0.0"}),
+         ("child", "1.0.0"): meta({"grandchild": "1.0.0"}),
+         ("child", "2.0.0"): meta({"grandchild": "2.0.0"}),
+         ("grandchild", "1.0.0"): meta(), ("grandchild", "2.0.0"): meta()}))
+    assert settled == {}, settled
+
+    try:
+        plan(parse(CYCLE), Fake(
+            {"a": "2.0.0", "b": "2.0.0"},
+            {("a", "2.0.0"): meta({"b": "2.0.0"}),
+             ("b", "2.0.0"): meta({"a": "2.0.0"})}))
+    except PlanError:
+        pass
+    else:
+        raise AssertionError("cyclic graph settled silently")
+
     print("bump-pi-tarballs: selftest passed")
     return 0
 

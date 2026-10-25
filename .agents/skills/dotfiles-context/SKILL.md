@@ -105,12 +105,16 @@ change is needed.
 
 ## dotfiles CLI commands
 
-`apply`, `audit`, `rollback`, `status`, and `sync` live in `scripts/dotfiles.sh`,
-which `modules/dotfiles.nix` installs through `writeShellApplication` (so the
-build shellchecks it). README.md owns the command table. `sync` refuses any
-dirty path before it pulls, because activation would otherwise pick up a
-half-finished edit. `apply` has no dirty gate and activates the current tree.
-`apply`, `sync`, and `rollback` record the applied commit in
+`apply`, `audit`, `rollback`, `status`, `sync`, and `upgrade` live in
+`scripts/dotfiles.sh`, which `modules/dotfiles.nix` installs through
+`writeShellApplication` (so the build shellchecks it). README.md owns the
+command table. `sync` and `upgrade` refuse any dirty path before they move,
+because activation would otherwise pick up a half-finished edit. `apply` has no
+dirty gate and activates the current tree. `upgrade` runs
+`scripts/bump-pins.sh`, builds, applies, reinstalls the two GitHub Herdr plugins
+(`herdr plugin update` keeps the recorded ref, so it cannot move a tag), and
+reports the audit without failing.
+`apply`, `sync`, `upgrade`, and `rollback` record the applied commit in
 `~/.local/state/dotfiles/applied.log`, and `rollback` applies the most recent
 applied commit that differs from the current one. `status` reads and never fetches: it
 reports the distance from the last fetched upstream, the uncommitted pin files,
@@ -130,20 +134,13 @@ package names against the open issues NixOS/nixpkgs labels
 `1.severity: security`, and reads the npm advisories for the rows
 `modules/pi.nix` pins. `osv-scanner`
 adds the transitive dependencies of the npm packages pi installed, from the
-lockfile pi leaves in `~/.pi/agent/npm`. `--declared` reads the packages
-flake.nix names for the machine instead, which is a subset of the closure and
-all a runner without a store can read. `scripts/audit-baseline.txt` holds what
-was already read, and
-only a match outside it fails the store audit, so the file is part of the working
-tree like the pins `bump-pins.sh` moves. Only the store audit prunes
-that file. `--declared --update` adds the lines it found and prunes nothing,
-because its set is a subset of the store's, and a new match in a declared run is
-a report rather than a failure.
+lockfile pi leaves in `~/.pi/agent/npm`. `--declared` reads the packages flake.nix names for the machine instead, which
+is a subset of the closure. Every match is printed and the report does not fail:
+the list is read after a pin bump, and most of it is a nixpkgs fix that has not
+landed yet.
 
-The `Audit` workflow records what the declared run found into the baseline and
-opens a PR, so a new upstream issue reaches the reader as a diff and the
-schedule stays green. The pin bump is run by hand; run `dotfiles audit` after it
-and `dotfiles audit --update` to record a match you accept.
+The pin bump and the audit are run by hand. Run `dotfiles audit` after a bump;
+it prints every match and does not fail.
 
 ## Pins
 
@@ -263,9 +260,9 @@ An optional Cachix cache speeds CI up. Set the repository variable `CACHIX_NAME`
 and the secret `CACHIX_AUTH_TOKEN` and the workflow configures the cache. Without
 a token CI uses the public cache only.
 
-A second workflow, `Audit`, runs daily and on demand, records the new matches
-into the baseline, and opens a PR for them. It is not in the push path: it needs
-the network, and upstream issue churn must not fail an unrelated push.
+There is no scheduled workflow besides CI. The pin bump and the audit are run
+by hand, because an upstream issue cannot be fixed before nixpkgs carries the
+fix.
 
 ## Checks
 

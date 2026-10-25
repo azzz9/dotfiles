@@ -92,6 +92,13 @@ esac
 STUB
 chmod +x "$work/bin/nix-store"
 
+# `upgrade` reinstalls the GitHub Herdr plugins, so record the calls.
+cat > "$work/bin/herdr" <<STUB
+#!$BASH
+printf '%s\n' "\$*" >> "$work/herdr-calls"
+STUB
+chmod +x "$work/bin/herdr"
+
 cat > "$work/fakeout/activate" <<'STUB'
 #!/usr/bin/env bash
 echo "[stub] activate (profile add)"
@@ -109,6 +116,7 @@ fixture() {
   install -Dm644 "$src" "$seed/scripts/dotfiles.sh"
   install -Dm644 "$(dirname "$src")/audit.sh" "$seed/scripts/audit.sh"
   install -Dm644 "$(dirname "$src")/pi-reconcile.sh" "$seed/scripts/pi-reconcile.sh"
+  printf '#!/usr/bin/env bash\nprintf "lock v2\\n" > flake.lock\n' > "$seed/scripts/bump-pins.sh"
   mkdir -p "$seed/modules"
   printf 'lock v1\n' > "$seed/flake.lock"
   printf 'pins v1\n' > "$seed/modules/pinned-packages.nix"
@@ -126,6 +134,7 @@ fixture() {
   printf '{}\n' > "$work/advisories.json"
   printf '{"results":[]}\n' > "$work/osv.json"
   rm -f "$work/allow-flake-update"
+  rm -f "$work/herdr-calls"
   rm -rf "$XDG_RUNTIME_DIR/dotfiles.lockdir" "$HOME/.local/state/home-manager"
   rm -rf "$HOME/.local/state/dotfiles"
   rm -rf "$HOME/.pi"
@@ -287,55 +296,27 @@ scenario_end
 
 scenario_end
 
-scenario 'audit fails on a store match the baseline does not hold'
+scenario 'audit lists a store match'
 fixture
 machine_clone
 printf '[{"number":111,"title":"fixturepkg: security issues < 1.2.4"}]\n' > "$work/issues.json"
 printf 'npm:fixturepkg@1.0.0\n' > "$machine/modules/pi.nix"
 run_cli audit
-expect_eq 'audit exits 1 on a new store match' 1 "$cli_rc"
-expect_out_has 'audit names the matched package and its version' 'new   #111 fixturepkg 1.2.3'
+expect_eq 'audit exits 0 with a match' 0 "$cli_rc"
+expect_out_has 'audit names the matched package and its version' '#111 fixturepkg 1.2.3'
 expect_out_has 'audit names the issue' 'https://github.com/NixOS/nixpkgs/issues/111'
-expect_out_has 'audit points at --update' 'record them with dotfiles audit --update'
-expect_eq 'audit writes no baseline without --update' '' "$(cat "$machine/scripts/audit-baseline.txt" 2>/dev/null)"
+expect_out_lacks 'audit does not ask for a record' 'dotfiles audit --update'
 scenario_end
 
-scenario 'audit passes on a match the baseline holds'
-fixture
-machine_clone
-printf '[{"number":111,"title":"fixturepkg: security issues < 1.2.4"}]\n' > "$work/issues.json"
-printf 'npm:fixturepkg@1.0.0\n' > "$machine/modules/pi.nix"
-printf 'nixpkgs 111 fixturepkg # 1.2.3\nnixpkgs 999 ghostpkg # 1.0\n' > "$machine/scripts/audit-baseline.txt"
-run_cli audit
-expect_eq 'audit exits 0 when the baseline holds the match' 0 "$cli_rc"
-expect_out_has 'audit marks the held match as known' 'known #111 fixturepkg'
-expect_out_has 'audit reports a line the store no longer matches' '1 recorded match(es) no longer apply'
-expect_out_has 'audit reports ok' 'dotfiles audit: ok'
-scenario_end
-
-scenario 'audit --update records the match and a rerun passes'
-fixture
-machine_clone
-printf '[{"number":111,"title":"fixturepkg: security issues < 1.2.4"}]\n' > "$work/issues.json"
-printf 'npm:fixturepkg@1.0.0\n' > "$machine/modules/pi.nix"
-run_cli audit --update
-expect_eq 'audit --update exits 0' 0 "$cli_rc"
-expect_out_has 'audit --update leaves the file for a commit' 'commit scripts/audit-baseline.txt'
-expect_eq 'audit --update records the store match' 'nixpkgs 111 fixturepkg # 1.2.3' "$(cat "$machine/scripts/audit-baseline.txt")"
-run_cli audit
-expect_eq 'a rerun exits 0' 0 "$cli_rc"
-expect_out_has 'a rerun reports ok' 'dotfiles audit: ok'
-scenario_end
-
-scenario 'audit fails on an npm advisory'
+scenario 'audit lists an npm advisory'
 fixture
 machine_clone
 printf '[]\n' > "$work/issues.json"
 printf 'npm:fixturepkg@1.0.0\n' > "$machine/modules/pi.nix"
 printf '{"fixturepkg":[{"id":123,"severity":"high","title":"Command Injection","vulnerable_versions":"<1.0.1"}]}\n' > "$work/advisories.json"
 run_cli audit
-expect_eq 'audit exits 1 on an npm advisory' 1 "$cli_rc"
-expect_out_has 'audit names the advisory range' 'new   fixturepkg 1.0.0 high <1.0.1'
+expect_eq 'audit exits 0 on an npm advisory' 0 "$cli_rc"
+expect_out_has 'audit names the advisory range' 'fixturepkg 1.0.0 high <1.0.1'
 expect_out_has 'audit names the advisory title' 'Command Injection'
 expect_out_has 'audit names the npm pin that is behind' 'behind fixturepkg 1.0.0 -> 9.9.9'
 scenario_end
@@ -365,8 +346,8 @@ cat > "$machine/modules/pi.nix" <<'EOF'
 }
 EOF
 run_cli audit
-expect_eq 'audit exits 1 on the tarball advisory' 1 "$cli_rc"
-expect_out_has 'audit reads the tarball row version' 'new   fixturepkg 1.0.0 high'
+expect_eq 'audit exits 0 on the tarball advisory' 0 "$cli_rc"
+expect_out_has 'audit reads the tarball row version' 'fixturepkg 1.0.0 high'
 expect_out_has 'audit counts the row and its dep' 'npm - 2 rows'
 expect_out_has 'audit reads the vendored dependency' 'behind fixturedep 2.0.0 -> 9.9.9'
 scenario_end
@@ -378,39 +359,19 @@ printf '{"results":[{"packages":[{"package":{"name":"fixturepkg","version":"1.2.
 mkdir -p "$HOME/.pi/agent/npm"
 printf '{}\n' > "$HOME/.pi/agent/npm/package-lock.json"
 run_cli audit
-expect_eq 'audit exits 1 on the new source' 1 "$cli_rc"
-expect_out_has 'audit names the osv match' 'new   GHSA-aaaa fixturepkg@1.2.3'
-run_cli audit --update
-expect_eq 'audit --update exits 0' 0 "$cli_rc"
-baseline="$(cat "$machine/scripts/audit-baseline.txt")"
-expect_eq 'audit --update records the osv match' present "$(out_has "$baseline" 'osv GHSA-aaaa fixturepkg@1.2.3')"
+expect_eq 'audit exits 0 on the new source' 0 "$cli_rc"
+expect_out_has 'audit names the osv match' 'GHSA-aaaa fixturepkg@1.2.3'
 scenario_end
 
-scenario 'audit --declared reports a new match without failing'
+scenario 'audit --declared lists a declared match'
 fixture
 machine_clone
 printf '[{"number":111,"title":"fixturepkg: security issues < 1.2.4"}]\n' > "$work/issues.json"
-printf 'nixpkgs 999 ghostpkg # 1.0\n' > "$machine/scripts/audit-baseline.txt"
 run_cli audit --declared
-expect_eq 'audit --declared exits 0 on a new match' 0 "$cli_rc"
+expect_eq 'audit --declared exits 0' 0 "$cli_rc"
 expect_out_has 'audit --declared names its source' 'declared - 2 packages'
-expect_out_has 'audit --declared matches a declared name' 'new   #111 fixturepkg 1.2.3'
-expect_out_has 'audit --declared says the workflow records it' 'the Audit workflow records these'
-expect_out_lacks 'audit --declared does not call a store-only line stale' 'no longer apply'
-run_cli audit --declared --update
-expect_eq 'audit --declared --update exits 0' 0 "$cli_rc"
-expect_out_has 'audit --declared --update leaves the file for a commit' 'commit scripts/audit-baseline.txt'
-baseline="$(cat "$machine/scripts/audit-baseline.txt")"
-expect_eq 'audit --declared --update adds the new match' present "$(out_has "$baseline" 'nixpkgs 111 fixturepkg # 1.2.3')"
-expect_eq 'audit --declared --update keeps the line only the store holds' present "$(out_has "$baseline" 'nixpkgs 999 ghostpkg # 1.0')"
-recorded="$(cat "$machine/scripts/audit-baseline.txt")"
-run_cli audit --declared --update
-expect_eq 'a second --declared --update exits 0' 0 "$cli_rc"
-expect_out_has 'a second --declared --update adds nothing' 'added 0 line(s)'
-expect_eq 'a second --declared --update leaves the file alone' "$recorded" "$(cat "$machine/scripts/audit-baseline.txt")"
-run_cli audit --declared
-expect_eq 'a rerun after the record exits 0' 0 "$cli_rc"
-expect_out_has 'a rerun after the record reports no new match' '(0 new)'
+expect_out_has 'audit --declared matches a declared name' '#111 fixturepkg 1.2.3'
+expect_out_lacks 'audit --declared does not ask for a record' 'dotfiles audit --update'
 scenario_end
 
 scenario 'a run holding the lock makes the next one fail'
@@ -543,6 +504,28 @@ printf 'other-host\n' > "$work/hostname"
 run_cli status
 expect_eq 'status exits 0' 0 "$cli_rc"
 expect_out_has 'status says the row is not this machine' 'generation: not compared, test is not this machine (other-host)'
+scenario_end
+
+scenario 'upgrade moves the pins and applies them'
+fixture
+machine_clone
+run_cli upgrade
+expect_eq 'upgrade exits 0' 0 "$cli_rc"
+expect_eq 'upgrade moved a pin' 'lock v2' "$(cat "$machine/flake.lock")"
+expect_out_has 'upgrade activates' '[stub] activate'
+expect_out_has 'upgrade lists the moved pin' 'flake.lock'
+expect_eq 'upgrade reinstalls the herdr plugins' present "$(out_has "$(cat "$work/herdr-calls")" 'plugin install ChmaraX/herdr-nvim --yes')"
+expect_eq 'upgrade records the applied commit' "$(git -C "$machine" rev-parse HEAD)" "$(tail -n 1 "$HOME/.local/state/dotfiles/applied.log" | awk '{print $1}')"
+scenario_end
+
+scenario 'upgrade refuses a dirty tree'
+fixture
+machine_clone
+printf 'nvim v2-mine\n' > "$machine/modules/nvim.nix"
+run_cli upgrade
+expect_eq 'upgrade exits 0 when it refuses' 0 "$cli_rc"
+expect_eq 'upgrade leaves the pin alone' 'lock v1' "$(cat "$machine/flake.lock")"
+expect_eq 'upgrade leaves the edit untouched' 'nvim v2-mine' "$(cat "$machine/modules/nvim.nix")"
 scenario_end
 
 if [ "$failures" -gt 0 ]; then

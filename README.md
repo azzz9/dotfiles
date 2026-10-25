@@ -66,17 +66,14 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#<
 | `dotfiles rollback`| Apply the commit applied before the current one |
 | `dotfiles status`  | Report what is out of date here, changing nothing |
 | `dotfiles sync`    | Check out `main`, pull, then apply   |
+| `dotfiles upgrade` | Move every pin to its latest, then build and apply |
 
 The machine's name is its hostname and its row key, so none of these needs an
 argument. An argument names another machine, which is also the only reason to
 give one.
 
-`audit` also runs without being asked. The `Audit` workflow reads what the flake
-declares every day, because a runner has no store to read. A declared run cannot
-prune the baseline, so a new match there is recorded and opened as a PR instead
-of failing the job; the store audit on a machine still fails on one. Run
-`dotfiles audit` on the machine after a pin bump, and `dotfiles audit --update`
-to record a match you accept.
+`audit` is run by hand. Run it on the machine after a pin bump; it prints every
+match, including the ones only a nixpkgs fix can clear.
 
 `sync` refuses any dirty path, because `apply` would otherwise activate a
 half-finished edit. It checks out `main`, so a machine that rolled back returns
@@ -87,9 +84,12 @@ against `origin/main`, and `rollback` applies the commit applied before the
 current one. Both read the log, so "which commit was working" does not depend on
 memory.
 
-Move the pins by hand with `scripts/bump-pins.sh`, then run `scripts/check.sh`
-(the pre-push hook runs it too), commit, and push. To move one flake input, run
-`nix flake update <input>`, commit `flake.lock`, then `dotfiles apply`.
+`dotfiles upgrade` moves every pin with `scripts/bump-pins.sh`, builds and
+applies, reinstalls the GitHub Herdr plugins, and reports the audit. `herdr
+plugin update` only refetches the ref recorded at install, so the plugin step
+installs again to take the latest. Review the moved pin files, run
+`scripts/check.sh` (the pre-push hook runs it too), and commit. To move one flake
+input, run `nix flake update <input>`, commit `flake.lock`, then `dotfiles apply`.
 
 The npm rows in `modules/pi.nix` are tarballs, and `bump-pins.sh` moves them to
 their registry latest, keeping each vendored dependency on the version its
@@ -107,7 +107,7 @@ One run at a time: a second `dotfiles` run exits 1 while another holds the lock,
 and a lock left behind by a killed run is reclaimed instead of blocking every
 run after it.
 
-On a NixOS machine, `apply`, `sync`, and `upgrade` change the user environment
+On a NixOS machine, `apply`, `sync`, and `rollback` change the user environment
 only. The system layer is a separate checkout, and a change there needs the
 system command below as well.
 
