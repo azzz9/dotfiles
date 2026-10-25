@@ -66,7 +66,7 @@ audit_declared_names() {
 # One "<issue number>\t<title>" line per open security issue, every page until
 # a short one. A rise past 2000 issues needs the page cap raised.
 audit_nixpkgs_issues() {
-  local page body count auth=()
+  local page body count token auth=()
   # The issues endpoint, not the search API: a search reader gets 10 requests a
   # minute, which nine pages of issues exhaust on the second run. A token lifts
   # the 60 requests an hour this one gets anonymously.
@@ -74,6 +74,8 @@ audit_nixpkgs_issues() {
     auth=(-H "Authorization: Bearer $GH_TOKEN")
   elif [ -n "${GITHUB_TOKEN:-}" ]; then
     auth=(-H "Authorization: Bearer $GITHUB_TOKEN")
+  elif token="$(timeout 5 gh auth token 2>/dev/null)" && [ -n "$token" ]; then
+    auth=(-H "Authorization: Bearer $token")
   fi
   page=1
   while :; do
