@@ -29,6 +29,12 @@ FIELD = {
     "hash": re.compile(r'hash = "([^"]+)";'),
 }
 EXACT = re.compile(r"\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.+-]+)?")
+SUPPORTED = re.compile(
+    r"\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.+-]+)?"
+    r"|[\^~]\d+(?:\.\d+){0,2}"
+    r"|\d+(?:\.\d+){1,2}(?:\.x)?"
+    r"|\*"
+)
 
 
 class Entry:
@@ -99,70 +105,39 @@ def _partial_ceiling(numbers: tuple[int, ...]):
     return version_key(f"{numbers[0] + 1}.0.0")
 
 
-OPERATORS = (">=", "<=", ">", "<", "^", "~", "=")
-
-
-def _split_comparators(alternative: str) -> list[str]:
-    parts = []
-    pending = ""
-    for token in alternative.split():
-        if token in OPERATORS:
-            pending = token
-            continue
-        parts.append(pending + token)
-        pending = ""
-    if pending:
-        parts.append(pending)
-    return parts
-
-
 def _prerelease_allowed(version: str, spec: str) -> bool:
     if "-" not in version.split("+")[0]:
         return True
     core = _numbers(version)
-    return any(
-        "-" in part and _numbers(part) == core
-        for alternative in spec.split("||")
-        for part in _split_comparators(alternative)
-    )
+    return any("-" in part and _numbers(part) == core for part in spec.split())
 
 
 def _comparator(version: str, part: str) -> bool:
+    if part == "*":
+        return True
     operator = ""
-    for prefix in OPERATORS:
+    for prefix in ("^", "~"):
         if part.startswith(prefix):
             operator, part = prefix, part[len(prefix):]
             break
-    if part in ("", "*", "x", "X", "latest"):
-        return True
     numbers = _numbers(part)
-    if not numbers:
-        return False
     current = version_key(version)
     floor = _floor(numbers)
-    if operator in ("^", "~"):
+    if operator:
         return floor <= current < _ceiling(numbers, operator)
-    if operator == ">=":
-        return floor <= current
-    if operator == ">":
-        return floor < current
-    if operator == "<=":
-        return current <= floor
-    if operator == "<":
-        return current < floor
     if len(numbers) < 3:
         return floor <= current < _partial_ceiling(numbers)
     return current == version_key(part)
 
 
 def satisfies(version: str, spec: str) -> bool:
-    if not _prerelease_allowed(version, spec):
+    parts = spec.split()
+    for part in parts:
+        if "||" in part or not SUPPORTED.fullmatch(part):
+            raise PlanError(f"cannot evaluate the range {spec!r}")
+    if not parts or not _prerelease_allowed(version, spec):
         return False
-    for alternative in spec.split("||"):
-        parts = _split_comparators(alternative)
-        if parts and all(_comparator(version, part) for part in parts):
-            return True
-    return False
+    return all(_comparator(version, part) for part in parts)
 
 
 def fetch_json(url: str):
@@ -250,6 +225,8 @@ def plan(entries: dict[str, Entry], registry: Registry):
     effective = effective_versions(entries, registry)
     owned = parents(entries, effective, registry)
     roots = [name for name in entries if not owned.get(name)]
+    if not roots:
+        raise PlanError("every row is owned by another row; the dependency graph is cyclic")
     chosen = dict(effective)
     for _ in range(len(entries) + 1):
         wanted: dict[str, list[str]] = {}
@@ -368,6 +345,14 @@ GRAPH = """  rows = [
   ];
 """
 
+CYCLE = """  rows = [
+    { tarball = { name = "a"; version = "1.0.0";
+        url = "https://registry.npmjs.org/a/-/a-1.0.0.tgz"; hash = "sha256-a"; }; }
+    { tarball = { name = "b"; version = "1.0.0";
+        url = "https://registry.npmjs.org/b/-/b-1.0.0.tgz"; hash = "sha256-b"; }; }
+  ];
+"""
+
 
 def selftest() -> int:
     entries = parse(FIXTURE)
@@ -444,17 +429,25 @@ def selftest() -> int:
     assert satisfies("1.0.9", "~1.0.0")
     assert not satisfies("1.1.0", "~1.0.0")
     assert satisfies("3.0.0", "*")
-    assert satisfies("1.4.0", ">=1.0.0 <2.0.0")
-    assert not satisfies("2.1.0", ">=1.0.0 <2.0.0")
     assert satisfies("1.2.9", "1.2")
     assert not satisfies("1.9.0", "1.2")
     assert not satisfies("1.9.0", "1.2.x")
     assert not satisfies("2.0.0-beta.1", "^1.0.0")
     assert satisfies("1.0.0-rc.1", "1.0.0-rc.1")
-    assert not satisfies("1.0.0", "next")
-    assert not satisfies("1.0.0", "garbage")
-    assert satisfies("1.5.0", ">= 1.0.0")
-    assert not satisfies("0.9.0", ">= 1.0.0")
+    for unsupported in (
+        ">=1.0.0 <2.0.0",
+        "<=1.2",
+        ">1.2",
+        "^1.0.0 || ^2.0.0",
+        "next",
+        "garbage",
+    ):
+        try:
+            satisfies("1.5.0", unsupported)
+        except PlanError:
+            pass
+        else:
+            raise AssertionError(unsupported)
 
     settled = plan(parse(GRAPH), Fake(
         {"root": "1.0.0", "child": "2.0.0", "grandchild": "2.0.0"},
@@ -463,6 +456,16 @@ def selftest() -> int:
          ("child", "2.0.0"): meta({"grandchild": "2.0.0"}),
          ("grandchild", "1.0.0"): meta(), ("grandchild", "2.0.0"): meta()}))
     assert settled == {}, settled
+
+    try:
+        plan(parse(CYCLE), Fake(
+            {"a": "2.0.0", "b": "2.0.0"},
+            {("a", "2.0.0"): meta({"b": "2.0.0"}),
+             ("b", "2.0.0"): meta({"a": "2.0.0"})}))
+    except PlanError:
+        pass
+    else:
+        raise AssertionError("cyclic graph settled silently")
 
     print("bump-pi-tarballs: selftest passed")
     return 0
