@@ -142,9 +142,7 @@ that file. `--declared --update` adds the lines it found and prunes nothing,
 because its set is a subset of the store's, and a new match in a declared run is
 a report rather than a failure.
 
-The `Audit` workflow records what the declared run found into the baseline and
-opens a PR, so a new upstream issue reaches the reader as a diff and the
-schedule stays green. The pin bump is run by hand; run `dotfiles audit` after it
+The pin bump and the audit are run by hand. Run `dotfiles audit` after a bump
 and `dotfiles audit --update` to record a match you accept.
 
 ## Pins
@@ -265,9 +263,9 @@ An optional Cachix cache speeds CI up. Set the repository variable `CACHIX_NAME`
 and the secret `CACHIX_AUTH_TOKEN` and the workflow configures the cache. Without
 a token CI uses the public cache only.
 
-A second workflow, `Audit`, runs daily and on demand, records the new matches
-into the baseline, and opens a PR for them. It is not in the push path: it needs
-the network, and upstream issue churn must not fail an unrelated push.
+There is no scheduled workflow besides CI. The pin bump and the audit are run
+by hand, because an upstream issue cannot be fixed before nixpkgs carries the
+fix.
 
 ## Checks
 

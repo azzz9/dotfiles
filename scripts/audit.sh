@@ -4,8 +4,7 @@
 #
 #   audit_packages <repo> <machine> <tmp_dir> <pi_module> <update> <declared>
 #
-# It reports by return code, so `dotfiles audit` and the Audit workflow can read
-# it as a report.
+# It reports by return code, so `dotfiles audit` can read it as a report.
 #
 # Three sources are checked, because they are pinned in different ways.
 #
@@ -33,7 +32,7 @@
 #
 # A declared run reads a subset of the store's names, so it can never prune the
 # file. `--declared --update` adds the lines it found and leaves the rest, and a
-# new match there is a lead for the Audit workflow rather than a failure.
+# new match there is a lead for a person rather than a failure.
 
 # The running Home Manager generation is the machine's actual set; building the
 # checkout is the fallback for a machine that has not applied yet.
@@ -341,9 +340,9 @@ audit_packages() {
 
   if [ "$newest_count" -gt 0 ]; then
     if [ "$declared" = 1 ]; then
-      # A runner cannot record a line, and this set is a subset of the store's,
-      # so a new match here is a lead for the Audit workflow, not a failure.
-      printf 'dotfiles audit: %s new match(es); the Audit workflow records these\n' "$newest_count"
+      # A declared run is a subset of the store's, so a new match is a lead for a
+      # person rather than a failure.
+      printf 'dotfiles audit: %s new match(es); read them, then record them with dotfiles audit --update\n' "$newest_count"
     else
       printf 'dotfiles audit: %s new match(es); read them, then record them with dotfiles audit --update\n' "$newest_count"
       return 1

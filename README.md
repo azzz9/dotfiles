@@ -72,12 +72,9 @@ The machine's name is its hostname and its row key, so none of these needs an
 argument. An argument names another machine, which is also the only reason to
 give one.
 
-`audit` also runs without being asked. The `Audit` workflow reads what the flake
-declares every day, because a runner has no store to read. A declared run cannot
-prune the baseline, so a new match there is recorded and opened as a PR instead
-of failing the job; the store audit on a machine still fails on one. Run
-`dotfiles audit` on the machine after a pin bump, and `dotfiles audit --update`
-to record a match you accept.
+`audit` is run by hand. Run it on the machine after a pin bump, and
+`dotfiles audit --update` to record a match you accept. A match outside the
+baseline fails the store audit.
 
 `sync` refuses any dirty path, because `apply` would otherwise activate a
 half-finished edit. It checks out `main`, so a machine that rolled back returns

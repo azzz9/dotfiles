@@ -396,7 +396,7 @@ run_cli audit --declared
 expect_eq 'audit --declared exits 0 on a new match' 0 "$cli_rc"
 expect_out_has 'audit --declared names its source' 'declared - 2 packages'
 expect_out_has 'audit --declared matches a declared name' 'new   #111 fixturepkg 1.2.3'
-expect_out_has 'audit --declared says the workflow records it' 'the Audit workflow records these'
+expect_out_has 'audit --declared points at the record command' 'record them with dotfiles audit --update'
 expect_out_lacks 'audit --declared does not call a store-only line stale' 'no longer apply'
 run_cli audit --declared --update
 expect_eq 'audit --declared --update exits 0' 0 "$cli_rc"
