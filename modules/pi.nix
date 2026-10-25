@@ -29,14 +29,14 @@ let
     # under node_modules, which is what `pi install` would have produced.
     { tarball = {
         name = "@juicesharp/rpiv-ask-user-question";
-        version = "2.13.10";
-        url = "https://registry.npmjs.org/@juicesharp/rpiv-ask-user-question/-/rpiv-ask-user-question-2.13.10.tgz";
-        hash = "sha256-ZDvfW0dVvuAoBXxNr/WR4VzkNIIX1ovrfkB1ds8OiEk=";
+        version = "2.15.0";
+        url = "https://registry.npmjs.org/@juicesharp/rpiv-ask-user-question/-/rpiv-ask-user-question-2.15.0.tgz";
+        hash = "sha256-Oz37Xyg26JfCiEpwqAr83ipTcK9M7Yoskn4O17+PuB8=";
         deps = [{
           name = "@juicesharp/rpiv-config";
-          version = "2.13.10";
-          url = "https://registry.npmjs.org/@juicesharp/rpiv-config/-/rpiv-config-2.13.10.tgz";
-          hash = "sha256-DfQN4AfpA7IecPfOtLYTivcXaUh3NAu+UAz5wu8/JTw=";
+          version = "2.15.0";
+          url = "https://registry.npmjs.org/@juicesharp/rpiv-config/-/rpiv-config-2.15.0.tgz";
+          hash = "sha256-uLZ56plD19pYB1qyPoJ7YhBJJIyImOWLh2pvFaBqdTw=";
         }];
       };
     }
@@ -56,9 +56,9 @@ let
     # only the published tarball carries the dist.
     { tarball = {
         name = "cc-safety-net";
-        version = "2.6.18";
-        url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.6.18.tgz";
-        hash = "sha256-GRrJicyWswqaALHBn7v7FKqBLU83WS2vZ1l/n6dQkeQ=";
+        version = "2.6.19";
+        url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.6.19.tgz";
+        hash = "sha256-DBRAfiVBCmKKTSNBl/gC8bUJiNXWHl6xsumtXMU5jto=";
       };
     }
     # Moves the running pi session to another directory or worktree, keeping the
