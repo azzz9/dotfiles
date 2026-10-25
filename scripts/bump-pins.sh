@@ -75,20 +75,26 @@ bump_pins() {
 # Rewrites one pin through a temporary file: BSD sed has no -i without a backup
 # suffix, and a rewrite that matched nothing must not read as success.
 replace_pin() {
-  local file="$1" old="$2" new="$3" tmp
+  local file="$1" old="$2" new="$3" tmp mode
   if ! grep -qF -- "$old" "$file"; then
     return 1
   fi
-  tmp="$(mktemp)"
+  if ! tmp="$(mktemp "$file.XXXXXX")"; then
+    return 1
+  fi
   if ! sed "s|$old|$new|" "$file" > "$tmp" || ! grep -qF -- "$new" "$tmp"; then
     rm -f "$tmp"
     return 1
   fi
-  if ! cat "$tmp" > "$file"; then
+  mode="$(stat -c %a "$file" 2>/dev/null || stat -f %Lp "$file" 2>/dev/null || true)"
+  if [ -n "$mode" ] && ! chmod "$mode" "$tmp"; then
     rm -f "$tmp"
     return 1
   fi
-  rm -f "$tmp"
+  if ! mv "$tmp" "$file"; then
+    rm -f "$tmp"
+    return 1
+  fi
 }
 
 bump_codediff_watcher() {

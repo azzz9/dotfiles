@@ -93,9 +93,43 @@ def _ceiling(numbers: tuple[int, ...], operator: str):
     return version_key(f"{numbers[0] + 1}.0.0")
 
 
+def _partial_ceiling(numbers: tuple[int, ...]):
+    if len(numbers) >= 2:
+        return version_key(f"{numbers[0]}.{numbers[1] + 1}.0")
+    return version_key(f"{numbers[0] + 1}.0.0")
+
+
+OPERATORS = (">=", "<=", ">", "<", "^", "~", "=")
+
+
+def _split_comparators(alternative: str) -> list[str]:
+    parts = []
+    pending = ""
+    for token in alternative.split():
+        if token in OPERATORS:
+            pending = token
+            continue
+        parts.append(pending + token)
+        pending = ""
+    if pending:
+        parts.append(pending)
+    return parts
+
+
+def _prerelease_allowed(version: str, spec: str) -> bool:
+    if "-" not in version.split("+")[0]:
+        return True
+    core = _numbers(version)
+    return any(
+        "-" in part and _numbers(part) == core
+        for alternative in spec.split("||")
+        for part in _split_comparators(alternative)
+    )
+
+
 def _comparator(version: str, part: str) -> bool:
     operator = ""
-    for prefix in (">=", "<=", ">", "<", "^", "~"):
+    for prefix in OPERATORS:
         if part.startswith(prefix):
             operator, part = prefix, part[len(prefix):]
             break
@@ -103,7 +137,7 @@ def _comparator(version: str, part: str) -> bool:
         return True
     numbers = _numbers(part)
     if not numbers:
-        return True
+        return False
     current = version_key(version)
     floor = _floor(numbers)
     if operator in ("^", "~"):
@@ -117,13 +151,15 @@ def _comparator(version: str, part: str) -> bool:
     if operator == "<":
         return current < floor
     if len(numbers) < 3:
-        return floor <= current < _ceiling(numbers, "^")
-    return current == floor
+        return floor <= current < _partial_ceiling(numbers)
+    return current == version_key(part)
 
 
 def satisfies(version: str, spec: str) -> bool:
+    if not _prerelease_allowed(version, spec):
+        return False
     for alternative in spec.split("||"):
-        parts = [part for part in alternative.split() if part]
+        parts = _split_comparators(alternative)
         if parts and all(_comparator(version, part) for part in parts):
             return True
     return False
@@ -233,12 +269,21 @@ def plan(entries: dict[str, Entry], registry: Registry):
                     continue
                 wanted.setdefault(dependency, []).append(spec)
                 queue.append((dependency, chosen[dependency]))
-        resolved = {
-            name: resolve(name, specs, entries, registry) for name, specs in wanted.items()
+        resolved = {}
+        blocked = None
+        for name, specs in wanted.items():
+            try:
+                resolved[name] = resolve(name, specs, entries, registry)
+            except PlanError as error:
+                blocked = blocked or error
+        changed = {
+            name: version for name, version in resolved.items() if chosen[name] != version
         }
-        if all(chosen[name] == version for name, version in resolved.items()):
+        if not changed:
+            if blocked:
+                raise blocked
             return updates
-        chosen.update(resolved)
+        chosen.update(changed)
     raise PlanError("the dependency requirements do not settle")
 
 
@@ -310,6 +355,16 @@ TWO_PARENTS = """  rows = [
         hash = "sha256-child";
       };
     }
+  ];
+"""
+
+GRAPH = """  rows = [
+    { tarball = { name = "root"; version = "1.0.0";
+        url = "https://registry.npmjs.org/root/-/root-1.0.0.tgz"; hash = "sha256-root"; }; }
+    { tarball = { name = "child"; version = "1.0.0";
+        url = "https://registry.npmjs.org/child/-/child-1.0.0.tgz"; hash = "sha256-child"; }; }
+    { tarball = { name = "grandchild"; version = "1.0.0";
+        url = "https://registry.npmjs.org/grandchild/-/grandchild-1.0.0.tgz"; hash = "sha256-gc"; }; }
   ];
 """
 
@@ -391,6 +446,23 @@ def selftest() -> int:
     assert satisfies("3.0.0", "*")
     assert satisfies("1.4.0", ">=1.0.0 <2.0.0")
     assert not satisfies("2.1.0", ">=1.0.0 <2.0.0")
+    assert satisfies("1.2.9", "1.2")
+    assert not satisfies("1.9.0", "1.2")
+    assert not satisfies("1.9.0", "1.2.x")
+    assert not satisfies("2.0.0-beta.1", "^1.0.0")
+    assert satisfies("1.0.0-rc.1", "1.0.0-rc.1")
+    assert not satisfies("1.0.0", "next")
+    assert not satisfies("1.0.0", "garbage")
+    assert satisfies("1.5.0", ">= 1.0.0")
+    assert not satisfies("0.9.0", ">= 1.0.0")
+
+    settled = plan(parse(GRAPH), Fake(
+        {"root": "1.0.0", "child": "2.0.0", "grandchild": "2.0.0"},
+        {("root", "1.0.0"): meta({"child": "1.0.0", "grandchild": "1.0.0"}),
+         ("child", "1.0.0"): meta({"grandchild": "1.0.0"}),
+         ("child", "2.0.0"): meta({"grandchild": "2.0.0"}),
+         ("grandchild", "1.0.0"): meta(), ("grandchild", "2.0.0"): meta()}))
+    assert settled == {}, settled
 
     print("bump-pi-tarballs: selftest passed")
     return 0
