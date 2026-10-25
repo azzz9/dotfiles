@@ -92,6 +92,13 @@ esac
 STUB
 chmod +x "$work/bin/nix-store"
 
+# `upgrade` reinstalls the GitHub Herdr plugins, so record the calls.
+cat > "$work/bin/herdr" <<STUB
+#!$BASH
+printf '%s\n' "\$*" >> "$work/herdr-calls"
+STUB
+chmod +x "$work/bin/herdr"
+
 cat > "$work/fakeout/activate" <<'STUB'
 #!/usr/bin/env bash
 echo "[stub] activate (profile add)"
@@ -127,6 +134,7 @@ fixture() {
   printf '{}\n' > "$work/advisories.json"
   printf '{"results":[]}\n' > "$work/osv.json"
   rm -f "$work/allow-flake-update"
+  rm -f "$work/herdr-calls"
   rm -rf "$XDG_RUNTIME_DIR/dotfiles.lockdir" "$HOME/.local/state/home-manager"
   rm -rf "$HOME/.local/state/dotfiles"
   rm -rf "$HOME/.pi"
@@ -506,6 +514,7 @@ expect_eq 'upgrade exits 0' 0 "$cli_rc"
 expect_eq 'upgrade moved a pin' 'lock v2' "$(cat "$machine/flake.lock")"
 expect_out_has 'upgrade activates' '[stub] activate'
 expect_out_has 'upgrade lists the moved pin' 'flake.lock'
+expect_eq 'upgrade reinstalls the herdr plugins' present "$(out_has "$(cat "$work/herdr-calls")" 'plugin install ChmaraX/herdr-nvim --yes')"
 expect_eq 'upgrade records the applied commit' "$(git -C "$machine" rev-parse HEAD)" "$(tail -n 1 "$HOME/.local/state/dotfiles/applied.log" | awk '{print $1}')"
 scenario_end
 

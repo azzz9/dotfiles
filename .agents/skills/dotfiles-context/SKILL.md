@@ -111,7 +111,9 @@ change is needed.
 command table. `sync` and `upgrade` refuse any dirty path before they move,
 because activation would otherwise pick up a half-finished edit. `apply` has no
 dirty gate and activates the current tree. `upgrade` runs
-`scripts/bump-pins.sh`, builds, applies, and reports the audit without failing.
+`scripts/bump-pins.sh`, builds, applies, reinstalls the two GitHub Herdr plugins
+(`herdr plugin update` keeps the recorded ref, so it cannot move a tag), and
+reports the audit without failing.
 `apply`, `sync`, `upgrade`, and `rollback` record the applied commit in
 `~/.local/state/dotfiles/applied.log`, and `rollback` applies the most recent
 applied commit that differs from the current one. `status` reads and never fetches: it

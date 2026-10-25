@@ -420,6 +420,15 @@ case "$command" in
     fi
     apply_home_and_reconcile
     record_applied
+    # `herdr plugin update` only refetches the ref recorded at install time, so a
+    # tag or commit never moves. Installing again takes the latest.
+    if command -v herdr >/dev/null 2>&1; then
+      for source in ChmaraX/herdr-nvim kryptamine/herdr-auto-title; do
+        if ! herdr plugin install "$source" --yes >/dev/null; then
+          echo "dotfiles upgrade: could not reinstall the $source herdr plugin; the upgrade itself is applied" >&2
+        fi
+      done
+    fi
     # The pins just moved, which is when a new issue can start matching. Stay a
     # report: the pins are already applied, and failing would call a finished
     # upgrade broken.

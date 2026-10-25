@@ -85,7 +85,9 @@ current one. Both read the log, so "which commit was working" does not depend on
 memory.
 
 `dotfiles upgrade` moves every pin with `scripts/bump-pins.sh`, builds and
-applies, then reports the audit. Review the moved pin files, run
+applies, reinstalls the GitHub Herdr plugins, and reports the audit. `herdr
+plugin update` only refetches the ref recorded at install, so the plugin step
+installs again to take the latest. Review the moved pin files, run
 `scripts/check.sh` (the pre-push hook runs it too), and commit. To move one flake
 input, run `nix flake update <input>`, commit `flake.lock`, then `dotfiles apply`.
 
