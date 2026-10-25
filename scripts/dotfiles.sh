@@ -19,6 +19,7 @@ commands:
   rollback   apply the commit that was applied before the current one
   status     report what is out of date here, changing nothing
   sync       check out main, pull, then apply
+  upgrade    move every pin to its latest, then build and apply
 
 audit reads this machine's store. --declared reads the packages flake.nix names
 for it instead, which is what a runner without a store can do. --update records
@@ -26,8 +27,9 @@ what it found in scripts/audit-baseline.txt: the store audit rewrites the file,
 and --declared only adds to it, because that set is smaller. A new match fails
 the store audit and is a report for the declared one.
 
-Move the pins by hand with scripts/bump-pins.sh. To move one flake input, run
-`nix flake update <input>`, commit flake.lock, then `dotfiles apply`.
+upgrade moves every pin with scripts/bump-pins.sh, then builds and applies.
+To move one flake input, run `nix flake update <input>`, commit flake.lock,
+then `dotfiles apply`.
 
 machine: the name of the machine to apply or report on. This machine's
          hostname is the default. An unknown name is listed against the names
@@ -415,6 +417,27 @@ case "$command" in
     git pull --ff-only
     apply_home_and_reconcile
     record_applied
+    ;;
+  upgrade)
+    read_dirty_paths
+    if [ "${#own_dirty[@]}" -gt 0 ] || [ "${#foreign_dirty[@]}" -gt 0 ]; then
+      refuse_dirty "${own_dirty[@]}" "${foreign_dirty[@]}"
+    fi
+    if ! bash scripts/bump-pins.sh; then
+      echo "dotfiles upgrade: the pin bump failed; nothing was applied" >&2
+      exit 1
+    fi
+    apply_home_and_reconcile
+    record_applied
+    # The pins just moved, which is when a new issue can start matching. Stay a
+    # report: the pins are already applied, and failing would call a finished
+    # upgrade broken.
+    audit_packages "$repo" "$machine" "$tmp_dir" "$pi_module" 0 0 ||
+      echo "dotfiles upgrade: the audit above exited non-zero; the upgrade itself is applied" >&2
+    if [ -n "$(git status --porcelain -- "${pin_paths[@]}")" ]; then
+      echo "dotfiles upgrade: these files moved; review and commit them, or the other machines keep their own pins:"
+      git status --porcelain -- "${pin_paths[@]}"
+    fi
     ;;
   *)
     echo "dotfiles: unknown command: $command" >&2

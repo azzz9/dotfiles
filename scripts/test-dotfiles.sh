@@ -109,6 +109,7 @@ fixture() {
   install -Dm644 "$src" "$seed/scripts/dotfiles.sh"
   install -Dm644 "$(dirname "$src")/audit.sh" "$seed/scripts/audit.sh"
   install -Dm644 "$(dirname "$src")/pi-reconcile.sh" "$seed/scripts/pi-reconcile.sh"
+  printf '#!/usr/bin/env bash\nprintf "lock v2\\n" > flake.lock\n' > "$seed/scripts/bump-pins.sh"
   mkdir -p "$seed/modules"
   printf 'lock v1\n' > "$seed/flake.lock"
   printf 'pins v1\n' > "$seed/modules/pinned-packages.nix"
@@ -543,6 +544,27 @@ printf 'other-host\n' > "$work/hostname"
 run_cli status
 expect_eq 'status exits 0' 0 "$cli_rc"
 expect_out_has 'status says the row is not this machine' 'generation: not compared, test is not this machine (other-host)'
+scenario_end
+
+scenario 'upgrade moves the pins and applies them'
+fixture
+machine_clone
+run_cli upgrade
+expect_eq 'upgrade exits 0' 0 "$cli_rc"
+expect_eq 'upgrade moved a pin' 'lock v2' "$(cat "$machine/flake.lock")"
+expect_out_has 'upgrade activates' '[stub] activate'
+expect_out_has 'upgrade lists the moved pin' 'flake.lock'
+expect_eq 'upgrade records the applied commit' "$(git -C "$machine" rev-parse HEAD)" "$(tail -n 1 "$HOME/.local/state/dotfiles/applied.log" | awk '{print $1}')"
+scenario_end
+
+scenario 'upgrade refuses a dirty tree'
+fixture
+machine_clone
+printf 'nvim v2-mine\n' > "$machine/modules/nvim.nix"
+run_cli upgrade
+expect_eq 'upgrade exits 0 when it refuses' 0 "$cli_rc"
+expect_eq 'upgrade leaves the pin alone' 'lock v1' "$(cat "$machine/flake.lock")"
+expect_eq 'upgrade leaves the edit untouched' 'nvim v2-mine' "$(cat "$machine/modules/nvim.nix")"
 scenario_end
 
 if [ "$failures" -gt 0 ]; then

@@ -51,6 +51,7 @@ _dotfiles() {
     'rollback:apply the commit applied before the current one'
     'status:report what is out of date here, changing nothing'
     'sync:pull latest changes, then apply'
+    'upgrade:move every pin to its latest, then build and apply'
   )
   # Machine names injected from flake.nix.
   local -a machines=("${_dotfiles_machines[@]}")

@@ -66,6 +66,7 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#<
 | `dotfiles rollback`| Apply the commit applied before the current one |
 | `dotfiles status`  | Report what is out of date here, changing nothing |
 | `dotfiles sync`    | Check out `main`, pull, then apply   |
+| `dotfiles upgrade` | Move every pin to its latest, then build and apply |
 
 The machine's name is its hostname and its row key, so none of these needs an
 argument. An argument names another machine, which is also the only reason to
@@ -87,9 +88,10 @@ against `origin/main`, and `rollback` applies the commit applied before the
 current one. Both read the log, so "which commit was working" does not depend on
 memory.
 
-Move the pins by hand with `scripts/bump-pins.sh`, then run `scripts/check.sh`
-(the pre-push hook runs it too), commit, and push. To move one flake input, run
-`nix flake update <input>`, commit `flake.lock`, then `dotfiles apply`.
+`dotfiles upgrade` moves every pin with `scripts/bump-pins.sh`, builds and
+applies, then reports the audit. Review the moved pin files, run
+`scripts/check.sh` (the pre-push hook runs it too), and commit. To move one flake
+input, run `nix flake update <input>`, commit `flake.lock`, then `dotfiles apply`.
 
 The npm rows in `modules/pi.nix` are tarballs, and `bump-pins.sh` moves them to
 their registry latest, keeping each vendored dependency on the version its

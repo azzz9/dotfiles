@@ -105,12 +105,14 @@ change is needed.
 
 ## dotfiles CLI commands
 
-`apply`, `audit`, `rollback`, `status`, and `sync` live in `scripts/dotfiles.sh`,
-which `modules/dotfiles.nix` installs through `writeShellApplication` (so the
-build shellchecks it). README.md owns the command table. `sync` refuses any
-dirty path before it pulls, because activation would otherwise pick up a
-half-finished edit. `apply` has no dirty gate and activates the current tree.
-`apply`, `sync`, and `rollback` record the applied commit in
+`apply`, `audit`, `rollback`, `status`, `sync`, and `upgrade` live in
+`scripts/dotfiles.sh`, which `modules/dotfiles.nix` installs through
+`writeShellApplication` (so the build shellchecks it). README.md owns the
+command table. `sync` and `upgrade` refuse any dirty path before they move,
+because activation would otherwise pick up a half-finished edit. `apply` has no
+dirty gate and activates the current tree. `upgrade` runs
+`scripts/bump-pins.sh`, builds, applies, and reports the audit without failing.
+`apply`, `sync`, `upgrade`, and `rollback` record the applied commit in
 `~/.local/state/dotfiles/applied.log`, and `rollback` applies the most recent
 applied commit that differs from the current one. `status` reads and never fetches: it
 reports the distance from the last fetched upstream, the uncommitted pin files,
