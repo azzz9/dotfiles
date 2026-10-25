@@ -138,6 +138,22 @@ in
     python3 ${self}/scripts/bump-pi-tarballs.py --selftest
     touch $out
   '';
+  # The patch and the tarball pin live in modules/pi.nix, so a version bump
+  # moves both.
+  teleport-slot = pkgs.runCommand "teleport-slot" {
+    nativeBuildInputs = [ pkgs.nodejs pkgs.patch pkgs.gnutar pkgs.gzip ];
+  } ''
+    mkdir src
+    tar -xzf ${pkgs.fetchurl {
+      url = "https://registry.npmjs.org/pi-agent-teleport/-/pi-agent-teleport-0.2.7.tgz";
+      hash = "sha256-9yW+e8sZAxLbzluZ6CBJC+HeZW6+2SEmYiVOeaMmSEg=";
+    }} -C src --strip-components=1
+    cd src
+    patch -p1 < ${self}/modules/pi/teleport-agent-tab.patch
+    cp ${self}/checks/teleport-slot.mjs .
+    node --experimental-strip-types teleport-slot.mjs
+    touch $out
+  '';
   actionlint = pkgs.runCommand "actionlint" { nativeBuildInputs = [ pkgs.actionlint ]; } ''
     actionlint ${self}/.github/workflows/*.yml
     touch $out

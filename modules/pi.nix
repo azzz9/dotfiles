@@ -68,6 +68,9 @@ let
         version = "0.2.7";
         url = "https://registry.npmjs.org/pi-agent-teleport/-/pi-agent-teleport-0.2.7.tgz";
         hash = "sha256-9yW+e8sZAxLbzluZ6CBJC+HeZW6+2SEmYiVOeaMmSEg=";
+        postPatch = ''
+          patch -p1 < ${./pi/teleport-agent-tab.patch}
+        '';
       };
     }
     # Compact, expandable TUI tool rows, with its own bundled theme.
