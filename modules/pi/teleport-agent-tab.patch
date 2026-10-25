@@ -1,0 +1,118 @@
+--- a/src/core.ts
++++ b/src/core.ts
+@@ -98,7 +98,36 @@
+   return prepareDestination(context, target, undefined, sessionName, true);
+ }
+ 
+-type PreparedDestination = { location: HerdrLocation; rollback: () => void; rollbackArgs: string[] };
++type PreparedDestination = { location: HerdrLocation; rollback: () => void; rollbackArgs: string[][] };
++function waitForIdleShell(context: HerdrContext, paneId: string): void {
++  const deadline = Date.now() + 5_000;
++  while (!isHerdrShell(context, paneId)) {
++    if (Date.now() >= deadline) throw new Error("Teleport could not stop the destination Pi.");
++    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
++  }
++}
++export function runRollback(context: HerdrContext, commands: string[][]): void {
++  for (const command of commands) {
++    runHerdr(context, command);
++    if (command[0] === "pane" && command[1] === "send-keys") waitForIdleShell(context, command[2]);
++  }
++}
++export function selectAgentSlot(tabs: any[], panes: any[], target: string): { tabId: string; paneId: string; label: string } | undefined {
++  const first = Array.isArray(tabs) ? [...tabs].sort((a, b) => a.number - b.number)[0] : undefined;
++  if (!first || first.pane_count !== 1) return;
++  const pane = Array.isArray(panes) ? panes.find((candidate) => candidate.tab_id === first.tab_id) : undefined;
++  if (!pane?.pane_id || !pane.cwd || canonical(pane.cwd) !== canonical(target)) return;
++  return { tabId: first.tab_id, paneId: pane.pane_id, label: first.label ?? "" };
++}
++export function agentSlotRollbackArgs(paneId: string, tabId: string, label: string): string[][] {
++  return [["pane", "send-keys", paneId, "ctrl+c", "ctrl+c"], ["tab", "rename", tabId, label]];
++}
++function firstAgentSlot(context: HerdrContext, location: HerdrLocation, target: string): { location: HerdrLocation; label: string } | undefined {
++  const tabs = runHerdr(context, ["tab", "list", "--workspace", location.workspaceId]).tabs;
++  const panes = runHerdr(context, ["pane", "list", "--workspace", location.workspaceId]).panes;
++  const slot = selectAgentSlot(tabs, panes, target);
++  return slot ? { location: { ...location, tabId: slot.tabId, paneId: slot.paneId }, label: slot.label } : undefined;
++}
+ function prepareDestination(context: HerdrContext, target: string, owned?: Resource["herdr"], sessionName?: string, separateWorkspace = false): PreparedDestination {
+   const label = sessionName || basename(target) || target;
+   let checkout = false;
+@@ -107,25 +136,29 @@
+     const opened = runHerdr(context, ["worktree", "open", "--cwd", primaryRepo(target), "--path", target, "--no-focus"]);
+     const location = herdrLocation(context, opened, target);
+     const ownShell = owned && sameHerdrConnection(context, owned) && owned.paneId === location.paneId && opened.workspace.pane_count === 1;
+-    if ((!opened.already_open || ownShell) && isHerdrShell(context, location.paneId)) {
+-      const rollbackArgs = opened.already_open ? ["tab", "close", location.tabId] : ["workspace", "close", location.workspaceId];
+-      const rollback = () => { runHerdr(context, rollbackArgs); };
+-      try { runHerdr(context, ["tab", "rename", location.tabId, label]); }
++    const borrowed = opened.already_open && !ownShell ? firstAgentSlot(context, location, target) : undefined;
++    const reuse = !opened.already_open || ownShell ? location : borrowed?.location;
++    if (reuse && isHerdrShell(context, reuse.paneId)) {
++      const rollbackArgs = borrowed
++        ? agentSlotRollbackArgs(reuse.paneId, reuse.tabId, borrowed.label)
++        : [opened.already_open ? ["tab", "close", reuse.tabId] : ["workspace", "close", location.workspaceId]];
++      const rollback = () => runRollback(context, rollbackArgs);
++      try { runHerdr(context, ["tab", "rename", reuse.tabId, label]); }
+       catch (error) { try { rollback(); } catch {} throw error; }
+-      return { location, rollback, rollbackArgs };
++      return { location: reuse, rollback, rollbackArgs };
+     }
+     const tab = runHerdr(context, ["tab", "create", "--workspace", location.workspaceId, "--cwd", target, "--label", label, "--no-focus"]);
+     const next = herdrLocation(context, { ...tab, workspace: opened.workspace });
+-    return { location: next, rollback: () => { runHerdr(context, ["tab", "close", next.tabId]); }, rollbackArgs: ["tab", "close", next.tabId] };
++    return { location: next, rollback: () => { runRollback(context, [["tab", "close", next.tabId]]); }, rollbackArgs: [["tab", "close", next.tabId]] };
+   }
+   if (separateWorkspace) {
+     const created = runHerdr(context, ["workspace", "create", "--cwd", target, "--label", label, "--no-focus"]);
+     const location = herdrLocation(context, created);
+-    return { location, rollback: () => { runHerdr(context, ["workspace", "close", location.workspaceId]); }, rollbackArgs: ["workspace", "close", location.workspaceId] };
++    return { location, rollback: () => { runRollback(context, [["workspace", "close", location.workspaceId]]); }, rollbackArgs: [["workspace", "close", location.workspaceId]] };
+   }
+   const tab = runHerdr(context, ["tab", "create", "--workspace", context.workspaceId, "--cwd", target, "--label", label, "--no-focus"]);
+   const location = herdrLocation(context, { ...tab, workspace: { workspace_id: context.workspaceId } });
+-  return { location, rollback: () => { runHerdr(context, ["tab", "close", location.tabId]); }, rollbackArgs: ["tab", "close", location.tabId] };
++  return { location, rollback: () => { runRollback(context, [["tab", "close", location.tabId]]); }, rollbackArgs: [["tab", "close", location.tabId]] };
+ }
+ /** Create a linked checkout with Git or Herdr, then save its actual path and ownership. */
+ export function createManagedWorktree(input: { repo: string; branch: string; base?: string; path?: string; stateDir: string; herdr?: HerdrContext }): Resource {
+--- a/src/bridge.ts
++++ b/src/bridge.ts
+@@ -5,7 +5,7 @@
+ import { tmpdir } from "node:os";
+ import { dirname, join } from "node:path";
+ import { fileURLToPath } from "node:url";
+-import { mergeMachineResources, prepareHerdrArrival, preserveHerdrSourceWorkspace, readState, writeState, type TeleportState } from "./core.ts";
++import { mergeMachineResources, prepareHerdrArrival, preserveHerdrSourceWorkspace, readState, runRollback, writeState, type TeleportState } from "./core.ts";
+ import { runHerdr, type HerdrContext } from "./herdr.ts";
+ import type { TeleportExecution } from "./output.ts";
+ import { agentDirectory, HANDOFF_TIMEOUT, MAX_PACKET, hasSessionProcess, qualifyLocation, relocateSession, runtimeFingerprint, UnknownRemoteOutcome, shellQuote, sshOptions, validateReady, type ReadyIdentity, type RemoteMove, type ReturnRoute } from "./remote.ts";
+@@ -19,7 +19,7 @@
+ };
+ type Prepared = {
+   operationId: string; sessionId: string; dir: string; stateDir: string; sessionFile: string; cwd: string; agentDir: string;
+-  location: HerdrContext; rollbackArgs: string[]; fingerprint: string;
++  location: HerdrContext; rollbackArgs: string[][]; fingerprint: string;
+ };
+ 
+ function save(path: string, value: unknown): void {
+@@ -87,7 +87,7 @@
+ /** Roll back only an uncommitted arrival that this controller prepared. */
+ export function abortArrival(prepared: Prepared): void {
+   if (existsSync(join(prepared.dir, "committed.json"))) throw new Error("Destination already committed; refusing rollback.");
+-  runHerdr(prepared.location, prepared.rollbackArgs);
++  runRollback(prepared.location, prepared.rollbackArgs);
+   const current = readState(prepared.stateDir);
+   if (current.active?.sessionFile === prepared.sessionFile) {
+     const published = JSON.parse(readFileSync(join(prepared.dir, "next-state.json"), "utf8"));
+--- a/src/herdr.ts
++++ b/src/herdr.ts
+@@ -20,7 +20,7 @@
+   try {
+     const output = execFileSync("herdr", args, { encoding: "utf8", env, timeout: 15_000, stdio: ["ignore", "pipe", "pipe"] }).trim();
+     // pane run acknowledges successful delivery with no JSON body.
+-    if (!output && args[0] === "pane" && args[1] === "run") return { type: "ok" };
++    if (!output && args[0] === "pane" && (args[1] === "run" || args[1] === "send-keys")) return { type: "ok" };
+     if (!output) throw new Error(`Herdr returned an empty response to ${args.join(" ")}.`);
+     const response = JSON.parse(output);
+     if (response.error || !response.result) throw new Error(response.error?.message || "Herdr returned no result.");
