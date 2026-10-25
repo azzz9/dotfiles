@@ -107,7 +107,7 @@ One run at a time: a second `dotfiles` run exits 1 while another holds the lock,
 and a lock left behind by a killed run is reclaimed instead of blocking every
 run after it.
 
-On a NixOS machine, `apply`, `sync`, and `upgrade` change the user environment
+On a NixOS machine, `apply`, `sync`, and `rollback` change the user environment
 only. The system layer is a separate checkout, and a change there needs the
 system command below as well.
 
