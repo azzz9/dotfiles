@@ -19,6 +19,16 @@ let
     # The skills and the Pi extension the poteto-mode workflow calls. The
     # extension adds the agent and question tools Pi does not carry.
     { input = "pstack"; }
+    { input = "pstack"; }
+    # Sends Claude Code's identity on Anthropic requests, so the subscription's
+    # quota answers instead of the extra usage that Anthropic bills otherwise.
+    { tarball = {
+        name = "pi-claude-pro";
+        version = "1.1.0";
+        url = "https://registry.npmjs.org/pi-claude-pro/-/pi-claude-pro-1.1.0.tgz";
+        hash = "sha256-NG1N76wXMBoLnGoidPjViHdci+mI4NDZqWJt9w7wxxo=";
+      };
+    }
     { input = "pi-web-access"; npmDepsHash = "sha256-8czNNM6QkhISI5q33fHqvB/IIKvPHxGgSjNNoWg8sts="; }
     # The rules load from APPEND_SYSTEM.md every turn, so the menu lists only the
     # skills a person types.
