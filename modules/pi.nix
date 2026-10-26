@@ -232,7 +232,7 @@ let
   # The macbook runs on Copilot, which carries no Fable, so fable points at
   # gpt-6.1-sol there and the other roles keep their Claude 5.5 models.
   pstackModelsMac = pkgs.writeText "pstack-models-mac.md" ''
-    pi models: opus=github-copilot/claude-opus-5-5, fable=github-copilot/gpt-6.1-sol, sonnet=github-copilot/claude-sonnet-5-5, haiku=github-copilot/claude-haiku-5-5
+    pi models: opus=github-copilot/claude-opus-5.5, fable=github-copilot/gpt-6.1-sol, sonnet=github-copilot/claude-sonnet-5.5, haiku=github-copilot/claude-haiku-5.5
     default effort: high
     strongest judgment: fable @xhigh
     feature, refactoring: sonnet @xhigh
