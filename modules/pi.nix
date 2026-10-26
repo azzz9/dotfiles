@@ -219,6 +219,7 @@ let
   # with setup-pstack.
   pstackModels = pkgs.writeText "pstack-models.md" ''
     pi models: opus=anthropic/claude-opus-5-5, fable=anthropic/claude-fable-5-1, sonnet=ollama-cloud/deepseek-v4.1-flash:1017, haiku=ollama-cloud/glm-5.3-flash
+    default effort: high
   '';
   piSettingsMerge = pkgs.writeShellScript "pi-settings-managed" ''
     set -euo pipefail
