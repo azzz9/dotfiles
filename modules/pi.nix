@@ -233,13 +233,13 @@ let
   # gpt-6.1-sol there and the other roles keep their Claude 5.5 models.
   pstackModelsMac = pkgs.writeText "pstack-models-mac.md" ''
     pi models: opus=github-copilot/claude-opus-5-5, fable=github-copilot/gpt-6.1-sol, sonnet=github-copilot/claude-sonnet-5-5, haiku=github-copilot/claude-haiku-5-5
-    default effort: medium
+    default effort: high
     strongest judgment: fable @xhigh
     feature, refactoring: sonnet @xhigh
-    arena runners: opus @high, fable @xhigh, sonnet @xhigh, haiku @xhigh
-    arena cross-judge pool: opus @high, fable @xhigh, sonnet @xhigh, haiku @xhigh
-    architect runners: opus @high, fable @xhigh, sonnet @xhigh, haiku @xhigh
-    interrogate reviewers: opus @high, fable @xhigh, sonnet @xhigh, haiku @xhigh
+    arena runners: opus @high, fable @xhigh, sonnet @xhigh, haiku @max
+    arena cross-judge pool: opus @high, fable @xhigh, sonnet @xhigh, haiku @max
+    architect runners: opus @high, fable @xhigh, sonnet @xhigh, haiku @max
+    interrogate reviewers: opus @high, fable @xhigh, sonnet @xhigh, haiku @max
   '';
   piSettingsMerge = pkgs.writeShellScript "pi-settings-managed" ''
     set -euo pipefail
