@@ -19,7 +19,7 @@ let
     # The skills and the Pi extension the poteto-mode workflow calls. The
     # extension adds the agent and question tools Pi does not carry.
     { input = "pstack"; }
-    { input = "pi-web-access"; npmDepsHash = "sha256-Emyw5LJdSEkb9Kg7Do6iobY6KslF3rkHxRI0EP6eEiY="; }
+    { input = "pi-web-access"; npmDepsHash = "sha256-8czNNM6QkhISI5q33fHqvB/IIKvPHxGgSjNNoWg8sts="; }
     # The rules load from APPEND_SYSTEM.md every turn, so the menu lists only the
     # skills a person types.
     { input = "skills"; }
