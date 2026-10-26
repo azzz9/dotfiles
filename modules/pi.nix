@@ -213,10 +213,12 @@ let
     (builtins.filter (row: row ? filter) baseRows);
   # pstack resolves the Claude family names its skills name through this sheet.
   # Without it the extension falls back to Anthropic ids on any provider it has
-  # no table for. The Linux machines carry both providers; the macbook picks its
-  # own with setup-pstack.
+  # no table for. The Linux machines carry Claude and Ollama: judgment runs on
+  # the subscription, bulk fan-out on Ollama, because Pi bills Claude used
+  # through a subscription per token as extra usage. The macbook picks its own
+  # with setup-pstack.
   pstackModels = pkgs.writeText "pstack-models.md" ''
-    pi models: opus=openai-codex/gpt-6.1-sol, fable=openai-codex/gpt-6-astra, sonnet=ollama-cloud/deepseek-v4.1-flash, haiku=ollama-cloud/glm-5.3-flash
+    pi models: opus=anthropic/claude-opus-5-5, fable=anthropic/claude-fable-5-1, sonnet=ollama-cloud/deepseek-v4.1-flash, haiku=ollama-cloud/glm-5.3-flash
   '';
   piSettingsMerge = pkgs.writeShellScript "pi-settings-managed" ''
     set -euo pipefail

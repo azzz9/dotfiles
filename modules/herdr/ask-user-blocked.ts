@@ -29,17 +29,17 @@ function promptLabel(input: unknown): string | undefined {
 export default function (pi: ExtensionAPI): void {
   if (process.env.HERDR_ENV !== "1" || !process.env.HERDR_PANE_ID) return;
 
-  let blocked = false;
+  let open = 0;
 
   function release(): void {
-    if (!blocked) return;
-    blocked = false;
+    if (open === 0) return;
+    open -= 1;
     pi.events.emit(herdrBlockedEvent, { active: false });
   }
 
   pi.on("tool_call", (event) => {
     if (event.toolName !== askTool) return;
-    blocked = true;
+    open += 1;
     pi.events.emit(herdrBlockedEvent, { active: true, label: promptLabel(event.input) });
   });
 
@@ -47,5 +47,7 @@ export default function (pi: ExtensionAPI): void {
     if (event.toolName === askTool) release();
   });
 
-  pi.on("agent_settled", () => release());
+  pi.on("agent_settled", () => {
+    while (open > 0) release();
+  });
 }
