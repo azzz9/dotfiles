@@ -1,0 +1,151 @@
+# The pins are one repository fact, not one per machine: this workflow moves
+# every one of them, and a machine only runs `dotfiles sync` to apply them.
+#
+# Main requires a pull request, but no approval and no required check, so the
+# merge is this workflow's own call. The builds are the gate, not CI: a push or
+# merge made with the job token does not start the CI workflow.
+#
+# Opening the pull request needs "Allow GitHub Actions to create and approve
+# pull requests" in Settings > Actions > General. Every action is pinned to a
+# commit SHA for the reason ci.yml names: a moved tag reaches the cache token.
+name: Upgrade
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+# A rerun and a dispatch would force-push the same branch over each other.
+concurrency:
+  group: pin-upgrade
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  BRANCH: chore/pin-upgrade
+
+jobs:
+  pins:
+    name: Move the pins
+    runs-on: ubuntu-latest
+    outputs:
+      moved: ${{ steps.pr.outputs.moved }}
+
+    steps:
+      - name: Check out the default branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # A dispatch on another branch still bumps the pins from the head of
+          # the default branch, which is the tree the pull request is based on.
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
+        with:
+          extra_nix_config: |
+            accept-flake-config = true
+            access-tokens = github.com=${{ github.token }}
+            experimental-features = nix-command flakes
+
+      - name: Configure Cachix
+        if: ${{ vars.CACHIX_NAME != '' }}
+        uses: cachix/cachix-action@3ba601ff5bbb07c7220846facfa2cd81eeee15a1 # v16
+        with:
+          name: ${{ vars.CACHIX_NAME }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          skipPush: false
+
+      - name: Move the pins
+        run: |
+          set -o pipefail
+          bash scripts/bump-pins.sh 2>&1 | tee "$RUNNER_TEMP/bump.log"
+
+      - name: Build the moved pins
+        run: scripts/check.sh
+
+      - name: Open the pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ -z "$(git status --porcelain -- flake.lock modules/pinned-packages.nix modules/pi.nix modules/pin-names.txt)" ]; then
+            echo "Every pin is already at its latest."
+            echo "moved=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flake.lock modules/pinned-packages.nix modules/pi.nix modules/pin-names.txt
+          git switch -c "$BRANCH"
+          git commit -m "chore(pins): move every pin to its latest"
+          # The branch is the bot's own, so a rerun replaces its content.
+          git push --force origin "$BRANCH"
+          cat > "$RUNNER_TEMP/body.md" <<'EOF'
+          Every pin the repository carries, moved by `scripts/bump-pins.sh` in the Upgrade workflow.
+
+          The workflow built the moved pins on Linux and macOS before the merge,
+          which is the only gate: a push or merge made with the job token does not
+          start CI. `dotfiles sync` on a machine is what applies them.
+
+          ```
+          EOF
+          cat "$RUNNER_TEMP/bump.log" >> "$RUNNER_TEMP/body.md"
+          echo '```' >> "$RUNNER_TEMP/body.md"
+          # The branch is deleted on merge, so a found pull request is a rerun
+          # that has not merged yet; its body takes the new log.
+          number="$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number // empty')"
+          if [ -n "$number" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/pulls/$number" \
+              -F body=@"$RUNNER_TEMP/body.md" > /dev/null
+          else
+            gh pr create --head "$BRANCH" --base "$BASE" \
+              --title "chore(pins): move every pin to its latest" \
+              --body-file "$RUNNER_TEMP/body.md"
+          fi
+          echo "moved=true" >> "$GITHUB_OUTPUT"
+
+  macos:
+    name: Check on macOS and merge
+    needs: pins
+    if: needs.pins.outputs.moved == 'true'
+    runs-on: macos-26
+
+    steps:
+      # The tree the merge would land, built on the platform the macbook has.
+      # CI does not run on the bot's pull request, so this is the only darwin
+      # check the bump gets.
+      - name: Check out the pin branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ env.BRANCH }}
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
+        with:
+          extra_nix_config: |
+            accept-flake-config = true
+            access-tokens = github.com=${{ github.token }}
+            experimental-features = nix-command flakes
+
+      - name: Configure Cachix
+        if: ${{ vars.CACHIX_NAME != '' }}
+        uses: cachix/cachix-action@3ba601ff5bbb07c7220846facfa2cd81eeee15a1 # v16
+        with:
+          name: ${{ vars.CACHIX_NAME }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          skipPush: false
+
+      - name: Build the moved pins
+        run: scripts/check.sh
+
+      # Nothing waits on an approval or a required check, so this lands as soon
+      # as GitHub knows the branch is mergeable. `--repo` keeps gh out of a local
+      # branch cleanup the single-ref checkout cannot do.
+      - name: Merge the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr merge "$BRANCH" --repo "$GITHUB_REPOSITORY" --auto --squash --delete-branch

@@ -139,14 +139,17 @@ is a subset of the closure. Every match is printed and the report does not fail:
 the list is read after a pin bump, and most of it is a nixpkgs fix that has not
 landed yet.
 
-The pin bump and the audit are run by hand. Run `dotfiles audit` after a bump;
-it prints every match and does not fail.
+The audit is run by hand, on the machine whose store it reads. The pin bump is
+not: the `Upgrade` workflow moves them weekly and merges the pull request. Run
+`dotfiles audit` after a bump; it prints every match and does not fail.
 
 ## Pins
 
 `scripts/bump-pins.sh` moves every flake input and every `nix-update` pin in one
 run. Run it by hand, run `scripts/check.sh` (the pre-push hook does too), then
-commit and push.
+commit and push. The `Upgrade` workflow runs the same script on a runner every
+Monday, builds the result on both platforms, and squash-merges the
+`chore/pin-upgrade` pull request, so no machine has to be the one to move them.
 
 | Pin | Moves with |
 |-----|------------|
@@ -260,9 +263,17 @@ An optional Cachix cache speeds CI up. Set the repository variable `CACHIX_NAME`
 and the secret `CACHIX_AUTH_TOKEN` and the workflow configures the cache. Without
 a token CI uses the public cache only.
 
-There is no scheduled workflow besides CI. The pin bump and the audit are run
-by hand, because an upstream issue cannot be fixed before nixpkgs carries the
-fix.
+`upgrade.yml` is the one scheduled workflow. It runs `scripts/bump-pins.sh`,
+builds the result with `scripts/check.sh` on `x86_64-linux` and
+`aarch64-darwin`, and opens `chore/pin-upgrade`, which it squash-merges. Main
+requires a pull request but no approval and no required check, so the merge is
+the workflow's own call; `dotfiles sync` on a machine is what applies it, and a
+required check added later would stall the merge, because CI never runs on a
+job-token pull request. The macOS build is also what puts the bumped darwin
+store paths in the cache the macbook pulls from. The audit is not part of it:
+it reads the packages a machine has, and most of its matches wait on a nixpkgs
+fix. Opening the pull request needs "Allow GitHub Actions to create and approve
+pull requests" in the repository's Actions settings.
 
 ## Checks
 
