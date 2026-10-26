@@ -217,16 +217,17 @@ let
   # deepseek, because Pi bills Claude used through a subscription per token as
   # extra usage. Both strongest roles point at Opus. The panel lines name full
   # ids so the panels keep four distinct models whatever the family defaults
-  # are. `default effort` is the level for opus and fable, and every other role
-  # line carries its own. The macbook picks its own with setup-pstack.
+  # are. `default effort` is opus's level; every other role line carries its
+  # own. The macbook picks its own with setup-pstack.
   pstackModels = pkgs.writeText "pstack-models.md" ''
     pi models: opus=anthropic/claude-opus-5-5, fable=anthropic/claude-opus-5-5, sonnet=ollama-cloud/deepseek-v4.1-flash:1017, haiku=ollama-cloud/deepseek-v4.1-flash:1017
-    default effort: high
-    feature, refactoring: sonnet @medium
-    arena runners: anthropic/claude-opus-5-5 @high, ollama-cloud/kimi-k3 @high, ollama-cloud/deepseek-v4.1-flash:1017 @medium, ollama-cloud/glm-5.3-flash @medium
-    arena cross-judge pool: anthropic/claude-opus-5-5 @high, ollama-cloud/kimi-k3 @high, ollama-cloud/deepseek-v4.1-flash:1017 @medium, ollama-cloud/glm-5.3-flash @medium
-    architect runners: anthropic/claude-opus-5-5 @high, ollama-cloud/kimi-k3 @high, ollama-cloud/deepseek-v4.1-flash:1017 @medium, ollama-cloud/glm-5.3-flash @medium
-    interrogate reviewers: anthropic/claude-opus-5-5 @high, ollama-cloud/kimi-k3 @high, ollama-cloud/deepseek-v4.1-flash:1017 @medium, ollama-cloud/glm-5.3-flash @medium
+    default effort: medium
+    strongest judgment: fable @high
+    feature, refactoring: sonnet @xhigh
+    arena runners: ollama-cloud/minimax-m3.1-flash @xhigh, anthropic/claude-opus-5-5 @high, ollama-cloud/deepseek-v4.1-flash:1017 @xhigh, ollama-cloud/glm-5.3 @xhigh
+    arena cross-judge pool: ollama-cloud/minimax-m3.1-flash @xhigh, anthropic/claude-opus-5-5 @high, ollama-cloud/deepseek-v4.1-flash:1017 @xhigh, ollama-cloud/glm-5.3 @xhigh
+    architect runners: ollama-cloud/minimax-m3.1-flash @xhigh, anthropic/claude-opus-5-5 @high, ollama-cloud/deepseek-v4.1-flash:1017 @xhigh, ollama-cloud/glm-5.3 @xhigh
+    interrogate reviewers: ollama-cloud/minimax-m3.1-flash @xhigh, anthropic/claude-opus-5-5 @high, ollama-cloud/deepseek-v4.1-flash:1017 @xhigh, ollama-cloud/glm-5.3 @xhigh
   '';
   piSettingsMerge = pkgs.writeShellScript "pi-settings-managed" ''
     set -euo pipefail
