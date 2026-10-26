@@ -215,11 +215,17 @@ let
   # Without it the extension falls back to Anthropic ids on any provider it has
   # no table for. The Linux machines carry Claude and Ollama: judgment runs on
   # the subscription, bulk fan-out on Ollama, because Pi bills Claude used
-  # through a subscription per token as extra usage. The macbook picks its own
-  # with setup-pstack.
+  # through a subscription per token as extra usage. `default effort` is the
+  # level for opus and fable, and the role lines that name sonnet or haiku carry
+  # theirs. The macbook picks its own with setup-pstack.
   pstackModels = pkgs.writeText "pstack-models.md" ''
     pi models: opus=anthropic/claude-opus-5-5, fable=anthropic/claude-fable-5-1, sonnet=ollama-cloud/deepseek-v4.1-flash:1017, haiku=ollama-cloud/glm-5.3-flash
     default effort: high
+    feature, refactoring: sonnet @medium
+    arena runners: opus, fable, sonnet @medium, haiku @medium
+    arena cross-judge pool: opus, fable, sonnet @medium, haiku @medium
+    architect runners: opus, fable, sonnet @medium, haiku @medium
+    interrogate reviewers: opus, fable, sonnet @medium, haiku @medium
   '';
   piSettingsMerge = pkgs.writeShellScript "pi-settings-managed" ''
     set -euo pipefail
