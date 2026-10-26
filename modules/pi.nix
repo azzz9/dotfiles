@@ -218,7 +218,7 @@ let
   # through a subscription per token as extra usage. The macbook picks its own
   # with setup-pstack.
   pstackModels = pkgs.writeText "pstack-models.md" ''
-    pi models: opus=anthropic/claude-opus-5-5, fable=anthropic/claude-fable-5-1, sonnet=ollama-cloud/deepseek-v4.1-flash, haiku=ollama-cloud/glm-5.3-flash
+    pi models: opus=anthropic/claude-opus-5-5, fable=anthropic/claude-fable-5-1, sonnet=ollama-cloud/deepseek-v4.1-flash:1017, haiku=ollama-cloud/glm-5.3-flash
   '';
   piSettingsMerge = pkgs.writeShellScript "pi-settings-managed" ''
     set -euo pipefail
