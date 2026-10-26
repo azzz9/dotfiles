@@ -167,4 +167,7 @@ in
 
   home.file.".pi/agent/extensions/prompt-display.ts".source =
     config.lib.file.mkOutOfStoreSymlink "${repoDir}/modules/herdr/prompt-display.ts";
+
+  home.file.".pi/agent/extensions/ask-user-blocked.ts".source =
+    config.lib.file.mkOutOfStoreSymlink "${repoDir}/modules/herdr/ask-user-blocked.ts";
 }
