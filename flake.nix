@@ -19,7 +19,7 @@
     # Pi loads these from the store paths Nix fetches for them. flake.lock
     # records the revision, so `nix flake update <name>` is what moves a pin.
     skills = { url = "github:azzz9/skills"; flake = false; };
-    pi-subagents = { url = "github:nicobailon/pi-subagents"; flake = false; };
+    pstack = { url = "github:michael-denyer/pstack-claude"; flake = false; };
     pi-web-access = { url = "github:nicobailon/pi-web-access"; flake = false; };
     # `cc-safety-net` stays an npm row (see modules/pi.nix), so it is not an
     # input here.
@@ -33,7 +33,7 @@
 
   outputs =
     { self, nixpkgs, home-manager, nixvim, pi
-    , skills, pi-subagents, pi-web-access, pi-compact-tools
+    , skills, pstack, pi-web-access, pi-compact-tools
     , hermes-agent, ...
     }:
     let
@@ -46,7 +46,7 @@
       # The pi packages, by flake input name. A row hands pi that input's store
       # path, so pi loads the source flake.lock locked.
       piPackagePaths = {
-        inherit skills pi-subagents pi-web-access pi-compact-tools;
+        inherit skills pstack pi-web-access pi-compact-tools;
       };
       # One table for every machine. The key names homeConfigurations.<name>
       # and is the machine's hostname, so the CLI and the bootstrap resolve a

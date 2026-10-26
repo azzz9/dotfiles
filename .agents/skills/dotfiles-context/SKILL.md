@@ -60,14 +60,18 @@ once the project is trusted.
 
 The skills repository (`skills`) ships the skills and the two files that load on every turn:
 `APPEND_SYSTEM.md`, which pi appends to the system prompt, and `AGENTS.md`, which pi reads as a
-context file. Both link from the `skills` flake input, so `flake.lock` pins them. The reviewer is
-the only subagent, and it comes from `pi-subagents`.
+context file. Both link from the `skills` flake input, so `flake.lock` pins them.
+
+pstack is the subagent layer. Its `pstack` flake input carries the 65 skills and the Pi extension
+that registers `agent`, `send_message`, `list_agents`, `stop_agent`, `ask_user_question`, and
+`schedule_wakeup`. `modules/pi.nix` also writes `~/.pi/agent/pstack-models.md`, the sheet whose
+`pi models:` line maps pstack's Claude family names to this host's providers. The macbook, which
+that sheet does not cover, gets its own from `setup-pstack`.
 
 `modules/pi.nix` owns the package rows. Four rows are `flake = false` inputs in
-`flake.nix`, and the five npm packages are published tarballs Nix unpacks into
-the store, with `@juicesharp/rpiv-config` vendored under the rpiv row's
-`node_modules`. Every row reaches `settings.json` as a store path, so
-`flake.lock` and the version and hash in `modules/pi.nix` are the pins.
+`flake.nix`, and the rest are published tarballs Nix unpacks into the store. Every
+row reaches `settings.json` as a store path, so `flake.lock` and the version and
+hash in `modules/pi.nix` are the pins.
 `pi_reconcile` has no npm row left to install; it and the `status` reconcile
 line stay for a row that is still a `spec`. The tarball rows move by hand, with
 the hash from `nix store prefetch-file`; a runtime dependency needs its own
@@ -87,18 +91,6 @@ The input tracks main, and `nix flake update pi` moves it.
 Provider extensions are machine-local and
 deliberately not Nix-managed. Install a provider extension under
 `~/.pi/agent/extensions/<name>/`, where pi auto-discovers it.
-
-The reviewer assignment is the exception. `modules/pi/subagent-models.nix` holds
-one row per machine, and each row carries the model and the thinking effort for the
-reviewer. `modules/pi.nix` renders those rows into the `subagents` key of
-`settings.json` with the same merge as every other key, so the assert there fails
-evaluation on a malformed slug, an undefined thinking value, or a reviewer name
-absent from `pi-subagents`.
-
-The macbook row names explicit `github-copilot/<id>` slugs, which its Copilot
-Enterprise plan allows. Copilot Free and Copilot Student are the plans that
-cannot name a model (auto selection only), and there an explicit slug is
-answered with 400 `model_not_supported`.
 
 To add a repo-local skill: create `.agents/skills/<name>/SKILL.md`; no Nix
 change is needed.
