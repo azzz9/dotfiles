@@ -262,13 +262,13 @@ a token CI uses the public cache only.
 builds the result with `scripts/check.sh` on `x86_64-linux` and
 `aarch64-darwin`, and opens `chore/pin-upgrade`, which it squash-merges. Main
 requires a pull request but no approval and no required check, so the merge is
-the workflow's own call; `dotfiles sync` on a machine is what applies it, and a
-required check added later would stall the merge, because CI never runs on a
-job-token pull request. The macOS build is also what puts the bumped darwin
-store paths in the cache the macbook pulls from. The audit is not part of it:
-it reads the packages a machine has, and most of its matches wait on a nixpkgs
-fix. Opening the pull request needs "Allow GitHub Actions to create and approve
-pull requests" in the repository's Actions settings.
+the workflow's own call; `dotfiles sync` on a machine is what applies it. A pull
+request that conflicts, because someone merged to `main` during the run, fails
+the merge step rather than waiting, and a required check added later would fail
+it too, because CI never runs on a job-token pull request. The audit is not part
+of it: it reads the packages a machine has, and most of its matches wait on a
+nixpkgs fix. Opening the pull request needs "Allow GitHub Actions to create and
+approve pull requests" in the repository's Actions settings.
 
 ## Checks
 

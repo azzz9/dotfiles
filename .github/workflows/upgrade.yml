@@ -7,7 +7,7 @@
 #
 # Opening the pull request needs "Allow GitHub Actions to create and approve
 # pull requests" in Settings > Actions > General. Every action is pinned to a
-# commit SHA for the reason ci.yml names: a moved tag reaches the cache token.
+# commit SHA, as in ci.yml: a moved tag would run with this job's write token.
 name: Upgrade
 
 on:
@@ -49,14 +49,6 @@ jobs:
             accept-flake-config = true
             access-tokens = github.com=${{ github.token }}
             experimental-features = nix-command flakes
-
-      - name: Configure Cachix
-        if: ${{ vars.CACHIX_NAME != '' }}
-        uses: cachix/cachix-action@3ba601ff5bbb07c7220846facfa2cd81eeee15a1 # v16
-        with:
-          name: ${{ vars.CACHIX_NAME }}
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          skipPush: false
 
       - name: Move the pins
         run: |
@@ -131,21 +123,13 @@ jobs:
             access-tokens = github.com=${{ github.token }}
             experimental-features = nix-command flakes
 
-      - name: Configure Cachix
-        if: ${{ vars.CACHIX_NAME != '' }}
-        uses: cachix/cachix-action@3ba601ff5bbb07c7220846facfa2cd81eeee15a1 # v16
-        with:
-          name: ${{ vars.CACHIX_NAME }}
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          skipPush: false
-
       - name: Build the moved pins
         run: scripts/check.sh
 
-      # Nothing waits on an approval or a required check, so this lands as soon
-      # as GitHub knows the branch is mergeable. `--repo` keeps gh out of a local
-      # branch cleanup the single-ref checkout cannot do.
+      # No --auto: a conflicting pull request should turn this step red, not wait
+      # here green until the next run. `--repo` keeps gh out of a local branch
+      # cleanup the single-ref checkout cannot do.
       - name: Merge the pull request
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh pr merge "$BRANCH" --repo "$GITHUB_REPOSITORY" --auto --squash --delete-branch
+        run: gh pr merge "$BRANCH" --repo "$GITHUB_REPOSITORY" --squash --delete-branch
