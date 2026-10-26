@@ -215,18 +215,18 @@ let
   # Without it the extension falls back to Anthropic ids on any provider it has
   # no table for. Hard work runs on Claude Opus and everything else on Ollama's
   # deepseek, because Pi bills Claude used through a subscription per token as
-  # extra usage. Both strongest roles point at Opus, so the panels run two
-  # Claude seats and two Ollama seats. `default effort` is the level for opus
-  # and fable, and the role lines that name sonnet or haiku carry theirs. The
-  # macbook picks its own with setup-pstack.
+  # extra usage. Both strongest roles point at Opus. The panel lines name full
+  # ids so the panels keep four distinct models whatever the family defaults
+  # are. `default effort` is the level for opus and fable, and every other role
+  # line carries its own. The macbook picks its own with setup-pstack.
   pstackModels = pkgs.writeText "pstack-models.md" ''
     pi models: opus=anthropic/claude-opus-5-5, fable=anthropic/claude-opus-5-5, sonnet=ollama-cloud/deepseek-v4.1-flash:1017, haiku=ollama-cloud/deepseek-v4.1-flash:1017
     default effort: high
     feature, refactoring: sonnet @medium
-    arena runners: opus, fable, sonnet @medium, haiku @medium
-    arena cross-judge pool: opus, fable, sonnet @medium, haiku @medium
-    architect runners: opus, fable, sonnet @medium, haiku @medium
-    interrogate reviewers: opus, fable, sonnet @medium, haiku @medium
+    arena runners: anthropic/claude-opus-5-5 @high, ollama-cloud/kimi-k3 @high, ollama-cloud/deepseek-v4.1-flash:1017 @medium, ollama-cloud/glm-5.3-flash @medium
+    arena cross-judge pool: anthropic/claude-opus-5-5 @high, ollama-cloud/kimi-k3 @high, ollama-cloud/deepseek-v4.1-flash:1017 @medium, ollama-cloud/glm-5.3-flash @medium
+    architect runners: anthropic/claude-opus-5-5 @high, ollama-cloud/kimi-k3 @high, ollama-cloud/deepseek-v4.1-flash:1017 @medium, ollama-cloud/glm-5.3-flash @medium
+    interrogate reviewers: anthropic/claude-opus-5-5 @high, ollama-cloud/kimi-k3 @high, ollama-cloud/deepseek-v4.1-flash:1017 @medium, ollama-cloud/glm-5.3-flash @medium
   '';
   piSettingsMerge = pkgs.writeShellScript "pi-settings-managed" ''
     set -euo pipefail
