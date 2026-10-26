@@ -218,8 +218,8 @@ let
   # extra usage. Both strongest roles point at Opus. The panel lines name full
   # ids so the panels keep four distinct models whatever the family defaults
   # are. `default effort` is opus's level; every other role line carries its
-  # own. The macbook picks its own with setup-pstack.
-  pstackModels = pkgs.writeText "pstack-models.md" ''
+  # own.
+  pstackModelsLinux = pkgs.writeText "pstack-models-linux.md" ''
     pi models: opus=anthropic/claude-opus-5-5, fable=anthropic/claude-opus-5-5, sonnet=ollama-cloud/deepseek-v4.1-flash:1017, haiku=ollama-cloud/deepseek-v4.1-flash:1017
     default effort: medium
     strongest judgment: fable @high
@@ -228,6 +228,18 @@ let
     arena cross-judge pool: ollama-cloud/minimax-m3.1-flash @xhigh, anthropic/claude-opus-5-5 @high, ollama-cloud/deepseek-v4.1-flash:1017 @xhigh, ollama-cloud/glm-5.3 @xhigh
     architect runners: ollama-cloud/minimax-m3.1-flash @xhigh, anthropic/claude-opus-5-5 @high, ollama-cloud/deepseek-v4.1-flash:1017 @xhigh, ollama-cloud/glm-5.3 @xhigh
     interrogate reviewers: ollama-cloud/minimax-m3.1-flash @xhigh, anthropic/claude-opus-5-5 @high, ollama-cloud/deepseek-v4.1-flash:1017 @xhigh, ollama-cloud/glm-5.3 @xhigh
+  '';
+  # The macbook runs on Copilot, which carries no Fable, so fable points at
+  # gpt-6.1-sol there and the other roles keep their Claude 5.5 models.
+  pstackModelsMac = pkgs.writeText "pstack-models-mac.md" ''
+    pi models: opus=github-copilot/claude-opus-5-5, fable=github-copilot/gpt-6.1-sol, sonnet=github-copilot/claude-sonnet-5-5, haiku=github-copilot/claude-haiku-5-5
+    default effort: medium
+    strongest judgment: fable @xhigh
+    feature, refactoring: sonnet @xhigh
+    arena runners: opus @high, fable @xhigh, sonnet @xhigh, haiku @xhigh
+    arena cross-judge pool: opus @high, fable @xhigh, sonnet @xhigh, haiku @xhigh
+    architect runners: opus @high, fable @xhigh, sonnet @xhigh, haiku @xhigh
+    interrogate reviewers: opus @high, fable @xhigh, sonnet @xhigh, haiku @xhigh
   '';
   piSettingsMerge = pkgs.writeShellScript "pi-settings-managed" ''
     set -euo pipefail
@@ -271,10 +283,8 @@ assert lib.assertMsg (filterProblems == [ ])
     # style comes from the repo instead of a local edit.
     home.file.".pi/agent/compact-tools.json".source = compactToolsConfig;
     # pstack reads the sheet at every agent start, children included.
-    home.file.".pi/agent/pstack-models.md" =
-      lib.mkIf config.dotfiles.pi.linuxProviders {
-        source = pstackModels;
-      };
+    home.file.".pi/agent/pstack-models.md".source =
+      if config.dotfiles.pi.linuxProviders then pstackModelsLinux else pstackModelsMac;
     # The visible-model rules are hand-written for the providers the Linux
     # machines carry; the macOS row keeps its own provider set.
     home.file.".pi/agent/extensions/openai-model-visibility.ts" =
