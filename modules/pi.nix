@@ -1,4 +1,4 @@
-{ lib, pkgs, config, repoDir, piFlake, piPackagePaths, machine, ... }:
+{ lib, pkgs, config, repoDir, piFlake, piPackagePaths, ... }:
 let
   # One row per package pi installs. `input` names the flake input whose store
   # path the row loads; `tarball` names a published npm tarball Nix unpacks into
@@ -14,32 +14,15 @@ let
   # would be dropped again, because the merge below replaces the `packages`
   # array on every activation.
   #
-  # The rows every machine gets. The Linux-only row is appended below, because
-  # the filter assert must not force pkgs while config is computed.
+  # The rows every machine gets. The Linux-only row is appended below.
   baseRows = [
-    { input = "pi-subagents"; npmDepsHash = "sha256-1FRbHBk8Adc8BHIFLf3JXEAglVY1/TLUAm2fjq7rjPM=";
-      filter = { prompts = [ ]; skills = [ "!skills/council-mode" ]; };
-    }
+    # The skills and the Pi extension the poteto-mode workflow calls. The
+    # extension adds the agent and question tools Pi does not carry.
+    { input = "pstack"; }
     { input = "pi-web-access"; npmDepsHash = "sha256-Emyw5LJdSEkb9Kg7Do6iobY6KslF3rkHxRI0EP6eEiY="; }
     # The rules load from APPEND_SYSTEM.md every turn, so the menu lists only the
     # skills a person types.
     { input = "skills"; }
-    # The rpiv workspace ships from a shared root that carries no pi manifest, so
-    # the published tarball is the source. Its one runtime dependency is vendored
-    # under node_modules, which is what `pi install` would have produced.
-    { tarball = {
-        name = "@juicesharp/rpiv-ask-user-question";
-        version = "2.15.0";
-        url = "https://registry.npmjs.org/@juicesharp/rpiv-ask-user-question/-/rpiv-ask-user-question-2.15.0.tgz";
-        hash = "sha256-Oz37Xyg26JfCiEpwqAr83ipTcK9M7Yoskn4O17+PuB8=";
-        deps = [{
-          name = "@juicesharp/rpiv-config";
-          version = "2.15.0";
-          url = "https://registry.npmjs.org/@juicesharp/rpiv-config/-/rpiv-config-2.15.0.tgz";
-          hash = "sha256-uLZ56plD19pYB1qyPoJ7YhBJJIyImOWLh2pvFaBqdTw=";
-        }];
-      };
-    }
     # The /btw side conversation. The published tarball carries the TypeScript
     # pi loads and has no runtime dependencies, so Nix unpacks it and pi loads it
     # from the store. `pi_reconcile` never sees this row; the tarball bump in
@@ -75,22 +58,6 @@ let
     }
     # Compact, expandable TUI tool rows, with its own bundled theme.
     { input = "pi-compact-tools"; }
-    # Lazy senior dev mode: one prompt plus the review, audit, debt, gain and
-    # help skills a person types. The extension imports only its own files, so
-    # the published tarball is the source.
-    { tarball = {
-        name = "@dietrichgebert/ponytail";
-        version = "5.3.2";
-        url = "https://registry.npmjs.org/@dietrichgebert/ponytail/-/ponytail-5.3.2.tgz";
-        hash = "sha256-0ujvL5jo9wv0D/zT/xV2NP4TslcuEK1wpi/CbbbebcU=";
-        postPatch = ''
-          substituteInPlace skills/ponytail/SKILL.md hooks/ponytail-instructions.js \
-            --replace-fail \
-              '- A shortcut with a known limit gets a code comment in this form: `shortcut: <the limit>, <when to upgrade>`.' \
-              '- A shortcut with a known limit is stated in the reply, never as a code comment.'
-        '';
-      };
-    }
   ];
   # fff-node calls a Rust cdylib through ffi-rs, so a system pins the two
   # prebuilt binaries npm would pick from the manifest's optionalDependencies.
@@ -219,9 +186,6 @@ let
     # selection, so a plain "codemode" here would replace read/bash/edit/write.
     defaultTools = [ "+codemode" ];
     markdown = { mermaid = "final"; };
-    # The reviewer carries no model, so the host binds one here. The merge below
-    # adds this key to the local settings.json like any other.
-    subagents = subagentModels.subagentsFor machine;
   };
   # Every other key is carried over untouched: objects are merged, scalars
   # replaced. The file stays a regular file so pi can keep writing it.
@@ -231,13 +195,6 @@ let
     style = "compact";
     mode = "silent";
   };
-  # pi-subagents resolves an override by the agent's own name, so a row under a
-  # misspelled name would be unused. The reviewer's name comes from
-  # pi-subagents.
-  agentNamesIn = dir: map (lib.removeSuffix ".md") (builtins.attrNames (builtins.readDir dir));
-  pinnedAgents = agentNamesIn "${piPackagePaths.pi-subagents}/agents";
-  subagentModels = import ./pi/subagent-models.nix { knownAgents = pinnedAgents; };
-  assignmentProblems = subagentModels.problemsFor subagentModels.rows;
   # A filter path is relative to the pinned package and may carry a + or !
   # prefix. An upstream rename would silently stop narrowing, so every path is
   # checked against the store path the row actually loads.
@@ -254,6 +211,36 @@ let
               (row.filter.${kind} or [ ])))
         (builtins.attrNames (row.filter or { })))
     (builtins.filter (row: row ? filter) baseRows);
+  # pstack resolves the Claude family names its skills name through this sheet.
+  # Without it the extension falls back to Anthropic ids on any provider it has
+  # no table for. Hard work runs on Claude Opus and everything else on Ollama's
+  # deepseek, because Pi bills Claude used through a subscription per token as
+  # extra usage. Both strongest roles point at Opus. The panel lines name full
+  # ids so the panels keep four distinct models whatever the family defaults
+  # are. `default effort` is opus's level; every other role line carries its
+  # own.
+  pstackModelsLinux = pkgs.writeText "pstack-models-linux.md" ''
+    pi models: opus=anthropic/claude-opus-5-5, fable=anthropic/claude-opus-5-5, sonnet=ollama-cloud/deepseek-v4.1-flash:1017, haiku=ollama-cloud/deepseek-v4.1-flash:1017
+    default effort: medium
+    strongest judgment: fable @high
+    feature, refactoring: sonnet @xhigh
+    arena runners: ollama-cloud/minimax-m3.1-flash @xhigh, anthropic/claude-opus-5-5 @high, ollama-cloud/deepseek-v4.1-flash:1017 @xhigh, ollama-cloud/glm-5.3 @xhigh
+    arena cross-judge pool: ollama-cloud/minimax-m3.1-flash @xhigh, anthropic/claude-opus-5-5 @high, ollama-cloud/deepseek-v4.1-flash:1017 @xhigh, ollama-cloud/glm-5.3 @xhigh
+    architect runners: ollama-cloud/minimax-m3.1-flash @xhigh, anthropic/claude-opus-5-5 @high, ollama-cloud/deepseek-v4.1-flash:1017 @xhigh, ollama-cloud/glm-5.3 @xhigh
+    interrogate reviewers: ollama-cloud/minimax-m3.1-flash @xhigh, anthropic/claude-opus-5-5 @high, ollama-cloud/deepseek-v4.1-flash:1017 @xhigh, ollama-cloud/glm-5.3 @xhigh
+  '';
+  # The macbook runs on Copilot, which carries no Fable, so fable points at
+  # gpt-6.1-sol there and the other roles keep their Claude 5.5 models.
+  pstackModelsMac = pkgs.writeText "pstack-models-mac.md" ''
+    pi models: opus=github-copilot/claude-opus-5.5, fable=github-copilot/gpt-6.1-sol, sonnet=github-copilot/claude-sonnet-5.5, haiku=github-copilot/claude-haiku-5.5
+    default effort: high
+    strongest judgment: fable @xhigh
+    feature, refactoring: sonnet @xhigh
+    arena runners: opus @high, fable @xhigh, sonnet @xhigh, haiku @max
+    arena cross-judge pool: opus @high, fable @xhigh, sonnet @xhigh, haiku @max
+    architect runners: opus @high, fable @xhigh, sonnet @xhigh, haiku @max
+    interrogate reviewers: opus @high, fable @xhigh, sonnet @xhigh, haiku @max
+  '';
   piSettingsMerge = pkgs.writeShellScript "pi-settings-managed" ''
     set -euo pipefail
 
@@ -278,8 +265,8 @@ let
     mv -f "$merged" "$settings"
   '';
 in
-assert lib.assertMsg (assignmentProblems == [ ] && filterProblems == [ ])
-  "modules/pi.nix: ${lib.concatStringsSep "; " (assignmentProblems ++ filterProblems)}";
+assert lib.assertMsg (filterProblems == [ ])
+  "modules/pi.nix: ${lib.concatStringsSep "; " filterProblems}";
 {
   options.dotfiles.pi.linuxProviders = lib.mkOption {
     type = lib.types.bool;
@@ -295,6 +282,9 @@ assert lib.assertMsg (assignmentProblems == [ ] && filterProblems == [ ])
     # The compact-tools extension reads this at startup. A store symlink, so the
     # style comes from the repo instead of a local edit.
     home.file.".pi/agent/compact-tools.json".source = compactToolsConfig;
+    # pstack reads the sheet at every agent start, children included.
+    home.file.".pi/agent/pstack-models.md".source =
+      if config.dotfiles.pi.linuxProviders then pstackModelsLinux else pstackModelsMac;
     # The visible-model rules are hand-written for the providers the Linux
     # machines carry; the macOS row keeps its own provider set.
     home.file.".pi/agent/extensions/openai-model-visibility.ts" =
