@@ -65,8 +65,9 @@ context file. Both link from the `skills` flake input, so `flake.lock` pins them
 pstack is the subagent layer. Its `pstack` flake input carries the 65 skills and the Pi extension
 that registers `agent`, `send_message`, `list_agents`, `stop_agent`, `ask_user_question`, and
 `schedule_wakeup`. `modules/pi.nix` also writes `~/.pi/agent/pstack-models.md`, the sheet whose
-`pi models:` line maps pstack's Claude family names to this host's providers. The macbook, which
-that sheet does not cover, gets its own from `setup-pstack`.
+`pi models:` line maps pstack's Claude family names to this host's providers. Both machines get a
+Nix-managed sheet: `pstackModelsLinux` and `pstackModelsMac` in `modules/pi.nix`, picked by
+`linuxProviders`.
 
 `modules/pi.nix` owns the package rows. Four rows are `flake = false` inputs in
 `flake.nix`, and the rest are published tarballs Nix unpacks into the store. Every
