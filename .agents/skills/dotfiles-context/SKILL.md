@@ -248,9 +248,11 @@ in.
 ## CI and the push guard
 
 `git config core.hooksPath .githooks` runs `scripts/check.sh` before every push.
-CI runs the same set: it evaluates every machine with `scripts/check.sh
---no-build`, then builds the checks and every activation package for
-`x86_64-linux` and `aarch64-darwin`.
+CI runs the same set on every push and pull request, and on `main` every day at
+18:00 UTC, which is what builds a pin bump: the job token's squash merge starts
+no CI. It evaluates every machine with `scripts/check.sh --no-build`, then
+builds the checks and every activation package for `x86_64-linux` and
+`aarch64-darwin`.
 
 An optional Cachix cache speeds CI up. Set the repository variable `CACHIX_NAME`
 and the secret `CACHIX_AUTH_TOKEN` and the workflow configures the cache. Without

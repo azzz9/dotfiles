@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  # A pin bump merges with the job token, which starts no CI, so the tree on
+  # main is otherwise built by the next person's push.
+  schedule:
+    - cron: "0 18 * * *"
 
 permissions:
   contents: read
