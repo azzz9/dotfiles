@@ -91,7 +91,7 @@ installs again to take the latest. Review the moved pin files, run
 `scripts/check.sh` (the pre-push hook runs it too), and commit. To move one flake
 input, run `nix flake update <input>`, commit `flake.lock`, then `dotfiles apply`.
 
-The `Upgrade` workflow does the same bump without a checkout: every Monday it
+The `Upgrade` workflow does the same bump without a checkout: every day it
 runs `scripts/bump-pins.sh`, builds the result with `scripts/check.sh` on Linux
 and macOS, and opens the `chore/pin-upgrade` pull request, which it squash-merges
 as soon as both builds pass. Applying stays on the machine, so `dotfiles sync` is

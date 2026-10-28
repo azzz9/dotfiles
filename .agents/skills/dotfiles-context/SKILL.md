@@ -133,7 +133,7 @@ the list is read after a pin bump, and most of it is a nixpkgs fix that has not
 landed yet.
 
 The audit is run by hand, on the machine whose store it reads. The pin bump is
-not: the `Upgrade` workflow moves them weekly and merges the pull request. Run
+not: the `Upgrade` workflow moves them daily and merges the pull request. Run
 `dotfiles audit` after a bump; it prints every match and does not fail.
 
 ## Pins
@@ -141,7 +141,7 @@ not: the `Upgrade` workflow moves them weekly and merges the pull request. Run
 `scripts/bump-pins.sh` moves every flake input and every `nix-update` pin in one
 run. Run it by hand, run `scripts/check.sh` (the pre-push hook does too), then
 commit and push. The `Upgrade` workflow runs the same script on a runner every
-Monday, builds the result on both platforms, and squash-merges the
+day, builds the result on both platforms, and squash-merges the
 `chore/pin-upgrade` pull request, so no machine has to be the one to move them.
 
 | Pin | Moves with |
@@ -258,7 +258,7 @@ An optional Cachix cache speeds CI up. Set the repository variable `CACHIX_NAME`
 and the secret `CACHIX_AUTH_TOKEN` and the workflow configures the cache. Without
 a token CI uses the public cache only.
 
-`upgrade.yml` is the one scheduled workflow, on Monday at 03:00 UTC. GitHub
+`upgrade.yml` is the one scheduled workflow, daily at 03:00 UTC. GitHub
 starts a scheduled run late and only when a runner is free: every scheduled run
 this repository has seen started two to three and a half hours after its cron
 time, so a cron line names the earliest start, not the start. It runs
