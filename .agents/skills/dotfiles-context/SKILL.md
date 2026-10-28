@@ -248,27 +248,31 @@ in.
 ## CI and the push guard
 
 `git config core.hooksPath .githooks` runs `scripts/check.sh` before every push.
-CI runs the same set on every push and pull request, and on `main` every day at
-18:00 UTC, which is what builds a pin bump: the job token's squash merge starts
-no CI. It evaluates every machine with `scripts/check.sh --no-build`, then
-builds the checks and every activation package for `x86_64-linux` and
-`aarch64-darwin`.
+CI runs the same set on every push and pull request, and `workflow_dispatch`
+runs it by hand. It evaluates every machine with `scripts/check.sh --no-build`,
+then builds the checks and every activation package for `x86_64-linux` and
+`aarch64-darwin`. Nothing rebuilds `main` on a schedule, so the tree the upgrade
+job merges is covered by that job's own builds alone.
 
 An optional Cachix cache speeds CI up. Set the repository variable `CACHIX_NAME`
 and the secret `CACHIX_AUTH_TOKEN` and the workflow configures the cache. Without
 a token CI uses the public cache only.
 
-`upgrade.yml` is the one scheduled workflow. It runs `scripts/bump-pins.sh`,
-builds the result with `scripts/check.sh` on `x86_64-linux` and
-`aarch64-darwin`, and opens `chore/pin-upgrade`, which it squash-merges. Main
-requires a pull request but no approval and no required check, so the merge is
-the workflow's own call; `dotfiles sync` on a machine is what applies it. A pull
-request that conflicts, because someone merged to `main` during the run, fails
-the merge step rather than waiting, and a required check added later would fail
-it too, because CI never runs on a job-token pull request. The audit is not part
-of it: it reads the packages a machine has, and most of its matches wait on a
-nixpkgs fix. Opening the pull request needs "Allow GitHub Actions to create and
-approve pull requests" in the repository's Actions settings.
+`upgrade.yml` is the one scheduled workflow, on Monday at 03:00 UTC. GitHub
+starts a scheduled run late and only when a runner is free: every scheduled run
+this repository has seen started two to three and a half hours after its cron
+time, so a cron line names the earliest start, not the start. It runs
+`scripts/bump-pins.sh`, builds the result with `scripts/check.sh` on
+`x86_64-linux` and `aarch64-darwin`, and opens `chore/pin-upgrade`, which it
+squash-merges. Main requires a pull request but no approval and no required
+check, so the merge is the workflow's own call; `dotfiles sync` on a machine is
+what applies it. A pull request that conflicts, because someone merged to `main`
+during the run, fails the merge step rather than waiting, and a required check
+added later would fail it too, because CI never runs on a job-token pull
+request. The audit is not part of it: it reads the packages a machine has, and
+most of its matches wait on a nixpkgs fix. Opening the pull request needs "Allow
+GitHub Actions to create and approve pull requests" in the repository's Actions
+settings.
 
 ## Checks
 
