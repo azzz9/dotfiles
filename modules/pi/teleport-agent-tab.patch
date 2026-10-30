@@ -84,9 +84,9 @@
  import { fileURLToPath } from "node:url";
 -import { mergeMachineResources, prepareHerdrArrival, preserveHerdrSourceWorkspace, readState, writeState, type TeleportState } from "./core.ts";
 +import { mergeMachineResources, prepareHerdrArrival, preserveHerdrSourceWorkspace, readState, runRollback, writeState, type TeleportState } from "./core.ts";
- import { runHerdr, type HerdrContext } from "./herdr.ts";
+ import { guardedLaunch, readHerdrPane, runHerdr, shellOwnsForeground, withOutput, type HerdrContext } from "./herdr.ts";
  import type { TeleportExecution } from "./output.ts";
- import { agentDirectory, HANDOFF_TIMEOUT, MAX_PACKET, hasSessionProcess, qualifyLocation, relocateSession, runtimeFingerprint, UnknownRemoteOutcome, shellQuote, sshOptions, validateReady, type ReadyIdentity, type RemoteMove, type ReturnRoute } from "./remote.ts";
+ import { agentDirectory, piCommand, MAX_PACKET, hasSessionProcess, qualifyLocation, relocateSession, runtimeFingerprint, UnknownRemoteOutcome, shellQuote, sshOptions, validateReady, type ReadyIdentity, type RemoteMove, type ReturnRoute } from "./remote.ts";
 @@ -19,7 +19,7 @@
  };
  type Prepared = {
@@ -96,7 +96,7 @@
  };
  
  function save(path: string, value: unknown): void {
-@@ -87,7 +87,7 @@
+@@ -118,7 +118,7 @@
  /** Roll back only an uncommitted arrival that this controller prepared. */
  export function abortArrival(prepared: Prepared): void {
    if (existsSync(join(prepared.dir, "committed.json"))) throw new Error("Destination already committed; refusing rollback.");
@@ -107,7 +107,7 @@
      const published = JSON.parse(readFileSync(join(prepared.dir, "next-state.json"), "utf8"));
 --- a/src/herdr.ts
 +++ b/src/herdr.ts
-@@ -20,7 +20,7 @@
+@@ -57,7 +57,7 @@
    try {
      const output = execFileSync("herdr", args, { encoding: "utf8", env, timeout: 15_000, stdio: ["ignore", "pipe", "pipe"] }).trim();
      // pane run acknowledges successful delivery with no JSON body.
