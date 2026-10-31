@@ -29,7 +29,7 @@ let
         hash = "sha256-NG1N76wXMBoLnGoidPjViHdci+mI4NDZqWJt9w7wxxo=";
       };
     }
-    { input = "pi-web-access"; npmDepsHash = "sha256-8czNNM6QkhISI5q33fHqvB/IIKvPHxGgSjNNoWg8sts="; }
+    { input = "pi-web-access"; npmDepsHash = "sha256-g+/xF1ciVUYveV8Czz4eOcKZtu52pWhOYS8+qpgcmJQ="; }
     # The rules load from APPEND_SYSTEM.md every turn, so the menu lists only the
     # skills a person types.
     { input = "skills"; }
@@ -49,9 +49,9 @@ let
     # only the published tarball carries the dist.
     { tarball = {
         name = "cc-safety-net";
-        version = "2.6.19";
-        url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.6.19.tgz";
-        hash = "sha256-DBRAfiVBCmKKTSNBl/gC8bUJiNXWHl6xsumtXMU5jto=";
+        version = "2.7.1";
+        url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.7.1.tgz";
+        hash = "sha256-vHaPbbMKn8nisRKc174sebNdSlXvcEdbMbOfioXSg2k=";
       };
     }
     # Moves the running pi session to another directory or worktree, keeping the
@@ -121,9 +121,9 @@ let
     # The API key stays machine-local in ~/.pi/agent/ollama_cloud.json.
     { tarball = {
         name = "pi-ollama-cloud-link";
-        version = "1.3.0";
-        url = "https://registry.npmjs.org/pi-ollama-cloud-link/-/pi-ollama-cloud-link-1.3.0.tgz";
-        hash = "sha256-sGsjHY+87bFAquBMa9hH0D8PQM0nN/KbWG9dB9yP4e8=";
+        version = "1.3.1";
+        url = "https://registry.npmjs.org/pi-ollama-cloud-link/-/pi-ollama-cloud-link-1.3.1.tgz";
+        hash = "sha256-a2iOKHdnJ2+xZM4PMDrxnqNSuttZ2ftcJlKiqwqseh4=";
       };
     }
   ];
