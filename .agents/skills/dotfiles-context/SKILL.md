@@ -85,9 +85,12 @@ it, so a machine without that local install simply has no `dsh`.
 
 The CLI itself comes from upstream's own flake, the `pi` input at
 `github:earendil-works/pi`, which builds pi from source. `modules/pi.nix` and
-`dotfiles-cli.nix` take `piFlake.packages.<system>.pi` from it, so the
-derivation is upstream's, built against upstream's nixpkgs pin rather than ours.
-The input tracks main, and `nix flake update pi` moves it.
+`dotfiles-cli.nix` take `piFlake.packages.<system>.pi` from `pi-package.nix`.
+That is upstream's derivation, built against upstream's nixpkgs pin rather
+than ours, except when the install lock names a workspace package the Nix
+expression does not override yet. The missing `integrity` stops evaluation,
+and `pi-package.nix` adds the same override the other workspace packages
+already have. The input tracks main, and `nix flake update pi` moves it.
 
 Provider extensions are machine-local and
 deliberately not Nix-managed. Install a provider extension under

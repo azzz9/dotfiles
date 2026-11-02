@@ -14,7 +14,8 @@
     # Pi's own flake builds the CLI from source. It tracks main rather than the
     # ref upstream offers consumers (`stable`): that branch advances only after
     # a release tag's flake builds on every system, so it lags main whenever the
-    # newest tag does not build.
+    # newest tag does not build. pi-package.nix is what the machines run: that
+    # package, plus the workspace override the install lock is missing.
     pi.url = "github:earendil-works/pi";
     # Pi loads these from the store paths Nix fetches for them. flake.lock
     # records the revision, so `nix flake update <name>` is what moves a pin.
@@ -48,6 +49,21 @@
       piPackagePaths = {
         inherit skills pstack pi-web-access pi-compact-tools;
       };
+      # Same shape as the pi input's package set, for the one package this
+      # repo consumes. pi-package.nix documents when the derivation differs.
+      piFlake = {
+        packages = forAllSystems (system:
+          let
+            pkg = import ./pi-package.nix {
+              inherit (nixpkgs) lib;
+              inherit pi system;
+            };
+          in
+          {
+            pi = pkg;
+            default = pkg;
+          });
+      };
       # One table for every machine. The key names homeConfigurations.<name>
       # and is the machine's hostname, so the CLI and the bootstrap resolve a
       # machine with no mapping table of their own. The OS side of each machine
@@ -74,8 +90,7 @@
       # machine repository spreads this into extraSpecialArgs, so the flake
       # inputs stay owned here.
       homeArgs = { machine, machineNames, repoDir, worktreeRoot ? "worktrees" }: {
-        inherit machine machineNames repoDir worktreeRoot skills piPackagePaths;
-        piFlake = pi;
+        inherit machine machineNames repoDir worktreeRoot skills piPackagePaths piFlake;
         hermesAgent = hermes-agent;
       };
       mkHomeConfiguration = name: { system, home ? [ ], checkout ? defaultCheckout, ... }:
@@ -110,7 +125,7 @@
             inherit (nixpkgs) lib;
             inherit pkgs machineNames;
             checkout = defaultCheckout;
-            piFlake = pi;
+            inherit piFlake;
           };
           solhint = pinned.solhint;
           "prettier-plugin-solidity" = pinned.prettierPluginSolidity;
