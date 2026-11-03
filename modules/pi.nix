@@ -39,9 +39,9 @@ let
     # scripts/bump-pins.sh moves it.
     { tarball = {
         name = "pi-btw";
-        version = "0.8.0";
-        url = "https://registry.npmjs.org/pi-btw/-/pi-btw-0.8.0.tgz";
-        hash = "sha256-kZMFybKqs1YX5wvUdc0tmibF9PlPbHHQGtK01IXXWvc=";
+        version = "0.8.1";
+        url = "https://registry.npmjs.org/pi-btw/-/pi-btw-0.8.1.tgz";
+        hash = "sha256-MNPnzf7VasfyxlqV41jl7swmkQ4dKHphz8XOS4PfZpw=";
       };
     }
     # Blocks destructive shell commands and secret-file access before the bash
