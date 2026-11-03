@@ -106,7 +106,8 @@ because activation would otherwise pick up a half-finished edit. `apply` has no
 dirty gate and activates the current tree. `upgrade` runs
 `scripts/bump-pins.sh --gate`, builds, applies, reinstalls the two GitHub Herdr
 plugins (`herdr plugin update` keeps the recorded ref, so it cannot move a tag),
-and reports the audit without failing.
+reports the audit without failing, and ends by naming the pin files that moved
+and the inputs the gate held back.
 `apply`, `sync`, `upgrade`, and `rollback` record the applied commit in
 `~/.local/state/dotfiles/applied.log`, and `rollback` applies the most recent
 applied commit that differs from the current one. `status` reads and never fetches: it

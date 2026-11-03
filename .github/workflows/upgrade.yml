@@ -72,7 +72,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BASE: ${{ github.event.repository.default_branch }}
         run: |
-          held="$(grep '^bump-pins: held ' "$RUNNER_TEMP/bump.log" || true)"
+          held="$(grep '^bump-pins: held .* back at its checked-in revision' "$RUNNER_TEMP/bump.log" || true)"
           if [ -n "$held" ]; then
             {
               echo "### Held back"

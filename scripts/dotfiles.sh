@@ -74,6 +74,9 @@ case " $machines " in
 esac
 
 tmp_dir="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
+# upgrade keeps the bump's output here so the run can end with what the bump
+# could not move. cleanup removes it on every exit path.
+bump_log="$tmp_dir/dotfiles-bump.log"
 lock_dir="$tmp_dir/dotfiles.lockdir"
 lock_pid_file="$lock_dir/pid"
 reclaim_dir="$lock_dir.reclaim"
@@ -91,6 +94,7 @@ applied_log="$state_dir/applied.log"
 # Remove the temp files and the lock on every exit path.
 cleanup() {
   if [ -n "${patched_activate:-}" ]; then rm -f "$patched_activate"; fi
+  rm -f "$bump_log"
   if [ "${have_lock:-0}" = 1 ] && [ "$(cat "$lock_pid_file" 2>/dev/null || true)" = "$$" ]; then
     rm -rf "$lock_dir"
   fi
@@ -416,7 +420,7 @@ case "$command" in
     if [ "${#own_dirty[@]}" -gt 0 ] || [ "${#foreign_dirty[@]}" -gt 0 ]; then
       refuse_dirty "${own_dirty[@]}" "${foreign_dirty[@]}"
     fi
-    if ! bash scripts/bump-pins.sh --gate; then
+    if ! bash scripts/bump-pins.sh --gate 2>&1 | tee "$bump_log"; then
       echo "dotfiles upgrade: the pin bump failed; nothing was applied" >&2
       exit 1
     fi
@@ -439,6 +443,13 @@ case "$command" in
     if [ -n "$(git status --porcelain -- "${pin_paths[@]}")" ]; then
       echo "dotfiles upgrade: these files moved; review and commit them, or the other machines keep their own pins:"
       git status --porcelain -- "${pin_paths[@]}"
+    fi
+    # A held-back input is the one result the moved-file list cannot show: the
+    # bump restored its pin, so nothing in the tree records it. Say it last, so
+    # the run ends on what it could not do as well as on what it did.
+    if held_lines="$(grep '^bump-pins: held .* back at its checked-in revision' "$bump_log" 2>/dev/null)"; then
+      echo "dotfiles upgrade: these inputs could not move; their checked-in revision is kept:"
+      printf '%s\n' "$held_lines" | sed 's/^bump-pins: //'
     fi
     ;;
   *)

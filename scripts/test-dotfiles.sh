@@ -116,7 +116,15 @@ fixture() {
   install -Dm644 "$src" "$seed/scripts/dotfiles.sh"
   install -Dm644 "$(dirname "$src")/audit.sh" "$seed/scripts/audit.sh"
   install -Dm644 "$(dirname "$src")/pi-reconcile.sh" "$seed/scripts/pi-reconcile.sh"
-  printf '#!/usr/bin/env bash\nprintf "lock v2\\n" > flake.lock\n' > "$seed/scripts/bump-pins.sh"
+  # The real bump prints this line for an input whose move the gate rejected.
+  # A scenario asks for one with $work/hold-input.
+  cat > "$seed/scripts/bump-pins.sh" <<STUB
+#!$BASH
+printf 'lock v2\n' > flake.lock
+if [ -f "$work/hold-input" ]; then
+  printf 'bump-pins: held pi back at its checked-in revision: stub reason\n' >&2
+fi
+STUB
   mkdir -p "$seed/modules"
   printf 'lock v1\n' > "$seed/flake.lock"
   printf 'pins v1\n' > "$seed/modules/pinned-packages.nix"
@@ -134,6 +142,7 @@ fixture() {
   printf '{}\n' > "$work/advisories.json"
   printf '{"results":[]}\n' > "$work/osv.json"
   rm -f "$work/allow-flake-update"
+  rm -f "$work/hold-input"
   rm -f "$work/herdr-calls"
   rm -rf "$XDG_RUNTIME_DIR/dotfiles.lockdir" "$HOME/.local/state/home-manager"
   rm -rf "$HOME/.local/state/dotfiles"
@@ -516,6 +525,16 @@ expect_out_has 'upgrade activates' '[stub] activate'
 expect_out_has 'upgrade lists the moved pin' 'flake.lock'
 expect_eq 'upgrade reinstalls the herdr plugins' present "$(out_has "$(cat "$work/herdr-calls")" 'plugin install ChmaraX/herdr-nvim --yes')"
 expect_eq 'upgrade records the applied commit' "$(git -C "$machine" rev-parse HEAD)" "$(tail -n 1 "$HOME/.local/state/dotfiles/applied.log" | awk '{print $1}')"
+scenario_end
+
+scenario 'upgrade reports the inputs the bump held back'
+fixture
+machine_clone
+printf 'pi\n' > "$work/hold-input"
+run_cli upgrade
+expect_eq 'upgrade exits 0 with a held input' 0 "$cli_rc"
+expect_out_has 'upgrade names the held inputs' 'dotfiles upgrade: these inputs could not move'
+expect_out_has 'upgrade says which input and why' 'held pi back at its checked-in revision: stub reason'
 scenario_end
 
 scenario 'upgrade refuses a dirty tree'
