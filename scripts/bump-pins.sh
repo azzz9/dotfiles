@@ -3,12 +3,33 @@
 # `scripts/check.sh` and commit; the pre-push hook runs the same checks. To move a
 # single flake input, use `nix flake update <input>` and commit the lock.
 #
-# python3 runs the pi tarball bump, and nix-update comes from nixpkgs when it is
-# not on PATH.
+# With --gate, the flake inputs move one at a time and a move is kept only while
+# the tree still evaluates. A move that stops it is held back at the revision the
+# checkout carried and the run continues, so one broken upstream cannot freeze
+# every other pin. The Upgrade workflow and `dotfiles upgrade` pass it.
+#
+# python3 runs the pi tarball bump and reads the input names out of flake.lock,
+# and nix-update comes from nixpkgs when it is not on PATH.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 export NIX_CONFIG="${NIX_CONFIG:-}"$'\nextra-experimental-features = nix-command flakes'
+
+gate_requested=0
+for arg in "$@"; do
+  case "$arg" in
+    --gate) gate_requested=1 ;;
+    *)
+      echo "bump-pins: unknown argument: $arg" >&2
+      echo "usage: bump-pins.sh [--gate]" >&2
+      exit 2
+      ;;
+  esac
+done
+# The gated bump appends to held and leaves the last failure in gate_reason, so
+# both are declared where that function can reach them.
+held=()
+gate_reason=""
 
 nix_cmd() {
   nix --extra-experimental-features "nix-command flakes" "$@"
@@ -177,9 +198,14 @@ bump_pi_tarballs() {
 # revisions, and a moved lockfile moves the fixed-output hash, so the build
 # would otherwise stop on a hash mismatch. Each row is measured with a
 # deliberately wrong hash and the real one is read back from the error.
+# Takes an optional input name. The gated bump below calls it after every single
+# move, and measuring a row whose input did not move would only cost a fetch.
 refresh_pi_npm_hashes() {
-  local input got
+  local only="${1:-}" input got
   while read -r input; do
+    if [ -n "$only" ] && [ "$input" != "$only" ]; then
+      continue
+    fi
     got="$(nix_cmd build --no-link --impure --expr "
       let
         flake = builtins.getFlake \"$PWD\";
@@ -198,10 +224,93 @@ refresh_pi_npm_hashes() {
   done < <(sed -n 's/.*{ input = "\([^"]*\)"; npmDepsHash.*/\1/p' "$pi_module")
 }
 
+# The input names flake.nix declares. `nix flake update <name>` takes those, not
+# the node names flake.lock keys them by.
+flake_inputs() {
+  python3 - flake.lock <<'EOF'
+import json, sys
+root = json.load(open(sys.argv[1]))["nodes"]["root"]["inputs"]
+for name in root:
+    print(name)
+EOF
+}
+
+# The gate is the repository's own evaluation fast path: the command CI's static
+# checks run, so a move the gate keeps is one that job accepts too. BUMP_GATE
+# overrides it, which is how the hold-back below is exercised without waiting
+# for an upstream release to break this tree.
+gate() {
+  local out
+  if out="$(bash -c "${BUMP_GATE:-scripts/check.sh --no-build}" 2>&1)"; then
+    return 0
+  fi
+  gate_reason="$(printf '%s\n' "$out" | grep -m1 -E '(^| )error:' | sed 's/^[[:space:]]*//')"
+  if [ -z "$gate_reason" ]; then
+    gate_reason="$(printf '%s\n' "$out" | tail -n 1)"
+  fi
+  if [ -z "$gate_reason" ]; then
+    gate_reason="the gate exited 1 without an error line"
+  fi
+  printf '%s\n' "$out" | tail -n 20 >&2
+  return 1
+}
+
+# A fetch that fails while evaluating is worth one more attempt; a tree that does
+# not evaluate fails the same way twice.
+gate_with_retry() {
+  gate && return 0
+  sleep 5
+  gate
+}
+
+# The flake inputs, one at a time, each kept only while the tree still evaluates.
+# A move that stops it is held back at the revision the checkout carried, and the
+# rest of the bump continues. This is the save and restore `bump_pins` already
+# applies to a release that will not build; here the gate stands in for the
+# build, so the failure names the input instead of the whole lock.
+bump_flake_inputs_gated() {
+  local inputs input step
+  # The checked-out tree has to evaluate on its own. If it does not, no move can
+  # be blamed, and holding one back would only hide the break that is already in.
+  if ! gate_with_retry; then
+    echo "bump-pins: the checked-out tree does not evaluate ($gate_reason); nothing was bumped" >&2
+    exit 1
+  fi
+  # Read before the loop moves anything, so the list is the one the checkout
+  # carried rather than a half-written lock.
+  inputs="$(flake_inputs)"
+  step="$(mktemp "${TMPDIR:-/tmp}/dotfiles-lock.XXXXXX")"
+  while read -r input; do
+    [ -n "$input" ] || continue
+    cp flake.lock "$step"
+    if ! nix_cmd flake update "$input"; then
+      cp "$step" flake.lock
+      echo "bump-pins: updating $input failed; kept its checked-in revision" >&2
+      continue
+    fi
+    if cmp -s "$step" flake.lock; then
+      continue
+    fi
+    # A moved lock moves the fixed-output hash of every npm row it feeds, so
+    # without this the gate would see a hash mismatch and blame the input for it.
+    refresh_pi_npm_hashes "$input"
+    if gate_with_retry; then
+      continue
+    fi
+    cp "$step" flake.lock
+    refresh_pi_npm_hashes "$input"
+    echo "bump-pins: held $input back at its checked-in revision: $gate_reason" >&2
+    held+=("$input")
+  done <<<"$inputs"
+  rm -f "$step"
+}
+
 if ! read_pin_names; then
   exit 1
 fi
-if ! nix_cmd flake update; then
+if [ "$gate_requested" = 1 ]; then
+  bump_flake_inputs_gated
+elif ! nix_cmd flake update; then
   echo "bump-pins: nix flake update failed; nothing was bumped" >&2
   exit 1
 fi
@@ -211,3 +320,6 @@ bump_pins
 bump_codediff_watcher
 bump_pi_tarballs
 refresh_pi_npm_hashes
+if [ "${#held[@]}" -gt 0 ]; then
+  echo "bump-pins: held back: ${held[*]}" >&2
+fi

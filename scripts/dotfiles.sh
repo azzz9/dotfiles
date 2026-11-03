@@ -25,8 +25,10 @@ audit reads this machine's store and lists every match. --declared reads the
 packages flake.nix names for it instead, which is the subset a machine without a
 store can read.
 
-upgrade moves every pin with scripts/bump-pins.sh, then builds and applies.
-To move one flake input, run `nix flake update <input>`, commit flake.lock,
+upgrade moves every pin with scripts/bump-pins.sh --gate, then builds and
+applies. An input whose move stops the tree from evaluating is held back at its
+checked-in revision and reported, so one broken upstream does not block the
+rest. To move one flake input, run `nix flake update <input>`, commit flake.lock,
 then `dotfiles apply`.
 
 machine: the name of the machine to apply or report on. This machine's
@@ -414,7 +416,7 @@ case "$command" in
     if [ "${#own_dirty[@]}" -gt 0 ] || [ "${#foreign_dirty[@]}" -gt 0 ]; then
       refuse_dirty "${own_dirty[@]}" "${foreign_dirty[@]}"
     fi
-    if ! bash scripts/bump-pins.sh; then
+    if ! bash scripts/bump-pins.sh --gate; then
       echo "dotfiles upgrade: the pin bump failed; nothing was applied" >&2
       exit 1
     fi
