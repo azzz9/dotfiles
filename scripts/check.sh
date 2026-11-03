@@ -54,6 +54,21 @@ transient() {
   grep -qiE 'hash mismatch|HTTP error 5[0-9][0-9]|Could not resolve host|Connection (reset|refused)|Temporary failure in name resolution|timed out|TLS' "$1"
 }
 
+# The line a reader, or a scheduled check that reads only the end of the log,
+# needs: what failed, not just that something did. A bare "error:" only
+# introduces a trace, so take the first line that carries the message itself: a
+# failing check names the option or file, and a build failure names the
+# derivation.
+failure_line() {
+  local line
+  line="$(grep -m1 -E 'error: *[^[:space:]]' "$log" || true)"
+  if [ -z "$line" ]; then
+    line="$(tail -n 1 "$log")"
+  fi
+  line="$(printf '%s' "$line" | sed 's/^[[:space:]]*//')"
+  echo "[check] failed: $line" >&2
+}
+
 echo "[check] nix flake check"
 attempt=1
 while :; do
@@ -62,11 +77,13 @@ while :; do
     exit 0
   fi
   if ! transient "$log"; then
-    echo "[check] failed; the error above is not a fetch failure, so it is not retried" >&2
+    echo "[check] the error above is not a fetch failure, so it is not retried" >&2
+    failure_line
     exit 1
   fi
   if ((attempt >= 3)); then
     echo "[check] failed on attempt $attempt" >&2
+    failure_line
     exit 1
   fi
   echo "[check] attempt $attempt failed on a fetch; retrying in $((attempt * 10))s" >&2

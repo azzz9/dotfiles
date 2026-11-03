@@ -277,8 +277,12 @@ time, so a cron line names the earliest start, not the start. It runs
 log and the held-back inputs in the body, and only then builds the branch with
 `scripts/check.sh` on `x86_64-linux` and `aarch64-darwin`. The merge waits on
 both builds, so a run that fails has already left the pull request that says
-what moved and what broke, and the next run replaces the branch instead of
-repeating an invisible failure. Main requires a pull request but no approval and
+what moved. The platform that failed comments its own error on that pull request
+and writes the run summary, which is what outlives the log, and
+`scripts/check.sh` ends any failing run with `[check] failed: <first error
+line>`, so the end of a log names the cause and not just the job. The next run
+replaces the branch instead of repeating an invisible failure. Main requires a
+pull request but no approval and
 no required check, so the merge is the workflow's own call; `dotfiles sync` on a
 machine is what applies it. A pull request that conflicts, because someone
 merged to `main` during the run, fails the merge step rather than waiting, and a

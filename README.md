@@ -99,9 +99,9 @@ The `Upgrade` workflow does the same bump without a checkout: every day it runs
 before anything is built. The body carries the bump log and the inputs the gate
 held back, and the workflow builds the branch with `scripts/check.sh` on Linux
 and macOS, merging only while both pass. A build that fails leaves the pull
-request open with a comment that names the run, so the failure is on the record
-and the next run starts from it. Applying stays on the machine, so `dotfiles
-sync` is what moves it. The audit stays by hand too, because it reads the
+request open with a comment that carries the failing platform and the end of the
+log, so the failure is on the record and the next run starts from it. Applying
+stays on the machine, so `dotfiles sync` is what moves it. The audit stays by hand too, because it reads the
 packages that machine has.
 
 The npm rows in `modules/pi.nix` are tarballs, and `bump-pins.sh` moves them to

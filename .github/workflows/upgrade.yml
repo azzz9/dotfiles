@@ -179,7 +179,37 @@ jobs:
             experimental-features = nix-command flakes
 
       - name: Build the moved pins
-        run: scripts/check.sh
+        run: |
+          set -o pipefail
+          scripts/check.sh 2>&1 | tee "$RUNNER_TEMP/check.log"
+
+      # The platform that fails is the only place that knows what broke, so it
+      # records it: the error goes to the run summary and to the pull request,
+      # which is what survives the log's retention.
+      - name: Record the failed build
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MACHINE: ${{ matrix.system }}
+        run: |
+          [ -f "$RUNNER_TEMP/check.log" ] || exit 0
+          {
+            printf '### %s did not build\n\n' "$MACHINE"
+            echo '```'
+            tail -n 40 "$RUNNER_TEMP/check.log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          number="$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number // empty')"
+          [ -n "$number" ] || exit 0
+          {
+            printf '%s did not build:\n\n' "$MACHINE"
+            echo '```'
+            tail -n 40 "$RUNNER_TEMP/check.log"
+            echo '```'
+            echo
+            echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > "$RUNNER_TEMP/comment.md"
+          gh pr comment "$number" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"
 
   merge:
     name: Merge the pull request
@@ -195,26 +225,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh pr merge "$BRANCH" --repo "$GITHUB_REPOSITORY" --squash --delete-branch
-
-  report:
-    name: Report the failed build
-    needs: [bump, build]
-    # The pull request is the record. A build that fails says so on it, next to
-    # the bump log that names what moved, instead of only in a log that expires.
-    if: failure() && needs.bump.outputs.number != ''
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Comment on the pull request
-        env:
-          GH_TOKEN: ${{ github.token }}
-          NUMBER: ${{ needs.bump.outputs.number }}
-          RESULT: ${{ needs.build.result }}
-        run: |
-          cat > "$RUNNER_TEMP/comment.md" <<EOF
-          The bump did not build on every platform (build: $RESULT).
-
-          The pull request stays open, and the next run replaces the branch with a
-          fresh bump. Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
-          EOF
-          gh pr comment "$NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"
