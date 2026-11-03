@@ -104,9 +104,9 @@ change is needed.
 command table. `sync` and `upgrade` refuse any dirty path before they move,
 because activation would otherwise pick up a half-finished edit. `apply` has no
 dirty gate and activates the current tree. `upgrade` runs
-`scripts/bump-pins.sh`, builds, applies, reinstalls the two GitHub Herdr plugins
-(`herdr plugin update` keeps the recorded ref, so it cannot move a tag), and
-reports the audit without failing.
+`scripts/bump-pins.sh --gate`, builds, applies, reinstalls the two GitHub Herdr
+plugins (`herdr plugin update` keeps the recorded ref, so it cannot move a tag),
+and reports the audit without failing.
 `apply`, `sync`, `upgrade`, and `rollback` record the applied commit in
 `~/.local/state/dotfiles/applied.log`, and `rollback` applies the most recent
 applied commit that differs from the current one. `status` reads and never fetches: it
@@ -143,6 +143,16 @@ run. Run it by hand, run `scripts/check.sh` (the pre-push hook does too), then
 commit and push. The `Upgrade` workflow runs the same script on a runner every
 day, builds the result on both platforms, and squash-merges the
 `chore/pin-upgrade` pull request, so no machine has to be the one to move them.
+
+`--gate` is what keeps one broken upstream from freezing the rest. Without it
+the script runs one `nix flake update`, and a tree that fails to evaluate takes
+the whole bump with it. With it the flake inputs move one at a time, each kept
+only while `scripts/check.sh --no-build` (the command CI's static checks run)
+still passes; a move that does not is restored from the lock the checkout
+carried, reported as `bump-pins: held <input> back at its checked-in revision:
+<error>`, and the run continues. A later run tries the same input again, so a
+fixed upstream lands on its own. The by-hand pins need no gate: `bump_pins`
+already restores one file when a release will not build.
 
 | Pin | Moves with |
 |-----|------------|
@@ -262,14 +272,17 @@ a token CI uses the public cache only.
 starts a scheduled run late and only when a runner is free: every scheduled run
 this repository has seen started two to three and a half hours after its cron
 time, so a cron line names the earliest start, not the start. It runs
-`scripts/bump-pins.sh`, builds the result with `scripts/check.sh` on
-`x86_64-linux` and `aarch64-darwin`, and opens `chore/pin-upgrade`, which it
-squash-merges. Main requires a pull request but no approval and no required
-check, so the merge is the workflow's own call; `dotfiles sync` on a machine is
-what applies it. A pull request that conflicts, because someone merged to `main`
-during the run, fails the merge step rather than waiting, and a required check
-added later would fail it too, because CI never runs on a job-token pull
-request. The audit is not part of it: it reads the packages a machine has, and
+`scripts/bump-pins.sh --gate` and opens `chore/pin-upgrade` first, with the bump
+log and the held-back inputs in the body, and only then builds the branch with
+`scripts/check.sh` on `x86_64-linux` and `aarch64-darwin`. The merge waits on
+both builds, so a run that fails has already left the pull request that says
+what moved and what broke, and the next run replaces the branch instead of
+repeating an invisible failure. Main requires a pull request but no approval and
+no required check, so the merge is the workflow's own call; `dotfiles sync` on a
+machine is what applies it. A pull request that conflicts, because someone
+merged to `main` during the run, fails the merge step rather than waiting, and a
+required check added later would fail it too, because CI never runs on a
+job-token pull request. The audit is not part of it: it reads the packages a machine has, and
 most of its matches wait on a nixpkgs fix. Opening the pull request needs "Allow
 GitHub Actions to create and approve pull requests" in the repository's Actions
 settings.

@@ -84,19 +84,25 @@ against `origin/main`, and `rollback` applies the commit applied before the
 current one. Both read the log, so "which commit was working" does not depend on
 memory.
 
-`dotfiles upgrade` moves every pin with `scripts/bump-pins.sh`, builds and
-applies, reinstalls the GitHub Herdr plugins, and reports the audit. `herdr
+`dotfiles upgrade` moves every pin with `scripts/bump-pins.sh --gate`, builds
+and applies, reinstalls the GitHub Herdr plugins, and reports the audit. The gate
+walks the flake inputs one at a time and keeps a move only while the tree still
+evaluates; a move that does not is held back at its checked-in revision and
+reported, so a broken upstream costs that input's move and nothing else. `herdr
 plugin update` only refetches the ref recorded at install, so the plugin step
 installs again to take the latest. Review the moved pin files, run
 `scripts/check.sh` (the pre-push hook runs it too), and commit. To move one flake
 input, run `nix flake update <input>`, commit `flake.lock`, then `dotfiles apply`.
 
-The `Upgrade` workflow does the same bump without a checkout: every day it
-runs `scripts/bump-pins.sh`, builds the result with `scripts/check.sh` on Linux
-and macOS, and opens the `chore/pin-upgrade` pull request, which it squash-merges
-as soon as both builds pass. Applying stays on the machine, so `dotfiles sync` is
-what moves it. The audit stays by hand too, because it reads the packages that
-machine has.
+The `Upgrade` workflow does the same bump without a checkout: every day it runs
+`scripts/bump-pins.sh --gate` and opens the `chore/pin-upgrade` pull request
+before anything is built. The body carries the bump log and the inputs the gate
+held back, and the workflow builds the branch with `scripts/check.sh` on Linux
+and macOS, merging only while both pass. A build that fails leaves the pull
+request open with a comment that names the run, so the failure is on the record
+and the next run starts from it. Applying stays on the machine, so `dotfiles
+sync` is what moves it. The audit stays by hand too, because it reads the
+packages that machine has.
 
 The npm rows in `modules/pi.nix` are tarballs, and `bump-pins.sh` moves them to
 their registry latest, keeping each vendored dependency on the version its
