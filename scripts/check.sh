@@ -11,9 +11,12 @@
 # registry.npmjs.org, and that fetch fails in two transient ways: a 502 from the
 # registry, or a truncated download that lands as a hash mismatch in the
 # fixed-output derivation. Both leave CI red on a change that is fine, so a full
-# run repeats up to three times. The attempt that failed keeps every path it did
-# build in the store, so the next attempt repeats only what failed. A real
-# failure fails all three and still exits 1.
+# run repeats up to three times, and only for a failure that looks like one of
+# them. A tree that does not evaluate, or a derivation that fails to build,
+# fails the same way on every attempt: retrying it would only relabel the
+# failure as flakiness and delay the report by a minute.
+# The attempt that failed keeps every path it did build in the store, so the next
+# attempt repeats only what failed.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -34,15 +37,39 @@ if [ "${1:-full}" = "--no-build" ]; then
   exit 0
 fi
 
+log="$(mktemp "${TMPDIR:-/tmp}/dotfiles-check.XXXXXX")"
+trap 'rm -f "$log"' EXIT
+
+run_check() {
+  local status
+  set +e
+  nix_cmd flake check --impure 2>&1 | tee "$log"
+  status="${PIPESTATUS[0]}"
+  set -e
+  return "$status"
+}
+
+# The fetch failures the header names, and nothing else.
+transient() {
+  grep -qiE 'hash mismatch|HTTP error 5[0-9][0-9]|Could not resolve host|Connection (reset|refused)|Temporary failure in name resolution|timed out|TLS' "$1"
+}
+
 echo "[check] nix flake check"
 attempt=1
-while ! nix_cmd flake check --impure; do
+while :; do
+  if run_check; then
+    echo "[check] ok (attempt $attempt)"
+    exit 0
+  fi
+  if ! transient "$log"; then
+    echo "[check] failed; the error above is not a fetch failure, so it is not retried" >&2
+    exit 1
+  fi
   if ((attempt >= 3)); then
     echo "[check] failed on attempt $attempt" >&2
     exit 1
   fi
-  echo "[check] attempt $attempt failed, retrying in $((attempt * 10))s" >&2
+  echo "[check] attempt $attempt failed on a fetch; retrying in $((attempt * 10))s" >&2
   sleep $((attempt * 10))
   ((++attempt))
 done
-echo "[check] ok (attempt $attempt)"
