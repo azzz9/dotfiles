@@ -49,9 +49,9 @@ let
     # only the published tarball carries the dist.
     { tarball = {
         name = "cc-safety-net";
-        version = "2.7.1";
-        url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.7.1.tgz";
-        hash = "sha256-vHaPbbMKn8nisRKc174sebNdSlXvcEdbMbOfioXSg2k=";
+        version = "2.7.2";
+        url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.7.2.tgz";
+        hash = "sha256-SmIcmCp3EquCv6vr+lVdkF5pGlkfq0V64dIIk5oI6fE=";
       };
     }
     # Moves the running pi session to another directory or worktree, keeping the
