@@ -29,7 +29,7 @@ let
         hash = "sha256-NG1N76wXMBoLnGoidPjViHdci+mI4NDZqWJt9w7wxxo=";
       };
     }
-    { input = "pi-web-access"; npmDepsHash = "sha256-g+/xF1ciVUYveV8Czz4eOcKZtu52pWhOYS8+qpgcmJQ="; }
+    { input = "pi-web-access"; npmDepsHash = "sha256-W8NDa2tq+qGxF4z4lTQXF6mNAOC3bWiuyeeNIIEbStc="; }
     # The rules load from APPEND_SYSTEM.md every turn, so the menu lists only the
     # skills a person types.
     { input = "skills"; }
