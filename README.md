@@ -32,10 +32,12 @@ root, so `ghq list` shows it with no registration. It applies the Home Manager
 profile for `MACHINE`. On NixOS it also clones the machines repository, adopts
 the machine there when the row is new, and applies the system configuration,
 which sets the hostname to `MACHINE`. The system switch asks for your password
-once.
+once. A NixOS distribution under WSL skips that step: it has no machines
+repository row and keeps its system configuration in `/etc/nixos`, so the
+bootstrap applies the user environment only.
 
 `MACHINE` must name a row the repository carries. The rows today are
-`nix-desktop`, `macbook`, and `nix-server`, and `flake.nix`'s `machines` table is
+`nix-desktop`, `macbook`, `nix-server`, and `wsl`, and `flake.nix`'s `machines` table is
 the source. NixOS is the exception to the rule. There a new name adopts the
 machine in the machines repository, by writing `hardware-configuration.nix`,
 copying `/etc/nixos/configuration.nix` in, writing `default.nix`, and adding the
@@ -50,9 +52,36 @@ To apply by hand instead of running the bootstrap:
 nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#<machine> --impure -b backup
 ```
 
+### NixOS on WSL
+
+`wsl` is the row for a NixOS distribution under WSL. It carries
+`hosts/linux.nix` alone and no desktop stack, because a WSL machine has no
+compositor. The system configuration stays in `/etc/nixos`, so the bootstrap
+never clones the machines repository and never switches the system.
+
+`dotfiles` reads the machine's hostname, and NixOS-WSL defaults it to `nixos`,
+so point it at the row key once. The same block gives the machine a login shell
+and the user manager, which the bootstrap cannot set from the user side: without
+`linger`, `nixos-rebuild` exits on the user-unit reload and no `systemctl --user`
+unit starts.
+
+```nix
+{
+  networking.hostName = "wsl";
+  programs.zsh.enable = true;
+  users.users.nixos.shell = pkgs.zsh;
+  users.users.nixos.linger = true;
+}
+```
+
+```bash
+sudo nixos-rebuild switch
+MACHINE=wsl GIT_NAME=... GIT_EMAIL=... ~/src/github.com/azzz9/dotfiles/scripts/setup-system.sh
+```
+
 | Variable             | Default                                    | Purpose                                                                               |
 | -------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------- |
-| `MACHINE`            | required                                   | This machine's name. The `machines` row to apply, and the hostname the bootstrap sets. The rows today are `nix-desktop`, `macbook`, and `nix-server` |
+| `MACHINE`            | required                                   | This machine's name. The `machines` row to apply, and the hostname the bootstrap sets. The rows today are `nix-desktop`, `macbook`, `nix-server`, and `wsl` |
 | `DOTFILES_DIR`       | `~/src/github.com/azzz9/dotfiles`          | Checkout to clone or reuse, and the checkout to build. The live links name the machines row's `checkout` instead |
 | `MACHINE_CAPABILITY` | picked from the copied NixOS configuration | `desktop` or `headless`, the capability module a new NixOS machine imports            |
 | `REBOOT`             | `0`                                        | Reboot at the end, where the setup asked for one                                      |

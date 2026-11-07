@@ -179,9 +179,15 @@ package.
 
 One table in `flake.nix` names every machine. The key is the machine's hostname,
 which is also the `homeConfigurations` attribute. The rows are `nix-desktop`,
-`macbook`, and `nix-server`. A row names the user environment only; the system
-configuration of a NixOS machine lives in the `machines` repository, which this
-flake does not depend on.
+`macbook`, `nix-server`, and `wsl`. A row names the user environment only; the
+system configuration of a NixOS machine lives in the `machines` repository,
+which this flake does not depend on.
+
+`wsl` is a NixOS distribution under WSL. It carries `hosts/linux.nix` alone, no
+desktop stack, and it is the one NixOS row with no `machines` repository
+directory: its system configuration stays in `/etc/nixos`. The bootstrap reads
+that as `owns_system_layer` being false, so it skips the machines clone, the
+adoption, and the system switch, and applies the user environment only.
 
 The bootstrap sets the hostname from `MACHINE`: `scutil` on macOS,
 `hostnamectl` and the `127.0.1.1` line of `/etc/hosts` on Ubuntu and Arch, and
@@ -205,7 +211,7 @@ A machine whose installed `dotfiles` predates a rename still carries the old nam
 list, so its first apply runs the checkout's script instead:
 
 ```bash
-DOTFILES_DIR=$PWD DOTFILES_MACHINES="nix-desktop macbook nix-server" bash scripts/dotfiles.sh apply <name>
+DOTFILES_DIR=$PWD DOTFILES_MACHINES="nix-desktop macbook nix-server wsl" bash scripts/dotfiles.sh apply <name>
 ```
 
 ## NixOS system layer
@@ -301,7 +307,7 @@ Hermes Agent user service, whose state directory is `~/.hermes` (config.yaml,
 for conditionals:
 
 ```bash
-for m in nix-desktop macbook nix-server; do
+for m in nix-desktop macbook nix-server wsl; do
   echo "== $m"
   nix --extra-experimental-features "nix-command flakes" eval --impure \
     --json ".#homeConfigurations.$m.config.xdg.configFile" --apply builtins.attrNames
