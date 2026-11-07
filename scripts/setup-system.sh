@@ -14,7 +14,8 @@ export NIX_CONFIG="${NIX_CONFIG:-}"$'\nextra-experimental-features = nix-command
 DOTFILES_REPO_URL="${DOTFILES_REPO_URL:-https://github.com/azzz9/dotfiles.git}"
 DEFAULT_DOTFILES_DIR="${HOME}/src/github.com/azzz9/dotfiles"
 # The OS side of every machine lives in its own repository; the bootstrap only
-# reads it on NixOS, where it adopts the machine and switches the system.
+# reads it where owns_system_layer holds, adopting the machine and switching the
+# system there.
 MACHINES_REPO_URL="${MACHINES_REPO_URL:-git@github.com:azzz9/machines.git}"
 DEFAULT_MACHINES_DIR="${HOME}/src/github.com/azzz9/machines"
 MACHINE="${MACHINE:-}"
@@ -45,6 +46,18 @@ dotfiles_dir() {
 
 machines_dir() {
   printf '%s\n' "${MACHINES_DIR:-$DEFAULT_MACHINES_DIR}"
+}
+
+is_wsl() {
+  # WSL sets both in every process it starts.
+  [[ -n "${WSL_DISTRO_NAME:-}" || -n "${WSL_INTEROP:-}" ]]
+}
+
+# NixOS elsewhere hands its system layer to the machines repository. A NixOS
+# distribution under WSL has no layer to hand over, because /etc/nixos stays the
+# operator's own.
+owns_system_layer() {
+  [[ "$linux_distribution" == "nixos" ]] && ! is_wsl
 }
 
 # Only x86_64 Linux and Apple Silicon macOS have machine rows, so reject any
@@ -616,7 +629,13 @@ report_ready_name() {
   fi
 
   echo "This machine's hostname is '$current', not '$machine', so 'dotfiles' still needs one." >&2
-  if [[ "$linux_distribution" == "nixos" ]]; then
+  if [[ "$linux_distribution" != "nixos" ]]; then
+    return 0
+  fi
+  if is_wsl; then
+    echo "Add this line to /etc/nixos/configuration.nix, then run 'sudo nixos-rebuild switch':" >&2
+    echo "  networking.hostName = \"$machine\";" >&2
+  else
     echo "machines/$machine/default.nix sets networking.hostName, and the switch above applies it." >&2
   fi
 }
@@ -648,14 +667,14 @@ main() {
   configure_git
   ensure_dotfiles_repo "$repo_dir"
   require_known_machine "$repo_dir" "$machine"
-  if [[ "$linux_distribution" == "nixos" ]]; then
+  if owns_system_layer; then
     ensure_machines_repo "$(machines_dir)"
     adopt_nixos_machine "$repo_dir" "$machine"
   fi
   apply_home_manager "$repo_dir" "$machine"
   sync_hostname "$machine"
 
-  if [[ "$linux_distribution" == "nixos" && -d "$(machines_dir)/machines/$machine" ]]; then
+  if owns_system_layer && [[ -d "$(machines_dir)/machines/$machine" ]]; then
     # A copied machine configuration can collide with the repo's modules. Fail
     # here, naming the file to edit, rather than inside nixos-rebuild.
     if ! nix_cmd eval --raw \

@@ -67,6 +67,12 @@
           system = "x86_64-linux";
           home = [ ./hosts/linux.nix ./modules/hermes.nix ];
         };
+        # NixOS on WSL keeps its system configuration in /etc/nixos, so this
+        # row carries the user environment alone.
+        wsl = {
+          system = "x86_64-linux";
+          home = [ ./hosts/linux.nix ];
+        };
       };
       # The names the `dotfiles` CLI and its completion offer.
       machineNames = nixpkgs.lib.attrNames machines;
