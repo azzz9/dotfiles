@@ -32,9 +32,9 @@ root, so `ghq list` shows it with no registration. It applies the Home Manager
 profile for `MACHINE`. On NixOS it also clones the machines repository, adopts
 the machine there when the row is new, and applies the system configuration,
 which sets the hostname to `MACHINE`. The system switch asks for your password
-once. A NixOS distribution under WSL skips that step: it has no machines
-repository row and keeps its system configuration in `/etc/nixos`, so the
-bootstrap applies the user environment only.
+once. A NixOS distribution under WSL skips the machines repository, because it
+has no row there: it writes its own `/etc/nixos` instead, as the section below
+shows.
 
 `MACHINE` must name a row the repository carries. The rows today are
 `nix-desktop`, `macbook`, `nix-server`, and `wsl`, and `flake.nix`'s `machines` table is
@@ -56,28 +56,33 @@ nix run nixpkgs#home-manager -- switch --flake ~/src/github.com/azzz9/dotfiles#<
 
 `wsl` is the row for a NixOS distribution under WSL. It carries
 `hosts/linux.nix` alone and no desktop stack, because a WSL machine has no
-compositor. The system configuration stays in `/etc/nixos`, so the bootstrap
-never clones the machines repository and never switches the system.
+compositor. Its system configuration stays in `/etc/nixos`, so the bootstrap
+never clones the machines repository and never adopts a machine there.
 
-`dotfiles` reads the machine's hostname, and NixOS-WSL defaults it to `nixos`,
-so point it at the row key once. The same block gives the machine a login shell
-and the user manager, which the bootstrap cannot set from the user side: without
-`linger`, `nixos-rebuild` exits on the user-unit reload and no `systemctl --user`
-unit starts.
+It does write `/etc/nixos/configuration.nix`, because three settings the user
+environment depends on cannot be set from the user side: the hostname `dotfiles`
+resolves, the login shell, and linger, without which no `systemctl --user` unit
+starts. The file found there is kept as
+`/etc/nixos/configuration.before-dotfiles.nix` and imported by the new one, so
+everything it already set still applies. The bootstrap then runs
+`nix-channel --update` and switches the system before it applies the user
+environment. A rerun that finds its own file already naming the machine writes
+nothing and switches nothing.
 
-```nix
-{
-  networking.hostName = "wsl";
-  programs.zsh.enable = true;
-  users.users.nixos.shell = pkgs.zsh;
-  users.users.nixos.linger = true;
-}
+Download `nixos.wsl` from
+[the NixOS-WSL release](https://github.com/nix-community/NixOS-WSL/releases/latest)
+and install it from PowerShell, which needs WSL 2.4.4 or later. The distro needs
+nothing copied into it first.
+
+```powershell
+wsl --update
+wsl --install --no-distribution
+wsl --install --from-file nixos.wsl
+
+wsl -d NixOS -u nixos -- env USER=nixos HOME=/home/nixos MACHINE=wsl GIT_NAME=... GIT_EMAIL=... bash -lc 'curl -fsSL https://raw.githubusercontent.com/azzz9/dotfiles/main/scripts/setup-system.sh | bash'
 ```
 
-```bash
-sudo nixos-rebuild switch
-MACHINE=wsl GIT_NAME=... GIT_EMAIL=... ~/src/github.com/azzz9/dotfiles/scripts/setup-system.sh
-```
+Log in again afterwards, because the login shell changes with the switch.
 
 | Variable             | Default                                    | Purpose                                                                               |
 | -------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------- |

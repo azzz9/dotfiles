@@ -185,9 +185,13 @@ which this flake does not depend on.
 
 `wsl` is a NixOS distribution under WSL. It carries `hosts/linux.nix` alone, no
 desktop stack, and it is the one NixOS row with no `machines` repository
-directory: its system configuration stays in `/etc/nixos`. The bootstrap reads
-that as `owns_system_layer` being false, so it skips the machines clone, the
-adoption, and the system switch, and applies the user environment only.
+directory. `owns_system_layer` is false there, so the bootstrap skips the
+machines clone and the adoption, and writes the machine's own `/etc/nixos` in
+exchange. `configure_wsl_system` keeps the file it found as
+`configuration.before-dotfiles.nix`, writes a wrapper that imports it and forces
+the hostname, zsh as the login shell, and `linger`, then runs
+`nix-channel --update` and `nixos-rebuild switch` before the user environment. A
+rerun whose file already names the machine writes and switches nothing.
 
 The bootstrap sets the hostname from `MACHINE`: `scutil` on macOS,
 `hostnamectl` and the `127.0.1.1` line of `/etc/hosts` on Ubuntu and Arch, and
