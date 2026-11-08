@@ -62,12 +62,12 @@ let
 
   herdrNvim = pkgs.vimUtils.buildVimPlugin rec {
     pname = "herdr-nvim";
-    version = "1.2.3";
+    version = "1.3.1";
     src = pkgs.fetchFromGitHub {
       owner = "ChmaraX";
       repo = "herdr-nvim";
       rev = "v${version}";
-      hash = "sha256-1uxQCC1r4YCNx9fltc9YBogPMdnEKJCQdldlQ/ynVqA=";
+      hash = "sha256-/026mNSbhZIAMJeNdSsbi9vhUuQEfdjqI99QzKAHW6w=";
     };
     meta = {
       description = "Neovim annotations for Herdr agents";
