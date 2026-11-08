@@ -14,7 +14,8 @@ export NIX_CONFIG="${NIX_CONFIG:-}"$'\nextra-experimental-features = nix-command
 DOTFILES_REPO_URL="${DOTFILES_REPO_URL:-https://github.com/azzz9/dotfiles.git}"
 DEFAULT_DOTFILES_DIR="${HOME}/src/github.com/azzz9/dotfiles"
 # The OS side of every machine lives in its own repository; the bootstrap only
-# reads it on NixOS, where it adopts the machine and switches the system.
+# reads it where owns_system_layer holds, adopting the machine and switching the
+# system there.
 MACHINES_REPO_URL="${MACHINES_REPO_URL:-git@github.com:azzz9/machines.git}"
 DEFAULT_MACHINES_DIR="${HOME}/src/github.com/azzz9/machines"
 MACHINE="${MACHINE:-}"
@@ -45,6 +46,19 @@ dotfiles_dir() {
 
 machines_dir() {
   printf '%s\n' "${MACHINES_DIR:-$DEFAULT_MACHINES_DIR}"
+}
+
+is_wsl() {
+  # WSL sets both in every process it starts, and /etc/wsl.conf is the file a
+  # shell it did not start, such as an ssh session or a systemd unit, still has.
+  [[ -n "${WSL_DISTRO_NAME:-}" || -n "${WSL_INTEROP:-}" || -f /etc/wsl.conf ]]
+}
+
+# NixOS elsewhere hands its system layer to the machines repository. A NixOS
+# distribution under WSL has no layer to hand over, because /etc/nixos stays the
+# operator's own.
+owns_system_layer() {
+  [[ "$linux_distribution" == "nixos" ]] && ! is_wsl
 }
 
 # Only x86_64 Linux and Apple Silicon macOS have machine rows, so reject any
@@ -525,6 +539,74 @@ EOF
   echo "  flake.nix, with the machines.$machine row, then staged all four with git add"
 }
 
+# The marker this function writes, so a rerun finds its own file instead of the
+# image's. Kept here so the guard and the heredoc cannot drift.
+wsl_config_marker="# Written by dotfiles: scripts/setup-system.sh owns this file."
+
+# A NixOS distribution under WSL keeps its system configuration in /etc/nixos,
+# where no repository hands it over. Three settings there cannot come from the
+# user environment, yet it depends on all three: the hostname `dotfiles`
+# resolves, the login shell, and linger, without which no `systemctl --user`
+# unit starts. The file found here is imported rather than replaced, so the
+# settings it already carries still apply.
+configure_wsl_system() {
+  local machine="$1"
+  local config=/etc/nixos/configuration.nix
+  local previous=/etc/nixos/configuration.before-dotfiles.nix
+  local login_user="${USER:-}"
+
+  # Home Manager reads USER from the environment, so the switch below has to
+  # name the same account. A shell WSL started carries it; one it did not may
+  # not.
+  if [[ -z "$login_user" ]]; then
+    login_user="$(id -un)"
+  fi
+
+  if [[ ! -f "$config" ]]; then
+    echo "Cannot configure this WSL machine: $config is missing." >&2
+    exit 1
+  fi
+
+  # A rerun that finds its own file and the same machine writes nothing and
+  # switches nothing. The name is compared because a different MACHINE has to
+  # reach the file even when the marker is already there.
+  if grep -qsF "$wsl_config_marker" "$config" &&
+    grep -qsF "networking.hostName = lib.mkForce \"$machine\";" "$config"; then
+    echo "$config already names '$machine'. Left the system configuration alone."
+    return 0
+  fi
+
+  if [[ ! -e "$previous" ]]; then
+    run_as_root cp -n "$config" "$previous"
+    echo "Kept the configuration found here as $previous."
+  fi
+
+  run_as_root tee "$config" >/dev/null <<EOF
+$wsl_config_marker
+# The file it replaced is imported below, so everything it already set still
+# applies. The values here win only where the user environment needs them.
+{ lib, pkgs, ... }:
+{
+  imports = [ ./configuration.before-dotfiles.nix ];
+
+  networking.hostName = lib.mkForce "$machine";
+  programs.zsh.enable = true;
+  users.users."${login_user}" = {
+    shell = pkgs.zsh;
+    linger = true;
+  };
+}
+EOF
+  echo "Wrote $config: hostname '$machine', zsh as the login shell, and linger."
+
+  # A freshly imported image subscribes to no channel yet, and nixos-rebuild
+  # resolves <nixpkgs> from root's channels.
+  run_as_root nix-channel --update
+
+  echo "Applying the NixOS system configuration for '$machine'..."
+  run_as_root nixos-rebuild switch
+}
+
 apply_home_manager() {
   local repo_dir="$1"
   local machine="$2"
@@ -616,7 +698,12 @@ report_ready_name() {
   fi
 
   echo "This machine's hostname is '$current', not '$machine', so 'dotfiles' still needs one." >&2
-  if [[ "$linux_distribution" == "nixos" ]]; then
+  if [[ "$linux_distribution" != "nixos" ]]; then
+    return 0
+  fi
+  if is_wsl; then
+    echo "/etc/nixos/configuration.nix sets networking.hostName to '$machine'; run 'sudo nixos-rebuild switch' to apply it." >&2
+  else
     echo "machines/$machine/default.nix sets networking.hostName, and the switch above applies it." >&2
   fi
 }
@@ -648,14 +735,19 @@ main() {
   configure_git
   ensure_dotfiles_repo "$repo_dir"
   require_known_machine "$repo_dir" "$machine"
-  if [[ "$linux_distribution" == "nixos" ]]; then
+  if owns_system_layer; then
     ensure_machines_repo "$(machines_dir)"
     adopt_nixos_machine "$repo_dir" "$machine"
+  elif [[ "$linux_distribution" == "nixos" ]]; then
+    # The remaining NixOS is the one under WSL, whose /etc/nixos is its own. The
+    # system goes first: linger and the login shell are what the user
+    # environment below relies on.
+    configure_wsl_system "$machine"
   fi
   apply_home_manager "$repo_dir" "$machine"
   sync_hostname "$machine"
 
-  if [[ "$linux_distribution" == "nixos" && -d "$(machines_dir)/machines/$machine" ]]; then
+  if owns_system_layer && [[ -d "$(machines_dir)/machines/$machine" ]]; then
     # A copied machine configuration can collide with the repo's modules. Fail
     # here, naming the file to edit, rather than inside nixos-rebuild.
     if ! nix_cmd eval --raw \

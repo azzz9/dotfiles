@@ -78,7 +78,8 @@ class BootstrapTests(unittest.TestCase):
                   machine_entry=True, machine_hardware=True, nixos_config=True,
                   nixos_config_body="{ }\n", capability=None, repeat=False,
                   scratch_dir=None, hostname="nix-desktop", test_arch=None,
-                  flake_machines="nix-desktop macbook nix-server", flake_fail=False):
+                  flake_machines="nix-desktop macbook nix-server", flake_fail=False,
+                  wsl=False, wsl_conf=False):
         scratch_ctx = (tempfile.TemporaryDirectory(prefix="bootstrap-test-")
                        if scratch_dir is None else contextlib.nullcontext(scratch_dir))
         with scratch_ctx as scratch:
@@ -142,6 +143,11 @@ class BootstrapTests(unittest.TestCase):
             etc_hosts = etc_nixos / "hosts"
             etc_nixos.mkdir(parents=True)
             etc_hosts.write_text("127.0.0.1\tlocalhost\n127.0.1.1\tinstaller-name\n")
+            if wsl_conf:
+                # The signal a shell wsl.exe did not start still finds. Written
+                # only when a test asks for it, because this file is what makes
+                # a run a WSL run with no environment variable set.
+                (etc_nixos / "wsl.conf").write_text("[boot]\nsystemd = true\n")
             if nixos_config:
                 (etc_nixos / "configuration.nix").write_text(nixos_config_body)
             source = SETUP.read_text()
@@ -155,6 +161,7 @@ class BootstrapTests(unittest.TestCase):
                 "/usr/local/bin/brew": str(base / "no-brew"),
                 "/etc/nixos": str(etc_nixos),
                 "/etc/hosts": str(etc_hosts),
+                "/etc/wsl.conf": str(etc_nixos / "wsl.conf"),
             }
             for host_path, replacement in host_paths.items():
                 source = source.replace(host_path, replacement)
@@ -282,7 +289,8 @@ esac
 ''',
                 "gpg": "cat >/dev/null\n",
             }
-            for name in ("zsh", "install", "chmod", "systemctl", "usermod", "chsh", "nixos-rebuild"):
+            for name in ("zsh", "install", "chmod", "systemctl", "usermod", "chsh", "nixos-rebuild",
+                         "nix-channel"):
                 bodies[name] = ":\n"
             for name, body in bodies.items():
                 mock = fixtures / name
@@ -301,7 +309,7 @@ esac
             elif distro == "nixos":
                 # No hostnamectl and no scutil here: the NixOS system switch sets
                 # the hostname, so the bootstrap must not reach for either.
-                available += ["nixos-generate-config", "nixos-rebuild"]
+                available += ["nixos-generate-config", "nixos-rebuild", "nix-channel", "tee"]
             elif distro == "macos":
                 available += ["curl", "tee", "chsh", "scutil"]  # macOS includes curl.
             if sudo:
@@ -325,10 +333,15 @@ esac
                 TEST_MACHINES_SKELETON=str(machines_skeleton),
                 MACHINES_DIR=str(machines),
             )
-            for name in ("DOTFILES_DIR", "REBOOT", "BASH_ENV", "ENV", "MACHINES_REPO_URL"):
+            for name in ("DOTFILES_DIR", "REBOOT", "BASH_ENV", "ENV", "MACHINES_REPO_URL",
+                         "WSL_DISTRO_NAME", "WSL_INTEROP"):
                 env.pop(name, None)
             if dotfiles_dir is not None:
                 env["DOTFILES_DIR"] = str(repo) if dotfiles_dir else ""
+            if wsl:
+                # A test run on a WSL host inherits both, so the pop above keeps a
+                # plain NixOS case plain and only this flag turns WSL on.
+                env["WSL_DISTRO_NAME"] = "NixOS"
             def invoke():
                 return subprocess.run(
                     [BASH, "-s"] if stdin else [BASH, str(script)],
@@ -718,6 +731,88 @@ esac
         # The switch applies networking.hostName, so the script asks for no
         # hostname change and names the file that owns the name.
         self.assertIn("networking.hostName", result.stderr)
+
+    def test_nixos_wsl_skips_the_machines_repository(self):
+        # A NixOS distribution under WSL keeps its system configuration in
+        # /etc/nixos, so there is no machines repository to clone and no machine
+        # to adopt there.
+        result, calls, repo = self.run_setup(
+            machine="wsl", hostname="wsl", existing_target=True, wsl=True,
+            flake_machines="nix-desktop macbook nix-server wsl",
+        )
+        self.assert_success(result, calls, repo)
+        self.assertIn(f"-- switch --flake {repo}#wsl", calls)
+        self.assertNotIn("machines.git", calls)
+        self.assertNotIn("nixos-generate-config", calls)
+        self.assertNotIn("Adopted machine", result.stdout)
+        self.assertIn("so 'dotfiles' needs no argument", result.stdout)
+
+    def test_nixos_wsl_writes_the_system_configuration_the_user_environment_needs(self):
+        # The hostname the CLI resolves, the login shell, and linger cannot be
+        # set from the user side, so the bootstrap owns /etc/nixos here: it keeps
+        # the file it found, imports it, and switches before the user
+        # environment that relies on all three.
+        scratch = self.persistent_scratch()
+        result, calls, repo = self.run_setup(
+            machine="wsl", hostname="nixos", existing_target=True, wsl=True,
+            flake_machines="nix-desktop macbook nix-server wsl",
+            nixos_config_body="{ imports = [ ./hardware-configuration.nix ]; }\n",
+            scratch_dir=scratch,
+        )
+        self.assert_success(result, calls, repo)
+        etc = Path(scratch) / "fixtures/system-etc"
+        config = (etc / "configuration.nix").read_text()
+        self.assertIn('networking.hostName = lib.mkForce "wsl";', config)
+        self.assertIn("imports = [ ./configuration.before-dotfiles.nix ];", config)
+        self.assertIn('users.users."test" = {', config)
+        self.assertIn("shell = pkgs.zsh;", config)
+        self.assertIn("linger = true;", config)
+        self.assertEqual((etc / "configuration.before-dotfiles.nix").read_text(),
+                         "{ imports = [ ./hardware-configuration.nix ]; }\n")
+        self.assert_nix_parses(etc / "configuration.nix")
+        self.assertLess(calls.index("nix-channel --update"),
+                        calls.index("nixos-rebuild switch"))
+        self.assertLess(calls.index("nixos-rebuild switch"), calls.index(f"apply {repo}"))
+        self.assertNotIn("machines.git", calls)
+
+    def test_nixos_wsl_is_recognized_without_the_environment(self):
+        # A shell that wsl.exe did not start, such as an ssh session or a
+        # systemd unit, carries no WSL_DISTRO_NAME. /etc/wsl.conf is the file
+        # that still says this is a WSL distro, so the bootstrap must not take
+        # the machines repository path there.
+        result, calls, repo = self.run_setup(
+            machine="wsl", hostname="wsl", existing_target=True, wsl_conf=True,
+            flake_machines="nix-desktop macbook nix-server wsl",
+        )
+        self.assert_success(result, calls, repo)
+        self.assertNotIn("machines.git", calls)
+        self.assertIn("nixos-rebuild switch", calls)
+
+    def test_nixos_wsl_leaves_its_own_configuration_alone_on_a_rerun(self):
+        # The second run finds its own file and the same machine, so it writes
+        # nothing and never reaches the switch again.
+        result, calls, repo = self.run_setup(
+            machine="wsl", hostname="wsl", existing_target=True, wsl=True,
+            flake_machines="nix-desktop macbook nix-server wsl", repeat=True,
+        )
+        self.assert_success(result, calls, repo)
+        self.assertNotIn("nix-channel", calls)
+        self.assertNotIn("nixos-rebuild", calls)
+        self.assertIn("already names 'wsl'", result.stdout)
+
+    def test_nixos_wsl_names_the_configuration_line_that_sets_the_hostname(self):
+        # On WSL the hostname is a line in /etc/nixos, not a file in the machines
+        # repository, so the last message has to name that line instead.
+        result, calls, repo = self.run_setup(
+            machine="wsl", hostname="desktop-7f3k2", existing_target=True, wsl=True,
+            flake_machines="nix-desktop macbook nix-server wsl",
+        )
+        self.assert_success(result, calls, repo)
+        self.assertIn("networking.hostName to 'wsl'", result.stderr)
+        self.assertIn("configuration.nix", result.stderr)
+        self.assertIn("nixos-rebuild switch", result.stderr)
+        self.assertNotIn("machines/wsl/default.nix", result.stderr)
+        self.assertNotIn("hostnamectl", calls)
 
     def test_unreadable_machine_list_lets_home_manager_report_the_name(self):
         # A flake that cannot be evaluated leaves the name unchecked, and Home
