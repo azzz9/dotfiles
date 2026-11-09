@@ -1,6 +1,35 @@
+--- a/src/bridge.ts
++++ b/src/bridge.ts
+@@ -5,7 +5,7 @@
+ import { tmpdir } from "node:os";
+ import { dirname, join } from "node:path";
+ import { fileURLToPath } from "node:url";
+-import { mergeMachineResources, prepareHerdrArrival, preserveHerdrSourceWorkspace, readState, writeState, type TeleportState } from "./core.ts";
++import { mergeMachineResources, prepareHerdrArrival, preserveHerdrSourceWorkspace, readState, runRollback, writeState, type TeleportState } from "./core.ts";
+ import { assertHerdrContext, guardedLaunch, readHerdrPane, runHerdr, shellOwnsForeground, withOutput, type HerdrContext } from "./herdr.ts";
+ import type { TeleportExecution } from "./output.ts";
+ import { agentDirectory, arrivalGuardFile, requestController, MAX_PACKET, hasSessionProcess, qualifyLocation, relocateSession, runtimeFingerprint, UnknownRemoteOutcome, remoteNodeCommand, waitForForward, sshOptions, validateReady, type ReadyIdentity, type RemoteMove, type ReturnRoute, type ModelIdentity } from "./remote.ts";
+@@ -21,7 +21,7 @@
+ };
+ type Prepared = {
+   operationId: string; sessionId: string; dir: string; stateDir: string; sessionFile: string; cwd: string; agentDir: string;
+-  location: HerdrContext; rollbackArgs: string[]; fingerprint: string;
++  location: HerdrContext; rollbackArgs: string[][]; fingerprint: string;
+ };
+ 
+ function save(path: string, value: unknown): void {
+@@ -129,7 +129,7 @@
+ /** Roll back only an uncommitted arrival that this controller prepared. */
+ export function abortArrival(prepared: Prepared): void {
+   if (existsSync(join(prepared.dir, "committed.json"))) throw new Error("Destination already committed; refusing rollback.");
+-  runHerdr(prepared.location, prepared.rollbackArgs);
++  runRollback(prepared.location, prepared.rollbackArgs);
+   const current = readState(prepared.stateDir);
+   if (current.active?.sessionFile === prepared.sessionFile) {
+     const published = JSON.parse(readFileSync(join(prepared.dir, "next-state.json"), "utf8"));
 --- a/src/core.ts
 +++ b/src/core.ts
-@@ -98,7 +98,36 @@
+@@ -99,7 +99,36 @@
    return prepareDestination(context, target, undefined, sessionName, true);
  }
  
@@ -35,10 +64,30 @@
 +  const slot = selectAgentSlot(tabs, panes, target);
 +  return slot ? { location: { ...location, tabId: slot.tabId, paneId: slot.paneId }, label: slot.label } : undefined;
 +}
+ 
+ /** App has public spaces/tabs, not worktree commands. Git owns checkout operations. */
+ function prepareAppDestination(context: HerdrContext, target: string, checkout: boolean, owned: Resource["herdr"] | undefined, label: string, separateWorkspace: boolean): PreparedDestination {
+@@ -109,15 +138,15 @@
+     : separateWorkspace ? undefined : spaces.find((space) => space.id === context.workspaceId);
+   if (space && owned && sameHerdrConnection(context, owned) && space.id === owned.workspaceId && space.tabs.length === 1 && space.tabs[0].id === owned.tabId && space.tabs[0].terminals.length === 1 && space.tabs[0].terminals[0].terminal === owned.paneId && isHerdrShell(context, owned.paneId)) {
+     runHerdr(context, ["tab", "rename", owned.tabId, label]);
+-    const rollbackArgs = ["tab", "close", owned.tabId];
+-    return { location: { ...owned }, rollbackArgs, rollback: () => { runHerdr(context, rollbackArgs); } };
++    const rollbackArgs = [["tab", "close", owned.tabId]];
++    return { location: { ...owned }, rollbackArgs, rollback: () => { runRollback(context, rollbackArgs); } };
+   }
+   const result = space
+     ? runHerdr(context, ["tab", "create", "--workspace", space.id, "--cwd", target, "--label", label, "--no-focus"])
+     : runHerdr(context, ["workspace", "create", "--cwd", target, "--label", label, "--no-focus"]);
+   const location = herdrLocation(context, result);
+-  const rollbackArgs = space ? ["tab", "close", location.tabId] : ["workspace", "close", location.workspaceId];
+-  return { location, rollbackArgs, rollback: () => { runHerdr(context, rollbackArgs); } };
++  const rollbackArgs = [space ? ["tab", "close", location.tabId] : ["workspace", "close", location.workspaceId]];
++  return { location, rollbackArgs, rollback: () => { runRollback(context, rollbackArgs); } };
+ }
  function prepareDestination(context: HerdrContext, target: string, owned?: Resource["herdr"], sessionName?: string, separateWorkspace = false): PreparedDestination {
    const label = sessionName || basename(target) || target;
-   let checkout = false;
-@@ -107,25 +136,29 @@
+@@ -128,25 +157,29 @@
      const opened = runHerdr(context, ["worktree", "open", "--cwd", primaryRepo(target), "--path", target, "--no-focus"]);
      const location = herdrLocation(context, opened, target);
      const ownShell = owned && sameHerdrConnection(context, owned) && owned.paneId === location.paneId && opened.workspace.pane_count === 1;
@@ -76,38 +125,9 @@
  }
  /** Create a linked checkout with Git or Herdr, then save its actual path and ownership. */
  export function createManagedWorktree(input: { repo: string; branch: string; base?: string; path?: string; stateDir: string; herdr?: HerdrContext }): Resource {
---- a/src/bridge.ts
-+++ b/src/bridge.ts
-@@ -5,7 +5,7 @@
- import { tmpdir } from "node:os";
- import { dirname, join } from "node:path";
- import { fileURLToPath } from "node:url";
--import { mergeMachineResources, prepareHerdrArrival, preserveHerdrSourceWorkspace, readState, writeState, type TeleportState } from "./core.ts";
-+import { mergeMachineResources, prepareHerdrArrival, preserveHerdrSourceWorkspace, readState, runRollback, writeState, type TeleportState } from "./core.ts";
- import { guardedLaunch, readHerdrPane, runHerdr, shellOwnsForeground, withOutput, type HerdrContext } from "./herdr.ts";
- import type { TeleportExecution } from "./output.ts";
- import { agentDirectory, piCommand, MAX_PACKET, hasSessionProcess, qualifyLocation, relocateSession, runtimeFingerprint, UnknownRemoteOutcome, shellQuote, sshOptions, validateReady, type ReadyIdentity, type RemoteMove, type ReturnRoute } from "./remote.ts";
-@@ -19,7 +19,7 @@
- };
- type Prepared = {
-   operationId: string; sessionId: string; dir: string; stateDir: string; sessionFile: string; cwd: string; agentDir: string;
--  location: HerdrContext; rollbackArgs: string[]; fingerprint: string;
-+  location: HerdrContext; rollbackArgs: string[][]; fingerprint: string;
- };
- 
- function save(path: string, value: unknown): void {
-@@ -118,7 +118,7 @@
- /** Roll back only an uncommitted arrival that this controller prepared. */
- export function abortArrival(prepared: Prepared): void {
-   if (existsSync(join(prepared.dir, "committed.json"))) throw new Error("Destination already committed; refusing rollback.");
--  runHerdr(prepared.location, prepared.rollbackArgs);
-+  runRollback(prepared.location, prepared.rollbackArgs);
-   const current = readState(prepared.stateDir);
-   if (current.active?.sessionFile === prepared.sessionFile) {
-     const published = JSON.parse(readFileSync(join(prepared.dir, "next-state.json"), "utf8"));
 --- a/src/herdr.ts
 +++ b/src/herdr.ts
-@@ -57,7 +57,7 @@
+@@ -114,7 +114,7 @@
    try {
      const output = execFileSync("herdr", args, { encoding: "utf8", env, timeout: 15_000, stdio: ["ignore", "pipe", "pipe"] }).trim();
      // pane run acknowledges successful delivery with no JSON body.

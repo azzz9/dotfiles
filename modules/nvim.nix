@@ -31,6 +31,23 @@ let
         --replace-fail 'if #status_result.staged == 0 then' 'if false then'
     '';
   });
+  # nixpkgs forces libgit2-sys onto the system libgit2 but leaves it out of
+  # fff-nvim-lib's buildInputs, so the Rust library fails to configure.
+  # Drop this once nixpkgs adds libgit2 there.
+  fffNvim =
+    let
+      lib' = pkgs.vimPlugins.fff-nvim.fff-nvim-lib.overrideAttrs (old: {
+        buildInputs = (old.buildInputs or [ ]) ++ [ pkgs.libgit2 ];
+      });
+    in
+    pkgs.vimPlugins.fff-nvim.overrideAttrs (_: {
+      postPatch = ''
+        substituteInPlace lua/fff/download.lua \
+          --replace-fail \
+            "return plugin_dir .. '/../target/release'" \
+            "return '${lib'}/lib'"
+      '';
+    });
   luaConfigDir = ./nvim/lua;
   luaFiles = [
     "core.lua"
@@ -158,7 +175,7 @@ assert lib.assertMsg (luaFilesUnlisted == [ ] && luaFilesAbsent == [ ])
         codediffNvim
         atlas-nvim
         neogit
-        fff-nvim
+        fffNvim
         plenary-nvim
         telescope-ui-select-nvim
         nvim-lspconfig

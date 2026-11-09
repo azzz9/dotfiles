@@ -145,8 +145,8 @@ in
   } ''
     mkdir src
     tar -xzf ${pkgs.fetchurl {
-      url = "https://registry.npmjs.org/pi-agent-teleport/-/pi-agent-teleport-0.2.8.tgz";
-      hash = "sha256-EluPW4hkiR7rUDApVTSJMooQHfEzh7cNAU4wTiyqd7s=";
+      url = "https://registry.npmjs.org/pi-agent-teleport/-/pi-agent-teleport-0.2.9.tgz";
+      hash = "sha256-86dMx22q/LHWnNNWPaaQnkzcRKF0tvTVi6V3CUbFV/8=";
     }} -C src --strip-components=1
     cd src
     patch -p1 < ${self}/modules/pi/teleport-agent-tab.patch
