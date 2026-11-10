@@ -19,6 +19,12 @@
     # Pi loads these from the store paths Nix fetches for them. flake.lock
     # records the revision, so `nix flake update <name>` is what moves a pin.
     pstack = { url = "github:michael-denyer/pstack-claude"; flake = false; };
+    # The upstreams of the skills pi-skills/ builds with a local patch (see
+    # pi-skills/default.nix). A pin bump that breaks a patch fails the checks.
+    skill-herdr = { url = "github:herdrdev/herdr"; flake = false; };
+    skill-imozuru = { url = "github:MaryCache/imozuru"; flake = false; };
+    skill-retro = { url = "github:mattpocock/skills"; flake = false; };
+    skill-yomiyasu = { url = "github:nanaism/yomiyasu"; flake = false; };
     pi-web-access = { url = "github:nicobailon/pi-web-access"; flake = false; };
     # `cc-safety-net` stays an npm row (see modules/pi.nix), so it is not an
     # input here.
@@ -33,6 +39,7 @@
   outputs =
     { self, nixpkgs, home-manager, nixvim, pi
     , pstack, pi-web-access, pi-compact-tools
+    , skill-herdr, skill-imozuru, skill-retro, skill-yomiyasu
     , hermes-agent, ...
     }:
     let
@@ -43,8 +50,17 @@
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
       defaultCheckout = "${builtins.getEnv "HOME"}/src/github.com/azzz9/dotfiles";
       # The pi package built from pi-skills/: the rules, the skills, and the
-      # extensions this repository ships.
-      mkPiSkills = pkgs: import ./pi-skills { inherit pkgs; };
+      # extensions this repository ships, with the tracked skills patched onto
+      # their pinned upstreams.
+      mkPiSkills = pkgs: import ./pi-skills {
+        inherit pkgs;
+        upstreams = {
+          herdr = skill-herdr;
+          imozuru = skill-imozuru;
+          retro = skill-retro;
+          yomiyasu = skill-yomiyasu;
+        };
+      };
       # The pi packages, by row name. A flake input row hands pi that input's
       # store path, so pi loads the source flake.lock locked; `skills` is the
       # in-repo package, built for the machine's pkgs.
