@@ -6,8 +6,9 @@
 # `flake = false` input in flake.nix, so flake.lock pins it and `nix flake
 # update` moves it. The build copies the part of the upstream tree the skill
 # uses into skills/<name>/, applies upstream/<name>/local.patch with
-# `git apply`, and adds upstream/<name>/VENDOR.md. A patch that no longer
-# applies to the pinned upstream fails this build, and so every check.
+# `git apply` when the skill has one, and adds upstream/<name>/VENDOR.md. A
+# patch that no longer applies to the pinned upstream fails this build, and so
+# every check. A skill without a patch ships the upstream files unmodified.
 { pkgs, upstreams }:
 let
   inherit (pkgs) lib;
@@ -46,7 +47,11 @@ let
       drop scripts/yomiyasu_hook.py
     '';
   };
-  assemble = name: rules: ''
+  assemble = name: rules:
+    let
+      patch = ./upstream + "/${name}/local.patch";
+    in
+    ''
     upstream=${upstreams.${name}}
     skill=$out/skills/${name}
     mkdir -p "$skill"
@@ -58,10 +63,12 @@ let
     }
     drop() { rm -r "''${skill:?}/$1"; }
     ${rules}
-    if ! git -C "$skill" apply --whitespace=nowarn ${./upstream + "/${name}/local.patch"}; then
-      echo "pi-skills: upstream/${name}/local.patch does not apply to $upstream" >&2
-      exit 1
-    fi
+    ${lib.optionalString (builtins.pathExists patch) ''
+      if ! git -C "$skill" apply --whitespace=nowarn ${patch}; then
+        echo "pi-skills: upstream/${name}/local.patch does not apply to $upstream" >&2
+        exit 1
+      fi
+    ''}
     cp ${./upstream + "/${name}/VENDOR.md"} "$skill/VENDOR.md"
   '';
 in

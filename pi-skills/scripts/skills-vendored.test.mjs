@@ -17,7 +17,9 @@ function frontmatter(dir) {
 test("a vendored skill keeps its upstream license beside it", () => {
 	for (const entry of readdirSync(SKILLS, { withFileTypes: true })) {
 		if (!entry.isDirectory() || !existsSync(join(SKILLS, entry.name, "SKILL.md"))) continue;
-		if (!/^\s+upstream:/m.test(frontmatter(entry.name))) continue;
+		const vendored =
+			/^\s+upstream:/m.test(frontmatter(entry.name)) || existsSync(join(SKILLS, entry.name, "VENDOR.md"));
+		if (!vendored) continue;
 		assert.ok(
 			existsSync(join(SKILLS, entry.name, "LICENSE")),
 			`${entry.name}: vendored skill has no LICENSE`,
@@ -61,7 +63,9 @@ test("every upstream-tracked skill carries its vendor record", () => {
 		for (const file of ["SKILL.md", "LICENSE", "VENDOR.md"]) {
 			assert.ok(existsSync(join(SKILLS, name, file)), `${name}: missing ${file}`);
 		}
-		assert.match(frontmatter(name), /^\s+upstream:\s*https:\/\//m, `${name}: no metadata.upstream`);
+		// An unpatched skill keeps the upstream frontmatter, so the vendor record names the upstream.
+		const vendor = readFileSync(join(SKILLS, name, "VENDOR.md"), "utf8");
+		assert.match(vendor, /^- Upstream: https:\/\//m, `${name}: VENDOR.md names no upstream`);
 	}
 });
 

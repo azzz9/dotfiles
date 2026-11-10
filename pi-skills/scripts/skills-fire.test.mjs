@@ -11,9 +11,10 @@ const DISCOVERABLE = [
 	"herdr",
 	"imozuru",
 	"workspace",
+	"yomiyasu",
 ];
 
-const HIDDEN = ["retro", "yomiyasu"];
+const HIDDEN = ["retro"];
 
 function frontmatter(dir) {
 	const text = readFileSync(join(SKILLS, dir, "SKILL.md"), "utf8");

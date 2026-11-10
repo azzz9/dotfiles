@@ -23,7 +23,7 @@ Five skills. One is ours and four follow their upstream projects.
 - `retro` from [`mattpocock/skills`](https://github.com/mattpocock/skills) (MIT).
 - `yomiyasu` from [`nanaism/yomiyasu`](https://github.com/nanaism/yomiyasu) (MIT).
 
-`retro` and `yomiyasu` are hidden from the catalog and run through `/skill:<name>`.
+`retro` is hidden from the catalog and runs through `/skill:retro`.
 
 ## Upstream-tracked skills
 
@@ -33,8 +33,9 @@ The four upstream skills are not copied into this tree. For each one:
    `skill-yomiyasu`) fetches the upstream repository. `flake.lock` pins the revision, and
    `nix flake update` (the daily pin bump) moves it.
 2. `default.nix` copies the part of the upstream tree the skill uses into `skills/<name>/`.
-3. It applies `upstream/<name>/local.patch` with `git apply`. The patch is every local change:
-   frontmatter for pi, adapted paragraphs, and local fixes.
+3. It applies `upstream/<name>/local.patch` with `git apply`, when the skill has one. The patch
+   is every local change: frontmatter for pi, adapted paragraphs, and local fixes. `yomiyasu`
+   has no patch and ships as upstream wrote it.
 4. It adds `upstream/<name>/VENDOR.md`, which says in words what the patch changes and what is
    left out.
 
