@@ -164,7 +164,7 @@ sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/machines#<machine>
 | Editor         | Neovim through nixvim, with the per-language servers, formatters, and linters |
 | Git            | `git`, `gh`, `ghq`, `git-wt`, `delta`, `lazygit`                              |
 | Terminals      | `herdr`                                                                        |
-| Agents         | `pi` with the skills and pstack                                               |
+| Agents         | `pi` with this repo's `pi-skills/` package and pstack                         |
 | Hermes Agent   | The agent service on `nix-server` only, from the `hermes-agent` flake input   |
 | Tools          | The file, JSON, media, and language toolchains the shell assumes              |
 | Extra packages | The derivations nixpkgs lacks, pinned and bumped by `scripts/bump-pins.sh`     |
@@ -178,5 +178,6 @@ hosts/linux.nix       # what a Linux machine's home adds, imported by its row
 hosts/darwin.nix      # what the macOS machine's home adds, imported by its row
 modules/              # one module per capability, named for what it configures
 scripts/              # the dotfiles CLI, the bootstrap, and the check set
+pi-skills/            # the pi package: global rules, skills, extensions, upstream patches
 .agents/skills/       # the skills that only make sense in this repository
 ```

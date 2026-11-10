@@ -25,9 +25,10 @@ nix build --dry-run .#homeConfigurations.nix-desktop.activationPackage --impure 
   not check, so it can activate the current tree with local edits.
 - In the agent sandbox, prefix Nix with `XDG_CACHE_HOME=/tmp/nix-cache`, or Nix
   fails with `unable to open database file`.
-- `hosts/default.nix` links the rules files from the `skills` flake input, so
-  `flake.lock` pins them. Edit the skills checkout, then run
-  `nix flake update skills` and `dotfiles apply`.
+- `hosts/default.nix` links the rules files from the `pi-skills` build
+  (`pi-skills/default.nix`). Edit `pi-skills/`, then run `dotfiles apply`. The
+  upstream-tracked skills there are patches over `skill-*` flake inputs; see
+  `pi-skills/README.md`.
 - Activation calls `nix profile add`; `scripts/dotfiles.sh` rewrites
   `profile install` to `profile add` for Determinate Nix.
 
