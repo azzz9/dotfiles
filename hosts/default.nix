@@ -1,6 +1,8 @@
-{ config, lib, skills, ... }:
+{ config, lib, pkgs, piPackagePaths, ... }:
 let
   cfg = config.dotfiles;
+  # The in-repo pi package (pi-skills/), which carries the rules files.
+  inherit (piPackagePaths pkgs) skills;
 in
 {
   imports = [

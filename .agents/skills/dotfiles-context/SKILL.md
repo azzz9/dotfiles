@@ -41,26 +41,32 @@ comes from `modules/hermes.nix` and exists on nix-server alone.
 
 ## AI config deployment model
 
-`hosts/default.nix` links the three rules files from the `skills` flake input,
-so `flake.lock` pins them:
+`hosts/default.nix` links the two rules files from the `pi-skills` build
+(`pi-skills/default.nix`, also `packages.<system>.pi-skills`):
 
 ```
-<skills input>/AGENTS.md          -> ~/.pi/agent/AGENTS.md
-<skills input>/APPEND_SYSTEM.md   -> ~/.pi/agent/APPEND_SYSTEM.md
+<pi-skills build>/AGENTS.md          -> ~/.pi/agent/AGENTS.md
+<pi-skills build>/APPEND_SYSTEM.md   -> ~/.pi/agent/APPEND_SYSTEM.md
 ```
 
-The input is the same one `modules/pi.nix` hands pi, so the rules and the skill
-files come from one revision. Editing `~/src/github.com/azzz9/skills` has no
-effect until the pin moves. To move it, run `nix flake update skills` and then
-`dotfiles apply`.
+The build is the same store path `modules/pi.nix` hands pi as the `skills`
+row, so the rules and the skill files come from one tree. Edit `pi-skills/`
+and run `dotfiles apply`.
 
-Repo-local skills are the only skills this repo ships. They sit in
-`.agents/skills/` at the repo root, where pi discovers them as project skills
-once the project is trusted.
+Four of its skills (herdr, imozuru, retro, yomiyasu) follow their upstream
+repositories: the `skill-*` flake inputs pin the upstream, and the build
+applies `pi-skills/upstream/<name>/local.patch` to it. `nix flake update`
+moves those pins with the rest; a patch that no longer applies fails the build
+and every check, and the fix is to rebase that patch onto the new upstream.
+`pi-skills/README.md` has the details.
 
-The skills repository (`skills`) ships the skills and the two files that load on every turn:
+Repo-local skills sit in `.agents/skills/` at the repo root, where pi
+discovers them as project skills once the project is trusted. They load only
+in this repo.
+
+`pi-skills/` ships the global skills and the two files that load on every turn:
 `APPEND_SYSTEM.md`, which pi appends to the system prompt, and `AGENTS.md`, which pi reads as a
-context file. Both link from the `skills` flake input, so `flake.lock` pins them.
+context file.
 
 pstack is the subagent layer. Its `pstack` flake input carries the 65 skills and the Pi extension
 that registers `agent`, `send_message`, `list_agents`, `stop_agent`, `ask_user_question`, and
