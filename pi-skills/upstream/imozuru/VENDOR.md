@@ -10,7 +10,7 @@
 
 The patch holds every change. In words:
 
-- The frontmatter adds `license`, `metadata.upstream`, `metadata.version`, and `metadata.note` for pi.
+- The frontmatter adds `license`, `metadata.upstream`, and `metadata.note` for pi. The upstream revision is the flake.lock pin, so no `metadata.version` is kept.
 - Slash commands are `/skill:imozuru`, not `/imozuru`, to match the pi skill command.
 - The `examples/demo/` directory is kept inside the skill, so the `SKILL.md` reference drops the
   upstream repository prefix.

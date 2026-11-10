@@ -1,15 +1,14 @@
 diff --git a/SKILL.md b/SKILL.md
-index 12149ac..539b1b8 100644
+index 12149ac..4fd8f67 100644
 --- a/SKILL.md
 +++ b/SKILL.md
-@@ -2,13 +2,18 @@
+@@ -2,13 +2,17 @@
  name: retro
  description: "Conduct a retrospective on a coding session."
  disable-model-invocation: true
 +license: MIT
 +metadata:
 +  upstream: https://github.com/mattpocock/skills/tree/main/skills/engineering/retro
-+  version: "5beb35b"
 +  note: locally modified
  ---
  
@@ -22,7 +21,7 @@ index 12149ac..539b1b8 100644
  
  2. Read the primary sources for the session the user specifies. This may mean searching through session logs on this machine. If the user doesn't specify a session, default to the current one.
  
-@@ -38,7 +43,7 @@ This means that the review agent should be responsible for imposing coding stand
+@@ -38,7 +42,7 @@ This means that the review agent should be responsible for imposing coding stand
  
  You have access to several files in the repo:
  

@@ -10,7 +10,7 @@
 
 The patch holds every change. In words:
 
-- Frontmatter adds `license`, `metadata.upstream`, `metadata.version`, and `metadata.note` for pi.
+- Frontmatter adds `license`, `metadata.upstream`, and `metadata.note` for pi. The upstream revision is the flake.lock pin, so no `metadata.version` is kept.
 - The `writing-for-agents` dependency is replaced with the repo's Output rules and `/skill:yomiyasu` for Japanese.
 - `CLAUDE.md` references are reduced to `AGENTS.md`; `CODING_STANDARDS.md` is treated as optional.
 - Omitted: `agents/openai.yaml` (plugin interface, not a pi-subagents agent).
