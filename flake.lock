@@ -318,24 +318,7 @@
         "pi": "pi",
         "pi-compact-tools": "pi-compact-tools",
         "pi-web-access": "pi-web-access",
-        "pstack": "pstack",
-        "skills": "skills"
-      }
-    },
-    "skills": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1793040938,
-        "narHash": "sha256-3ozGAudYSCcVJt6llVjxnsvK32GChxLfFt/TrYeNF/4=",
-        "owner": "azzz9",
-        "repo": "skills",
-        "rev": "b2bb75a9ca552cc18e49f8d34e47267257fa4aef",
-        "type": "github"
-      },
-      "original": {
-        "owner": "azzz9",
-        "repo": "skills",
-        "type": "github"
+        "pstack": "pstack"
       }
     },
     "systems": {

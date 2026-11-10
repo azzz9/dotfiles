@@ -18,7 +18,6 @@
     pi.url = "github:earendil-works/pi";
     # Pi loads these from the store paths Nix fetches for them. flake.lock
     # records the revision, so `nix flake update <name>` is what moves a pin.
-    skills = { url = "github:azzz9/skills"; flake = false; };
     pstack = { url = "github:michael-denyer/pstack-claude"; flake = false; };
     pi-web-access = { url = "github:nicobailon/pi-web-access"; flake = false; };
     # `cc-safety-net` stays an npm row (see modules/pi.nix), so it is not an
@@ -33,7 +32,7 @@
 
   outputs =
     { self, nixpkgs, home-manager, nixvim, pi
-    , skills, pstack, pi-web-access, pi-compact-tools
+    , pstack, pi-web-access, pi-compact-tools
     , hermes-agent, ...
     }:
     let
@@ -43,10 +42,15 @@
       ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
       defaultCheckout = "${builtins.getEnv "HOME"}/src/github.com/azzz9/dotfiles";
-      # The pi packages, by flake input name. A row hands pi that input's store
-      # path, so pi loads the source flake.lock locked.
-      piPackagePaths = {
-        inherit skills pstack pi-web-access pi-compact-tools;
+      # The pi package built from pi-skills/: the rules, the skills, and the
+      # extensions this repository ships.
+      mkPiSkills = pkgs: import ./pi-skills { inherit pkgs; };
+      # The pi packages, by row name. A flake input row hands pi that input's
+      # store path, so pi loads the source flake.lock locked; `skills` is the
+      # in-repo package, built for the machine's pkgs.
+      piPackagePaths = pkgs: {
+        skills = mkPiSkills pkgs;
+        inherit pstack pi-web-access pi-compact-tools;
       };
       # One table for every machine. The key names homeConfigurations.<name>
       # and is the machine's hostname, so the CLI and the bootstrap resolve a
@@ -80,7 +84,7 @@
       # machine repository spreads this into extraSpecialArgs, so the flake
       # inputs stay owned here.
       homeArgs = { machine, machineNames, repoDir, worktreeRoot ? "worktrees" }: {
-        inherit machine machineNames repoDir worktreeRoot skills piPackagePaths;
+        inherit machine machineNames repoDir worktreeRoot piPackagePaths;
         piFlake = pi;
         hermesAgent = hermes-agent;
       };
@@ -123,6 +127,9 @@
           "prettier-plugin-solidity-dist" = pinned.prettierPluginSolidityDist;
           codediff-watcher = pinned.codediffWatcher;
           herdr-nvim = pinned.herdrNvim;
+          # The in-repo pi package, exposed so a check and `nix build
+          # .#pi-skills` can read the tree pi loads.
+          pi-skills = mkPiSkills pkgs;
         };
       # The verification layer, one file per check. scripts/check.sh, the
       # pre-push hook, and CI all run these.

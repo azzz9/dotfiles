@@ -1,7 +1,10 @@
 { lib, pkgs, config, repoDir, piFlake, piPackagePaths, ... }:
 let
-  # One row per package pi installs. `input` names the flake input whose store
-  # path the row loads; `tarball` names a published npm tarball Nix unpacks into
+  # The store path each `input` row loads, by row name.
+  packagePaths = piPackagePaths pkgs;
+  # One row per package pi installs. `input` names the piPackagePaths entry
+  # whose store path the row loads: a flake input, or `skills`, which
+  # pi-skills/ builds; `tarball` names a published npm tarball Nix unpacks into
   # the store; `spec` is an exact npm source pi installs itself; `npmDepsHash`
   # marks an input whose extension imports runtime dependencies, which pi never
   # installs for a local package (docs/packages.md, "Local packages are not
@@ -30,8 +33,8 @@ let
       };
     }
     { input = "pi-web-access"; npmDepsHash = "sha256-W8NDa2tq+qGxF4z4lTQXF6mNAOC3bWiuyeeNIIEbStc="; }
-    # The rules load from APPEND_SYSTEM.md every turn, so the menu lists only the
-    # skills a person types.
+    # This repository's pi-skills/. The rules load from APPEND_SYSTEM.md every
+    # turn, so the menu lists only the skills a person types.
     { input = "skills"; }
     # The /btw side conversation. The published tarball carries the TypeScript
     # pi loads and has no runtime dependencies, so Nix unpacks it and pi loads it
@@ -162,7 +165,7 @@ let
       source =
         if row ? input then
           let
-            src = piPackagePaths.${row.input};
+            src = packagePaths.${row.input};
             meta = builtins.fromJSON (builtins.readFile "${src}/package.json");
           in
           if row ? npmDepsHash then
@@ -217,7 +220,7 @@ let
             (builtins.filter
               (entry:
                 !(builtins.pathExists
-                  "${piPackagePaths.${row.input}}/${lib.removePrefix "!" (lib.removePrefix "+" entry)}"))
+                  "${packagePaths.${row.input}}/${lib.removePrefix "!" (lib.removePrefix "+" entry)}"))
               (row.filter.${kind} or [ ])))
         (builtins.attrNames (row.filter or { })))
     (builtins.filter (row: row ? filter) baseRows);

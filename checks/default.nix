@@ -2,7 +2,7 @@
 # these, so a check cannot drift between them.
 { self, pkgs, platformMachines }:
 let
-  skillsSource = self.inputs.skills;
+  skillsSource = self.packages.${pkgs.stdenv.hostPlatform.system}.pi-skills;
   parseGeneratedConfigs = host:
     let
       activationPackage = self.homeConfigurations.${host}.activationPackage;
@@ -85,12 +85,12 @@ in
   '';
   # modules/pin-names.txt and flake.nix's packages must name the same set: a pin
   # in one and not the other is never bumped or never builds. `dotfiles` is the
-  # CLI and codediff-watcher has its own per-platform step in bump-pins.sh, so
-  # neither is listed here.
+  # CLI, codediff-watcher has its own per-platform step in bump-pins.sh, and
+  # pi-skills is built from this repository, so none is listed here.
   pin-names = pkgs.runCommand "pin-names" {
     nativeBuildInputs = [ pkgs.gawk ];
   } ''
-    awk -v packages="${pkgs.lib.concatStringsSep " " (builtins.attrNames self.packages.${pkgs.stdenv.hostPlatform.system})}" -v exempt="dotfiles codediff-watcher" '
+    awk -v packages="${pkgs.lib.concatStringsSep " " (builtins.attrNames self.packages.${pkgs.stdenv.hostPlatform.system})}" -v exempt="dotfiles codediff-watcher pi-skills" '
       BEGIN {
         count = split(packages, name, " ")
         for (i = 1; i <= count; i++) is_package[name[i]] = 1
