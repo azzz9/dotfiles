@@ -55,3 +55,24 @@ test("the vendored yomiyasu keeps its license and vendor record", () => {
 	}
 	assert.ok(!existsSync(join(dir, "GUIDE.md")), "yomiyasu: GUIDE.md is not a skill file");
 });
+
+test("every upstream-tracked skill carries its vendor record", () => {
+	for (const name of ["herdr", "imozuru", "retro", "yomiyasu"]) {
+		for (const file of ["SKILL.md", "LICENSE", "VENDOR.md"]) {
+			assert.ok(existsSync(join(SKILLS, name, file)), `${name}: missing ${file}`);
+		}
+		assert.match(frontmatter(name), /^\s+upstream:\s*https:\/\//m, `${name}: no metadata.upstream`);
+	}
+});
+
+test("the local imozuru redirect fix passes its regression test", (t) => {
+	const skill = join(SKILLS, "imozuru");
+	const python = spawnSync("python3", ["-V"]);
+	if (python.error) return t.skip("python3 is not installed");
+	const run = spawnSync("python3", ["-m", "unittest", "discover", "-s", "tests"], {
+		cwd: skill,
+		encoding: "utf8",
+		env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" },
+	});
+	assert.equal(run.status, 0, run.stderr || run.stdout);
+});

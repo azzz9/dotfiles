@@ -154,6 +154,22 @@ in
     node --experimental-strip-types teleport-slot.mjs
     touch $out
   '';
+  # The pi package's own tests (pi-skills/scripts/*.test.mjs), run against the
+  # tree pi loads, so the upstream-tracked skills are tested after their
+  # patches apply to the pinned upstream. external-changes.test.mjs imports the
+  # TypeScript extension directly, hence the type stripping.
+  pi-skills = pkgs.runCommand "pi-skills-tests" {
+    nativeBuildInputs = [ pkgs.nodejs pkgs.git pkgs.python3 ];
+  } ''
+    export HOME=$TMPDIR PYTHONDONTWRITEBYTECODE=1
+    git config --global user.name check
+    git config --global user.email check@localhost
+    cp -r ${skillsSource} pkg
+    chmod -R u+w pkg
+    cd pkg
+    node --experimental-strip-types --test scripts/*.test.mjs
+    touch $out
+  '';
   actionlint = pkgs.runCommand "actionlint" { nativeBuildInputs = [ pkgs.actionlint ]; } ''
     actionlint ${self}/.github/workflows/*.yml
     touch $out
