@@ -12,6 +12,7 @@ let
     p.tree-sitter-json
     p.tree-sitter-lua
     p.tree-sitter-markdown
+    p.tree-sitter-markdown-inline
     p.tree-sitter-python
     p.tree-sitter-regex
     p.tree-sitter-solidity
@@ -74,6 +75,7 @@ let
     "plugins/which-key.lua"
     "plugins/trouble.lua"
     "plugins/todo-comments.lua"
+    "plugins/render-markdown.lua"
     "languages.lua"
     "plugins/conform.lua"
     "plugins/nvim-lint.lua"
@@ -201,6 +203,7 @@ assert lib.assertMsg (luaFilesUnlisted == [ ] && luaFilesAbsent == [ ])
         hlchunk-nvim
         smear-cursor-nvim
         which-key-nvim
+        render-markdown-nvim
       ]
       ++ [ treesitterWithGrammars pinned.herdrNvim ];
     inherit extraConfigLua;
