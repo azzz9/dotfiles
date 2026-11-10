@@ -8,9 +8,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SKILLS = join(ROOT, "skills");
 
 const DISCOVERABLE = [
-	"explain",
 	"herdr",
-	"hunk-review",
 	"imozuru",
 	"workspace",
 ];
