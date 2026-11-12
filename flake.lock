@@ -52,11 +52,11 @@
         "uv2nix": "uv2nix"
       },
       "locked": {
-        "lastModified": 1794427975,
-        "narHash": "sha256-rjinsqlo9CqQb/hmJRlXT+Y5uQ+E+/Mf39i/xYlKZt8=",
+        "lastModified": 1794516991,
+        "narHash": "sha256-p9dJ/FGYlFR4UdtyRd3qet9fqalBfyftsjJQTo0FwYI=",
         "owner": "NousResearch",
         "repo": "hermes-agent",
-        "rev": "6a0d2d12815c0546b0bcaf05046e2fe3293f60aa",
+        "rev": "9de646b3fc38e24c87b28a53627c07081d9f2c91",
         "type": "github"
       },
       "original": {
@@ -140,11 +140,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1794042290,
-        "narHash": "sha256-ziZn2PvCJE5JEEpqTdxXwJpPB+L3YqoCpTAMCzyaP3U=",
+        "lastModified": 1794386569,
+        "narHash": "sha256-x9sADJvoVG0L6RejZB+/BB4YiGZFBZrfTlhF4uBq1tQ=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "f4a03c008967841f2a0b3cb7c436fc6fc31671f6",
+        "rev": "d4f25a3e562008648d45bcf2d70bcc7422cad84e",
         "type": "github"
       },
       "original": {
@@ -198,11 +198,11 @@
         "nixpkgs-darwin-x64": "nixpkgs-darwin-x64"
       },
       "locked": {
-        "lastModified": 1794429744,
-        "narHash": "sha256-dshLfesFPqZldz5sQDr9tr5253MouOXaChqonxxE++Y=",
+        "lastModified": 1794513350,
+        "narHash": "sha256-3FvQfypqPPkhPQp2vCXpBK9Tzp12PlrnA2PdXQ/arcM=",
         "owner": "earendil-works",
         "repo": "pi",
-        "rev": "ec566e6b1826c762ee0c98c218bd9d33bacaef9d",
+        "rev": "b8e1eec80dc54aa87225f854ee152906cf2d2b40",
         "type": "github"
       },
       "original": {
@@ -214,11 +214,11 @@
     "pi-compact-tools": {
       "flake": false,
       "locked": {
-        "lastModified": 1793758899,
-        "narHash": "sha256-o6IxeDBk8x975d+Dmneu/CH9+jZhaD6wU9+ykyvNW7g=",
+        "lastModified": 1794468233,
+        "narHash": "sha256-TQ/vMn+LdP5EZ9HelygBNpGwmwYrmZvJzBry0Usu6jo=",
         "owner": "nedleeds",
         "repo": "pi-compact-tools",
-        "rev": "87073b7b4967506ca627a35802c38034f7331e35",
+        "rev": "3f07f6f24848e23748aa4b22710de28e8aebe065",
         "type": "github"
       },
       "original": {
@@ -246,11 +246,11 @@
     "pstack": {
       "flake": false,
       "locked": {
-        "lastModified": 1794399342,
-        "narHash": "sha256-GLSoCxktgj71yW0MNAFhfZSJNsRlqqOGpZOCjrRSZ9A=",
+        "lastModified": 1794498235,
+        "narHash": "sha256-0/C9FdAMTPv3da6ch4f9EGWOEm5sWbbThWNCsrffra0=",
         "owner": "michael-denyer",
         "repo": "pstack-claude",
-        "rev": "36f43364d9198e951f2b739bfb007eb747f834b7",
+        "rev": "f49683438054332d6c71232693bed3c9305bd4ce",
         "type": "github"
       },
       "original": {
@@ -360,11 +360,11 @@
     "skill-retro": {
       "flake": false,
       "locked": {
-        "lastModified": 1793456610,
-        "narHash": "sha256-3vhd77xfZjKUYJsIwPFevIZPUAzUgZXr0RYj5NQrBwk=",
+        "lastModified": 1794472958,
+        "narHash": "sha256-AYSRCvBL8TDDdW3rgKu2T7gl4YYDoDId0jYbabEFyfs=",
         "owner": "mattpocock",
         "repo": "skills",
-        "rev": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+        "rev": "5863806dd4e15c63174bee4e7515a4256792ecfa",
         "type": "github"
       },
       "original": {
@@ -376,11 +376,11 @@
     "skill-yomiyasu": {
       "flake": false,
       "locked": {
-        "lastModified": 1794395769,
-        "narHash": "sha256-q5S0vynPmQ7XwVm6dDm1O9p+y7MgbwPmOuKmVRa9cjw=",
+        "lastModified": 1794443311,
+        "narHash": "sha256-5CVfVx2cNxOdW8uKOdo3Gjs8zJrNYdBFqwR/qBg/Gpk=",
         "owner": "nanaism",
         "repo": "yomiyasu",
-        "rev": "2318a6d0820a58d3f8cfadc75af86978bb739185",
+        "rev": "db78b9bc5e868549b517a037df7a4d1c93edac23",
         "type": "github"
       },
       "original": {
