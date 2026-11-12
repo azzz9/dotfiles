@@ -27,9 +27,9 @@ let
     # quota answers instead of the extra usage that Anthropic bills otherwise.
     { tarball = {
         name = "pi-claude-pro";
-        version = "1.2.0";
-        url = "https://registry.npmjs.org/pi-claude-pro/-/pi-claude-pro-1.2.0.tgz";
-        hash = "sha256-W9NwuWGidZNtdlfHzBjcYKzLGB8ryKURpxwXzYkDpII=";
+        version = "1.3.0";
+        url = "https://registry.npmjs.org/pi-claude-pro/-/pi-claude-pro-1.3.0.tgz";
+        hash = "sha256-g7wcAHkR30KX8CBWt5JSjvUygyqpNVl4HpiJ+WMAtTg=";
       };
     }
     { input = "pi-web-access"; npmDepsHash = "sha256-W8NDa2tq+qGxF4z4lTQXF6mNAOC3bWiuyeeNIIEbStc="; }
@@ -52,9 +52,9 @@ let
     # only the published tarball carries the dist.
     { tarball = {
         name = "cc-safety-net";
-        version = "2.7.11";
-        url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.7.11.tgz";
-        hash = "sha256-hgMn55jMAE9EtWAIM5M8wYYyaDBcPa7xIP8hm1Wy99k=";
+        version = "2.7.12";
+        url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.7.12.tgz";
+        hash = "sha256-K6NpfsLDi7vp34yxsIBoa669U7boQfRfAVhcU4Tlwls=";
       };
     }
     # Moves the running pi session to another directory or worktree, keeping the
