@@ -27,12 +27,12 @@ let
     # quota answers instead of the extra usage that Anthropic bills otherwise.
     { tarball = {
         name = "pi-claude-pro";
-        version = "1.3.0";
-        url = "https://registry.npmjs.org/pi-claude-pro/-/pi-claude-pro-1.3.0.tgz";
-        hash = "sha256-g7wcAHkR30KX8CBWt5JSjvUygyqpNVl4HpiJ+WMAtTg=";
+        version = "1.4.2";
+        url = "https://registry.npmjs.org/pi-claude-pro/-/pi-claude-pro-1.4.2.tgz";
+        hash = "sha256-PjGbcOfWuh5K/5oxkYH50qgl3k2Exn2yATF7oZoHvJo=";
       };
     }
-    { input = "pi-web-access"; npmDepsHash = "sha256-W8NDa2tq+qGxF4z4lTQXF6mNAOC3bWiuyeeNIIEbStc="; }
+    { input = "pi-web-access"; npmDepsHash = "sha256-kmyoh7lvHssAhSBU2qKqk9ElGgm6Z5BZUtBjy1+hri4="; }
     # This repository's pi-skills/. The rules load from APPEND_SYSTEM.md every
     # turn, so the menu lists only the skills a person types.
     { input = "skills"; }
@@ -52,9 +52,9 @@ let
     # only the published tarball carries the dist.
     { tarball = {
         name = "cc-safety-net";
-        version = "2.7.12";
-        url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.7.12.tgz";
-        hash = "sha256-K6NpfsLDi7vp34yxsIBoa669U7boQfRfAVhcU4Tlwls=";
+        version = "2.7.13";
+        url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.7.13.tgz";
+        hash = "sha256-n3k+yhDSNu8dQFsD/+tzQc3lrOmoErhij/ggw4sItoo=";
       };
     }
     # Moves the running pi session to another directory or worktree, keeping the
