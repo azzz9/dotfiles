@@ -110,6 +110,7 @@
             inherit system;
             config.allowUnfreePredicate = pkg: builtins.elem (nixpkgs.lib.getName pkg) [
               "barbar.nvim"
+              "antigravity-cli"
             ];
           };
           extraSpecialArgs = homeArgs { inherit machineNames; machine = name; repoDir = checkout; };
