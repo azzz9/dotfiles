@@ -40,9 +40,6 @@ in
       # --- Markdown ---
       markdownlint-cli        # linter
 
-      # --- AI agents ---
-      antigravity-cli         # Google Antigravity CLI (agy, unfree)
-
       # --- Security ---
       osv-scanner             # OSV scan of the npm lockfile
 

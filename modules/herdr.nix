@@ -151,13 +151,15 @@ in
   '';
   xdg.configFile."herdr/config.toml".force = true;
 
-  # Reinstall pi's integration on every activation: the command is idempotent
-  # and refreshes the generated hook files when Herdr changes its assets.
+  # Reinstall pi's and agy's integrations on every activation: the command is
+  # idempotent and refreshes the generated hook files when Herdr changes its
+  # assets, while preserving other entries (such as Orca's) in hooks.json.
   home.activation.herdrIntegrations = lib.hm.dag.entryAfter [ "writeBoundary" "installPackages" ] ''
-    # Installing pi's binary does not initialize its user directories. Herdr
-    # requires this directory even before pi has been launched for the first time.
-    run mkdir -p "$HOME/.pi/agent/extensions"
+    # Installing pi's or agy's binary does not initialize their user directories.
+    # Herdr requires them even before either CLI has been launched for the first time.
+    run mkdir -p "$HOME/.pi/agent/extensions" "$HOME/.gemini/config"
     run ${pkgs.herdr}/bin/herdr integration install pi >/dev/null
+    run ${pkgs.herdr}/bin/herdr integration install antigravity-cli >/dev/null
   '';
 
   # Link the checkout so layout edits take effect without a rebuild.
