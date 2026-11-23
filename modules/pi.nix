@@ -52,18 +52,18 @@ let
     # only the published tarball carries the dist.
     { tarball = {
         name = "cc-safety-net";
-        version = "2.8.0";
-        url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.8.0.tgz";
-        hash = "sha256-8iXvkVmjr8q7sMcM9uaTn8ChQa4RsCmg8VS7pZqz9j4=";
+        version = "2.8.2";
+        url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.8.2.tgz";
+        hash = "sha256-YLIYj0uGIzEZHsJcmR8OfOYhS11th8KLwf6iHij8sMk=";
       };
     }
     # Moves the running pi session to another directory or worktree, keeping the
     # conversation, and creates or removes the worktree through herdr.
     { tarball = {
         name = "pi-agent-teleport";
-        version = "0.2.11";
-        url = "https://registry.npmjs.org/pi-agent-teleport/-/pi-agent-teleport-0.2.11.tgz";
-        hash = "sha256-OyGMsWKpDuWupj9lcTijAE1hotBlN7CLjUnq/HMpHSM=";
+        version = "0.2.12";
+        url = "https://registry.npmjs.org/pi-agent-teleport/-/pi-agent-teleport-0.2.12.tgz";
+        hash = "sha256-K6OquTzx23jttod/eNVhYyFv10dHn3S/ldKfNQQpR0Q=";
         postPatch = ''
           patch -p1 < ${./pi/teleport-agent-tab.patch}
         '';
