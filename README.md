@@ -163,7 +163,7 @@ sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/machines#<machine>
 | Shell          | Zsh, the prompt, fzf, and the `dotfiles` completion                           |
 | Editor         | Neovim through nixvim, with the per-language servers, formatters, and linters |
 | Git            | `git`, `gh`, `ghq`, `git-wt`, `delta`, `lazygit`                              |
-| Terminals      | `herdr`                                                                        |
+| Terminals      | `herdr`, `tuios`                                                               |
 | Agents         | `pi` with this repo's `pi-skills/` package and pstack, `agy`, and `rtk` command proxy |
 | Hermes Agent   | The agent service on `nix-server` only, from the `hermes-agent` flake input   |
 | Tools          | The file, JSON, media, and language toolchains the shell assumes              |
