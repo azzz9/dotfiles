@@ -29,4 +29,10 @@
       + builtins.readFile ../modules/ghostty/config.macos;
     force = true;
   };
+
+  # Rust's dirs::config_dir resolves to ~/Library/Application Support on macOS.
+  home.file."Library/Application Support/rtk/config.toml" = {
+    source = config.dotfiles.rtk.configSource;
+    force = true;
+  };
 }

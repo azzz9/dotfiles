@@ -15,6 +15,7 @@ from pathlib import Path
 HOME_FILES = Path(os.environ["AGY_HOME_FILES"])
 DOTFILES_PLUGIN = Path(os.environ["AGY_DOTFILES_PLUGIN"])
 PSTACK_PLUGIN = Path(os.environ["AGY_PSTACK_PLUGIN"])
+RTK_PLUGIN = Path(os.environ["AGY_RTK_PLUGIN"])
 PROMPT_DISPLAY = Path(os.environ["AGY_PROMPT_DISPLAY"])
 
 
@@ -114,6 +115,79 @@ class CcSafetyNetHookTest(unittest.TestCase):
         self.assertEqual(res.returncode, 0, res.stderr)
         decision = json.loads(res.stdout)
         self.assertEqual(decision.get("decision"), "deny")
+
+    def test_blocks_rtk_prefixed_destructive_command(self) -> None:
+        res = self._run_hook(
+            {
+                "toolCall": {
+                    "id": "t4",
+                    "name": "run_command",
+                    "args": {"CommandLine": "rtk git push --force"},
+                },
+                "cwd": "/tmp",
+                "hookEventName": "PreToolUse",
+            }
+        )
+        self.assertEqual(res.returncode, 0, res.stderr)
+        decision = json.loads(res.stdout)
+        self.assertEqual(decision.get("decision"), "deny")
+
+
+class RtkPluginHookTest(unittest.TestCase):
+    def _run_hook(self, payload: dict[str, object]) -> subprocess.CompletedProcess[str]:
+        hooks = json.loads((RTK_PLUGIN / "hooks.json").read_text(encoding="utf-8"))
+        cmd = hooks["rtk-rewrite"]["PreToolUse"][0]["hooks"][0]["command"]
+        self.assertTrue(cmd.startswith("/nix/store/"), f"expected store path in {cmd!r}")
+        with tempfile.TemporaryDirectory() as tmp:
+            env = dict(os.environ, HOME=tmp)
+            return subprocess.run(
+                ["/bin/sh", "-c", cmd],
+                input=json.dumps(payload),
+                capture_output=True,
+                text=True,
+                cwd=str(RTK_PLUGIN),
+                env=env,
+                check=False,
+            )
+
+    def test_plugin_files_present(self) -> None:
+        self.assertTrue((RTK_PLUGIN / "plugin.json").is_file())
+        self.assertTrue((RTK_PLUGIN / "hooks.json").is_file())
+        self.assertTrue((RTK_PLUGIN / "rules" / "AGENTS.md").is_file())
+
+    def test_rewrites_supported_command(self) -> None:
+        res = self._run_hook(
+            {
+                "toolCall": {
+                    "id": "r1",
+                    "name": "run_command",
+                    "args": {"CommandLine": "git status"},
+                },
+                "cwd": "/tmp",
+                "hookEventName": "PreToolUse",
+            }
+        )
+        self.assertEqual(res.returncode, 0, res.stderr)
+        decision = json.loads(res.stdout)
+        self.assertEqual(decision.get("decision"), "allow")
+        self.assertEqual(decision.get("overwrite"), {"CommandLine": "rtk git status"})
+
+    def test_passes_through_unsupported_command(self) -> None:
+        res = self._run_hook(
+            {
+                "toolCall": {
+                    "id": "r2",
+                    "name": "run_command",
+                    "args": {"CommandLine": "echo hello"},
+                },
+                "cwd": "/tmp",
+                "hookEventName": "PreToolUse",
+            }
+        )
+        self.assertEqual(res.returncode, 0, res.stderr)
+        decision = json.loads(res.stdout)
+        self.assertEqual(decision.get("decision"), "allow")
+        self.assertNotIn("overwrite", decision)
 
 
 class PstackSessionStartHookTest(unittest.TestCase):

@@ -112,6 +112,14 @@ loads a shared skill twice. `modules/orca.nix` refreshes already-installed Orca
 bundled skills on activation via `orca skills update --all` when an Orca CLI
 binary is present on the host.
 
+`modules/rtk.nix` installs `pkgs.rtk` and builds the `pi` extension
+(`~/.pi/agent/extensions/rtk.ts`), the `agy` plugin (`~/.gemini/config/plugins/rtk`
+with its hook command pinned to `${pkgs.rtk}/bin/rtk`), and the shared
+`config.toml` derivation that `hosts/linux.nix` and `hosts/darwin.nix` place at
+their platform-specific paths. `modules/hermes.nix` adds `pkgs.rtk` to the
+service's `extraPackages` and runs `rtk init -g --agent hermes --auto-patch`
+on activation.
+
 To add a repo-local skill: create `.agents/skills/<name>/SKILL.md`; no Nix
 change is needed.
 
@@ -318,8 +326,8 @@ and package set. `hosts/default.nix` asserts that one was imported.
 
 | Where | What it carries |
 |------|------------------|
-| `hosts/darwin.nix` | sessionPath entries, the GC launchd argument split, and Ghostty's `config` containing both fragments |
-| `hosts/linux.nix` | sessionPath entry, the XDG user dirs, wl-clipboard, Ghostty's binary and `config.ghostty` |
+| `hosts/darwin.nix` | sessionPath entries, the GC launchd argument split, Ghostty's `config` containing both fragments, and `Library/Application Support/rtk/config.toml` |
+| `hosts/linux.nix` | sessionPath entry, the XDG user dirs, wl-clipboard, Ghostty's binary and `config.ghostty`, and `~/.config/rtk/config.toml` |
 | `modules/pi.nix` | the `dotfiles.pi.linuxProviders` option, which `hosts/linux.nix` turns on for the Linux provider set |
 | `modules/pinned-packages.nix` | the per-system codediff-watcher hash and `autoPatchelfHook` on Linux |
 

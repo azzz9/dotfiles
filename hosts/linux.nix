@@ -27,4 +27,9 @@
     text = builtins.readFile ../modules/ghostty/config.ghostty;
     force = true;
   };
+
+  xdg.configFile."rtk/config.toml" = {
+    source = config.dotfiles.rtk.configSource;
+    force = true;
+  };
 }
