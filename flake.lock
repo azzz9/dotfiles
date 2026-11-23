@@ -52,11 +52,11 @@
         "uv2nix": "uv2nix"
       },
       "locked": {
-        "lastModified": 1795121475,
-        "narHash": "sha256-V6cmGKvPKv76bqACHbVZcStBrA3bjZeYfiqnlGoHGqI=",
+        "lastModified": 1795424388,
+        "narHash": "sha256-MCFmvGCB5maW8N5/BExR6R5UsEfjXDhmVeI3fnCy864=",
         "owner": "NousResearch",
         "repo": "hermes-agent",
-        "rev": "caafe5389ae585ef77387a962aee05b1bcf17029",
+        "rev": "fd58c762e03f82bfcfbea5098e9e92654dffbaeb",
         "type": "github"
       },
       "original": {
@@ -93,11 +93,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794963576,
-        "narHash": "sha256-+CPrP74GDJ63f7bgEFC9Av4hbxc7K9WUNv1ZVRifRe8=",
+        "lastModified": 1795366757,
+        "narHash": "sha256-Tp4Kh4R7ID1f2mMCDlb2PiFQ/DZZsnXB2u2juWN+TT4=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "2b13c9cb3aa20653e6f8ee0b7f8331a53ea9b0a9",
+        "rev": "3b8140d21fa0a70b1b38c2ed29853dfe686234a6",
         "type": "github"
       },
       "original": {
@@ -140,11 +140,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1794890597,
-        "narHash": "sha256-lME2lHoDHAaSHP3/okgiVoJ0icVEvsQH8LeU3We7tcc=",
+        "lastModified": 1795234589,
+        "narHash": "sha256-f/VVvxf5RsQgWVhUtefoca5ktVg0DA2bnkMOcmSnozo=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "04906337b6d53e8bb0eaf0470ae9f070a4d4eb55",
+        "rev": "2786a2a72088ecf32aea5b3ec52099e6a7cff78f",
         "type": "github"
       },
       "original": {
@@ -198,11 +198,11 @@
         "nixpkgs-darwin-x64": "nixpkgs-darwin-x64"
       },
       "locked": {
-        "lastModified": 1795122101,
-        "narHash": "sha256-FDobv+IvhzG5lhJB0y5sI3SrVITyPVx+k5H0ws8QtUs=",
+        "lastModified": 1795376172,
+        "narHash": "sha256-d3ocHYTmJ6S6cLwShR/d6tW/2qZM07UrGV6YeUKqQTo=",
         "owner": "earendil-works",
         "repo": "pi",
-        "rev": "5799e217eff69a371bd0efdac09495eebcad5782",
+        "rev": "69a6993486acee850d14a4a1547daa4a167228ad",
         "type": "github"
       },
       "original": {
@@ -230,11 +230,11 @@
     "pi-web-access": {
       "flake": false,
       "locked": {
-        "lastModified": 1795066440,
-        "narHash": "sha256-toUZGgyZQ9pbAl2aPFlYo3xH8m/42ptVzkY99DuZE1Y=",
+        "lastModified": 1795289202,
+        "narHash": "sha256-n6/CtO20p42yxKHazXOh0lcI0SjcCdpRmDtwS8f3qCY=",
         "owner": "nicobailon",
         "repo": "pi-web-access",
-        "rev": "438e58be6307efb7cd539af3806757abe303aa0c",
+        "rev": "f5a745af5bf7c81fa55d47bf86c4afa25ac870e8",
         "type": "github"
       },
       "original": {
@@ -246,11 +246,11 @@
     "pstack": {
       "flake": false,
       "locked": {
-        "lastModified": 1795087809,
-        "narHash": "sha256-ZrXpvZIJgmbRO6n3//G/cg3/yc75XtQ8b+xzdxpOEv0=",
+        "lastModified": 1795409766,
+        "narHash": "sha256-/3aD8rsUXfEDteB69dq6xt+IfTgCeLms8W6AxlPsnWc=",
         "owner": "michael-denyer",
         "repo": "pstack-claude",
-        "rev": "412990b837ddb5e41ee589d770ba1bff24144654",
+        "rev": "81603a46a24c0402c6db2c93433791d8c5e6d0dc",
         "type": "github"
       },
       "original": {
@@ -328,11 +328,11 @@
     "skill-herdr": {
       "flake": false,
       "locked": {
-        "lastModified": 1795120745,
-        "narHash": "sha256-stXjw/EP86rYhhQYd+C6YgJpp4/ZoTP/NduFKP69XLQ=",
+        "lastModified": 1795126513,
+        "narHash": "sha256-x+DOzoMhorpWTf8yN29g2P6Ha+oSGbaZdV7soxdSmaY=",
         "owner": "herdrdev",
         "repo": "herdr",
-        "rev": "8734523b92deae6749188475532b8f51104d6799",
+        "rev": "e8d7d9705a7a2c89cef4dd42079379f05685af87",
         "type": "github"
       },
       "original": {
@@ -376,11 +376,11 @@
     "skill-yomiyasu": {
       "flake": false,
       "locked": {
-        "lastModified": 1795105142,
-        "narHash": "sha256-QRsFCWZSvxWqNs4lbwvZQh/4QmVvhisYjNsncc2ULGg=",
+        "lastModified": 1795387091,
+        "narHash": "sha256-dKl5PQEXqzaxXtB/h/dGyRwjalnQ+ZLjcaKPT8VX1jU=",
         "owner": "nanaism",
         "repo": "yomiyasu",
-        "rev": "6d094ac20d58b8cb23bdd612c02cc5402f5bf437",
+        "rev": "ddf365b5d5b36a7aa4ffab798dce1b694dbb1afd",
         "type": "github"
       },
       "original": {
