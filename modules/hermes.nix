@@ -33,7 +33,7 @@
     # work: home.packages already carries pkgs.python3.withPackages, and buildEnv
     # refuses two paths that both ship bin/python3. Use that same derivation if a
     # shell command ever needs an interpreter.
-    extraPackages = [ pkgs.systemd pkgs.curl ];
+    extraPackages = [ pkgs.systemd pkgs.curl pkgs.rtk ];
 
     # The unit it replaces had WorkingDirectory=/home/azzz/.hermes. The
     # module also writes workingDirectory to config.yaml as terminal.cwd, and
@@ -59,6 +59,13 @@
   home.activation.herdrHermesIntegration =
     lib.hm.dag.entryAfter [ "writeBoundary" "installPackages" "hermesAgentSetup" ] ''
       run ${pkgs.herdr}/bin/herdr integration install hermes >/dev/null
+    '';
+
+  # Install rtk-rewrite idempotently while leaving plugins.enabled mutable for
+  # `hermes plugins enable`.
+  home.activation.rtkHermesIntegration =
+    lib.hm.dag.entryAfter [ "writeBoundary" "installPackages" "hermesAgentSetup" ] ''
+      run ${pkgs.rtk}/bin/rtk init -g --agent hermes --auto-patch >/dev/null
     '';
 
   # Upstream's unit is Restart=always, and hermes exits 78 on a permanent

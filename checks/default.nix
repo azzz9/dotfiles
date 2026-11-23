@@ -12,6 +12,12 @@ let
       for f in .config/herdr/config.toml; do
         python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$files/$f"
       done
+      ${pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
+        python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$files/.config/rtk/config.toml"
+      ''}
+      ${pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isDarwin ''
+        python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$files/Library/Application Support/rtk/config.toml"
+      ''}
       for f in .config/lazygit/config.yml .config/gh/config.yml; do
         yq -e '.' "$files/$f" > /dev/null
       done
@@ -33,16 +39,18 @@ let
       require_link .pi/agent/APPEND_SYSTEM.md "${skillsSource}/APPEND_SYSTEM.md"
       require_link .agents/skills/yomiyasu "${skillsSource}/skills/yomiyasu"
       require_link .gemini/config/skills/yomiyasu "${skillsSource}/skills/yomiyasu"
-      for plugin in pstack dotfiles; do
+      test -f "$files/.pi/agent/extensions/rtk.ts"
+      for plugin in pstack dotfiles rtk; do
         if [ ! -L "$files/.gemini/config/plugins/$plugin" ]; then
           echo "generated-configs: ${host} .gemini/config/plugins/$plugin is not a symlink" >&2
           exit 1
         fi
       done
-      for f in .gemini/config/plugins/dotfiles/plugin.json .gemini/config/plugins/dotfiles/hooks.json .gemini/config/plugins/pstack/hooks.json; do
+      for f in .gemini/config/plugins/dotfiles/plugin.json .gemini/config/plugins/dotfiles/hooks.json .gemini/config/plugins/pstack/hooks.json .gemini/config/plugins/rtk/plugin.json .gemini/config/plugins/rtk/hooks.json; do
         python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$files/$f"
       done
       test -f "$files/.gemini/config/plugins/dotfiles/rules/AGENTS.md"
+      test -f "$files/.gemini/config/plugins/rtk/rules/AGENTS.md"
       # The hermes unit gets a PATH of store paths, so a command the agent
       # shells out to is absent unless modules/hermes.nix lists it. systemd-run
       # scopes each cron worker into its own transient unit, and without it on
@@ -54,6 +62,10 @@ let
         if [ -e "$hermes_unit" ]; then
           grep -q '${pkgs.systemd}/bin' "$hermes_unit" || {
             echo "generated-configs: $host hermes-agent.service has no systemd-run on PATH" >&2
+            exit 1
+          }
+          grep -q '${pkgs.rtk}/bin' "$hermes_unit" || {
+            echo "generated-configs: $host hermes-agent.service has no rtk on PATH" >&2
             exit 1
           }
         fi
@@ -218,6 +230,7 @@ in
         export AGY_HOME_FILES="${activationPackage}/home-files"
         export AGY_DOTFILES_PLUGIN="${activationPackage}/home-files/.gemini/config/plugins/dotfiles"
         export AGY_PSTACK_PLUGIN="${activationPackage}/home-files/.gemini/config/plugins/pstack"
+        export AGY_RTK_PLUGIN="${activationPackage}/home-files/.gemini/config/plugins/rtk"
         export AGY_PROMPT_DISPLAY="${self}/modules/herdr/agy-prompt-display.py"
         python3 ${self}/checks/test-agy-hooks.py
         touch $out

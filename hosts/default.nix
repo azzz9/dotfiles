@@ -11,6 +11,7 @@ in
     ../modules/orca.nix
     ../modules/pi.nix
     ../modules/agy.nix
+    ../modules/rtk.nix
     ../modules/gh.nix
     ../modules/git.nix
     ../modules/lazygit.nix
