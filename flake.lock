@@ -52,11 +52,11 @@
         "uv2nix": "uv2nix"
       },
       "locked": {
-        "lastModified": 1795424388,
-        "narHash": "sha256-MCFmvGCB5maW8N5/BExR6R5UsEfjXDhmVeI3fnCy864=",
+        "lastModified": 1795469586,
+        "narHash": "sha256-jyRigu6WuD+gS+16jBKkbtikV56dPl1yuU4rqlOQ/6A=",
         "owner": "NousResearch",
         "repo": "hermes-agent",
-        "rev": "fd58c762e03f82bfcfbea5098e9e92654dffbaeb",
+        "rev": "b98c388a880b1b6fd303c9c2821a3946651a0b4c",
         "type": "github"
       },
       "original": {
@@ -198,11 +198,11 @@
         "nixpkgs-darwin-x64": "nixpkgs-darwin-x64"
       },
       "locked": {
-        "lastModified": 1795376172,
-        "narHash": "sha256-d3ocHYTmJ6S6cLwShR/d6tW/2qZM07UrGV6YeUKqQTo=",
+        "lastModified": 1795470140,
+        "narHash": "sha256-BrwGKXsW03556XDh1/T0kYyReImFFOXPR7pHG5amqCY=",
         "owner": "earendil-works",
         "repo": "pi",
-        "rev": "69a6993486acee850d14a4a1547daa4a167228ad",
+        "rev": "e3fa711f4f57aec1e0649fba9fdc182e43afad26",
         "type": "github"
       },
       "original": {
@@ -246,11 +246,11 @@
     "pstack": {
       "flake": false,
       "locked": {
-        "lastModified": 1795409766,
-        "narHash": "sha256-/3aD8rsUXfEDteB69dq6xt+IfTgCeLms8W6AxlPsnWc=",
+        "lastModified": 1795442740,
+        "narHash": "sha256-fUsEjhxvURZbUHlyr+aS4/Lp5QQJIK2/no5kfl5FOno=",
         "owner": "michael-denyer",
         "repo": "pstack-claude",
-        "rev": "81603a46a24c0402c6db2c93433791d8c5e6d0dc",
+        "rev": "66181d3c70fb605a670578a1b46c23ff0f3caebb",
         "type": "github"
       },
       "original": {

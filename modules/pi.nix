@@ -22,9 +22,9 @@ let
   # pin in this file moves both harnesses.
   ccSafetyNetTarball = {
     name = "cc-safety-net";
-    version = "2.8.2";
-    url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.8.2.tgz";
-    hash = "sha256-YLIYj0uGIzEZHsJcmR8OfOYhS11th8KLwf6iHij8sMk=";
+    version = "2.8.3";
+    url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.8.3.tgz";
+    hash = "sha256-ewED9Qn3BX6vfNHwqUSJNzLxIujP/ZvjZn3oVZrF7uI=";
   };
   sharedSkills = config.dotfiles.skills.shared;
   # The rows every machine gets. The Linux-only row is appended below.
