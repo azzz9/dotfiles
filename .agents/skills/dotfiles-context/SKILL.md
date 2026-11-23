@@ -84,11 +84,6 @@ line stay for a row that is still a `spec`. The tarball rows move by hand, with
 the hash from `nix store prefetch-file`; a runtime dependency needs its own
 `deps` entry. The pins are below.
 
-`dsh` is not managed here. It is installed on this machine only, under
-`~/.local/share/dsh` with its Node runtime from mise, and `~/.local/bin/dsh`
-with `dsh-install` are its launchers. Nothing in the flake or the CLI touches
-it, so a machine without that local install simply has no `dsh`.
-
 The CLI itself comes from upstream's own flake, the `pi` input at
 `github:earendil-works/pi`, which builds pi from source. `modules/pi.nix` and
 `dotfiles-cli.nix` take `piFlake.packages.<system>.pi` from it, so the
