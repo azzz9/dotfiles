@@ -2,15 +2,26 @@ name: CI
 
 on:
   push:
+    branches:
+      - main
   pull_request:
   workflow_dispatch:
+    inputs:
+      full_build:
+        description: "Build full activationPackage on Linux and macOS"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
 
 jobs:
   checks:
-    name: Static checks
+    name: Fast checks
     runs-on: ubuntu-latest
 
     steps:
@@ -37,11 +48,12 @@ jobs:
           name: ${{ vars.CACHIX_NAME }}
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      - name: Evaluate flake outputs and checks
-        run: scripts/check.sh --no-build
+      - name: Evaluate every machine and run fast checks
+        run: scripts/check.sh --fast
 
   linux:
     name: Build x86_64-linux
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.full_build }}
     runs-on: ubuntu-latest
 
     steps:
@@ -69,6 +81,7 @@ jobs:
 
   macos:
     name: Build aarch64-darwin
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.full_build }}
     runs-on: macos-26
 
     steps:

@@ -285,11 +285,12 @@ in.
 ## CI and the push guard
 
 `git config core.hooksPath .githooks` runs `scripts/check.sh` before every push.
-CI runs the same set on every push and pull request, and `workflow_dispatch`
-runs it by hand. It evaluates every machine with `scripts/check.sh --no-build`,
-then builds the checks and every activation package for `x86_64-linux` and
-`aarch64-darwin`. Nothing rebuilds `main` on a schedule, so the tree the upgrade
-job merges is covered by that job's own builds alone.
+CI runs on pushes to `main`, pull requests, and `workflow_dispatch`. By default
+it runs `scripts/check.sh --fast` on `ubuntu-latest`, which evaluates every
+machine and builds every check except `generated-configs` (avoiding full
+`activationPackage` builds on every PR). Full `x86_64-linux` and
+`aarch64-darwin` activation builds run on `workflow_dispatch` with
+`full_build=true`, and daily in the `Upgrade` workflow when pins move.
 
 An optional Cachix cache speeds CI up. Set the repository variable `CACHIX_NAME`
 and the secret `CACHIX_AUTH_TOKEN` and the workflow configures the cache. Without
