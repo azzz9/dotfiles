@@ -19,6 +19,7 @@ in
       jq
       tree                    # directory structure visualization
       yq-go                   # YAML processor
+      tuios                   # TUI terminal multiplexer and window manager
 
       # --- Shell ---
       shellcheck              # shell script linter
