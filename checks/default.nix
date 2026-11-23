@@ -219,7 +219,7 @@ in
   agy-harness =
     let
       firstHost = builtins.head (builtins.attrNames platformMachines);
-      activationPackage = self.homeConfigurations.${firstHost}.activationPackage;
+      homeFiles = self.homeConfigurations.${firstHost}.config.home.file;
     in
     pkgs.runCommand "agy-harness"
       {
@@ -227,10 +227,14 @@ in
       }
       ''
         export HOME=$TMPDIR PYTHONDONTWRITEBYTECODE=1
-        export AGY_HOME_FILES="${activationPackage}/home-files"
-        export AGY_DOTFILES_PLUGIN="${activationPackage}/home-files/.gemini/config/plugins/dotfiles"
-        export AGY_PSTACK_PLUGIN="${activationPackage}/home-files/.gemini/config/plugins/pstack"
-        export AGY_RTK_PLUGIN="${activationPackage}/home-files/.gemini/config/plugins/rtk"
+        home_files="$TMPDIR/home-files"
+        mkdir -p "$home_files/.agents/skills" "$home_files/.gemini/config/skills"
+        ln -s "${homeFiles.".agents/skills/yomiyasu".source}" "$home_files/.agents/skills/yomiyasu"
+        ln -s "${homeFiles.".gemini/config/skills/yomiyasu".source}" "$home_files/.gemini/config/skills/yomiyasu"
+        export AGY_HOME_FILES="$home_files"
+        export AGY_DOTFILES_PLUGIN="${homeFiles.".gemini/config/plugins/dotfiles".source}"
+        export AGY_PSTACK_PLUGIN="${homeFiles.".gemini/config/plugins/pstack".source}"
+        export AGY_RTK_PLUGIN="${homeFiles.".gemini/config/plugins/rtk".source}"
         export AGY_PROMPT_DISPLAY="${self}/modules/herdr/agy-prompt-display.py"
         python3 ${self}/checks/test-agy-hooks.py
         touch $out
