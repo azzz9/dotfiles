@@ -1,8 +1,11 @@
-{ config, pkgs, piPackagePaths, ... }:
+{ config, lib, pkgs, piPackagePaths, ... }:
 let
   packagePaths = piPackagePaths pkgs;
   inherit (packagePaths) pstack skills;
   ccSafetyNet = config.dotfiles.pi.ccSafetyNetPackage;
+  excludeSkillFlags = lib.concatMapStringsSep " "
+    (name: "--exclude-skill ${lib.escapeShellArg name}")
+    config.dotfiles.skills.shared;
 
   promptDisplayCommand =
     "HERDR_BIN=${pkgs.herdr}/bin/herdr GIT_BIN=${pkgs.git}/bin/git ${pkgs.python3}/bin/python3 ${./herdr/agy-prompt-display.py}";
@@ -50,6 +53,7 @@ let
       python3 ${./agy/build-plugin.py} \
         --pi-skills ${skills} \
         --hooks-json ${hooksJson} \
+        ${excludeSkillFlags} \
         --out "$out"
     '';
 in

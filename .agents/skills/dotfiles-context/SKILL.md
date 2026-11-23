@@ -97,11 +97,20 @@ deliberately not Nix-managed. Install a provider extension under
 `modules/agy.nix` installs `antigravity-cli` (`agy`) and links two native
 Antigravity plugins under `~/.gemini/config/plugins/`: `pstack` (directly from
 the `pstack` flake input's `plugins/pstack`) and `dotfiles` (built by
-`modules/agy/build-plugin.py` from `pi-skills/`'s rules and five skills,
+`modules/agy/build-plugin.py` from `pi-skills/`'s rules and agent-adapted skills,
 `cc-safety-net hook --agy-cli` sharing the tarball pinned in `modules/pi.nix`,
 and `modules/herdr/agy-prompt-display.py`). `~/.gemini/config/hooks.json`,
 `config.json`, `pstack-models.md`, and `~/.gemini/antigravity-cli/settings.json`
 remain mutable so Orca, Herdr, and local user choices stay intact.
+
+`modules/skills.nix` deploys agent-agnostic skills (`dotfiles.skills.shared`,
+defaulting to `yomiyasu`) from `pi-skills/` to `~/.agents/skills/<name>` (read
+natively by `pi`, `codex`, and `orca skills installed`) and links them into
+`~/.gemini/config/skills/<name>` for `agy`. `modules/pi.nix` excludes them via
+`filter.skills` and `modules/agy.nix` passes `--exclude-skill` so neither agent
+loads a shared skill twice. `modules/orca.nix` refreshes already-installed Orca
+bundled skills on activation via `orca skills update --all` when an Orca CLI
+binary is present on the host.
 
 To add a repo-local skill: create `.agents/skills/<name>/SKILL.md`; no Nix
 change is needed.

@@ -26,6 +26,7 @@ let
     url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.8.2.tgz";
     hash = "sha256-YLIYj0uGIzEZHsJcmR8OfOYhS11th8KLwf6iHij8sMk=";
   };
+  sharedSkills = config.dotfiles.skills.shared;
   # The rows every machine gets. The Linux-only row is appended below.
   baseRows = [
     # The skills and the Pi extension the poteto-mode workflow calls. The
@@ -42,9 +43,13 @@ let
       };
     }
     { input = "pi-web-access"; npmDepsHash = "sha256-kmyoh7lvHssAhSBU2qKqk9ElGgm6Z5BZUtBjy1+hri4="; }
-    # This repository's pi-skills/. The rules load from APPEND_SYSTEM.md every
-    # turn, so the menu lists only the skills a person types.
-    { input = "skills"; }
+    # This repository's pi-skills/. Shared agent-agnostic skills load via
+    # ~/.agents/skills/ (modules/skills.nix), so exclude them here to avoid
+    # duplicate skill name collisions.
+    ({ input = "skills"; }
+      // lib.optionalAttrs (sharedSkills != [ ]) {
+        filter.skills = map (name: "!skills/${name}") sharedSkills;
+      })
     # The /btw side conversation. The published tarball carries the TypeScript
     # pi loads and has no runtime dependencies, so Nix unpacks it and pi loads it
     # from the store. `pi_reconcile` never sees this row; the tarball bump in
@@ -212,7 +217,9 @@ let
   };
   # A filter path is relative to the pinned package and may carry a + or !
   # prefix. An upstream rename would silently stop narrowing, so every path is
-  # checked against the store path the row actually loads.
+  # checked against the store path the row actually loads. Built derivations
+  # (such as the in-repo `skills` package) cannot be checked at eval time across
+  # platforms and are verified by checks/default.nix instead.
   filterProblems = lib.concatMap
     (row:
       lib.concatMap
@@ -225,7 +232,7 @@ let
                   "${packagePaths.${row.input}}/${lib.removePrefix "!" (lib.removePrefix "+" entry)}"))
               (row.filter.${kind} or [ ])))
         (builtins.attrNames (row.filter or { })))
-    (builtins.filter (row: row ? filter) baseRows);
+    (builtins.filter (row: row ? filter && row.input != "skills") baseRows);
   # pstack resolves the Claude family names its skills name through this sheet.
   # Without it the extension falls back to Anthropic ids on any provider it has
   # no table for. Hard work runs on Claude Opus and everything else on Ollama's
@@ -280,8 +287,6 @@ let
     mv -f "$merged" "$settings"
   '';
 in
-assert lib.assertMsg (filterProblems == [ ])
-  "modules/pi.nix: ${lib.concatStringsSep "; " filterProblems}";
 {
   options.dotfiles.pi = {
     linuxProviders = lib.mkOption {
@@ -299,6 +304,12 @@ assert lib.assertMsg (filterProblems == [ ])
   };
 
   config = {
+    assertions = [
+      {
+        assertion = filterProblems == [ ];
+        message = "modules/pi.nix: ${lib.concatStringsSep "; " filterProblems}";
+      }
+    ];
     programs.pi-coding-agent = {
       enable = true;
       package = piFlake.packages.${pkgs.stdenv.hostPlatform.system}.pi;
