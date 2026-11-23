@@ -31,6 +31,8 @@ let
       }
       require_link .pi/agent/AGENTS.md "${skillsSource}/AGENTS.md"
       require_link .pi/agent/APPEND_SYSTEM.md "${skillsSource}/APPEND_SYSTEM.md"
+      require_link .agents/skills/yomiyasu "${skillsSource}/skills/yomiyasu"
+      require_link .gemini/config/skills/yomiyasu "${skillsSource}/skills/yomiyasu"
       for plugin in pstack dotfiles; do
         if [ ! -L "$files/.gemini/config/plugins/$plugin" ]; then
           echo "generated-configs: ${host} .gemini/config/plugins/$plugin is not a symlink" >&2
@@ -213,6 +215,7 @@ in
       }
       ''
         export HOME=$TMPDIR PYTHONDONTWRITEBYTECODE=1
+        export AGY_HOME_FILES="${activationPackage}/home-files"
         export AGY_DOTFILES_PLUGIN="${activationPackage}/home-files/.gemini/config/plugins/dotfiles"
         export AGY_PSTACK_PLUGIN="${activationPackage}/home-files/.gemini/config/plugins/pstack"
         export AGY_PROMPT_DISPLAY="${self}/modules/herdr/agy-prompt-display.py"

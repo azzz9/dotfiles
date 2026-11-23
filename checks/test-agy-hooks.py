@@ -12,6 +12,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+HOME_FILES = Path(os.environ["AGY_HOME_FILES"])
 DOTFILES_PLUGIN = Path(os.environ["AGY_DOTFILES_PLUGIN"])
 PSTACK_PLUGIN = Path(os.environ["AGY_PSTACK_PLUGIN"])
 PROMPT_DISPLAY = Path(os.environ["AGY_PROMPT_DISPLAY"])
@@ -26,11 +27,21 @@ class AgyPluginStructureTest(unittest.TestCase):
         self.assertNotIn("ffgrep", rules)
         self.assertNotIn("/skill:", rules)
 
-        for name in ("herdr", "imozuru", "retro", "workspace", "yomiyasu"):
+        for name in ("herdr", "imozuru", "retro", "workspace"):
             skill_md = DOTFILES_PLUGIN / "skills" / name / "SKILL.md"
             self.assertTrue(skill_md.is_file(), f"missing skill {name}")
             content = skill_md.read_text(encoding="utf-8")
             self.assertNotIn("/skill:", content, f"stray /skill: in {name}")
+
+        self.assertFalse(
+            (DOTFILES_PLUGIN / "skills" / "yomiyasu").exists(),
+            "shared skill yomiyasu should not be duplicated inside dotfiles plugin",
+        )
+        for rel in (
+            ".agents/skills/yomiyasu/SKILL.md",
+            ".gemini/config/skills/yomiyasu/SKILL.md",
+        ):
+            self.assertTrue((HOME_FILES / rel).is_file(), f"missing shared skill link {rel}")
 
         herdr_ref = (
             DOTFILES_PLUGIN / "skills" / "workspace" / "references" / "herdr-workspace.md"

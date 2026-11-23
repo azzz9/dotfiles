@@ -64,9 +64,13 @@ def copy_writable(src: Path, dst: Path) -> None:
                 entry.chmod(entry.stat().st_mode | stat.S_IWUSR)
 
 
-def adapt_skills(pi_skills: Path, out: Path) -> None:
+def adapt_skills(pi_skills: Path, out: Path, exclude_skills: set[str]) -> None:
     skills_dst = out / "skills"
     copy_writable(pi_skills / "skills", skills_dst)
+    for name in exclude_skills:
+        excluded = skills_dst / name
+        if excluded.exists():
+            shutil.rmtree(excluded)
 
     # imozuru: drop pi-specific slash command and runtime name.
     imozuru = skills_dst / "imozuru" / "SKILL.md"
@@ -119,6 +123,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--pi-skills", required=True)
     parser.add_argument("--hooks-json", required=True)
+    parser.add_argument("--exclude-skill", action="append", default=[])
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
 
@@ -133,7 +138,7 @@ def main() -> int:
     shutil.copyfile(args.hooks_json, out / "hooks.json")
 
     build_rules(pi_skills, out)
-    adapt_skills(pi_skills, out)
+    adapt_skills(pi_skills, out, set(args.exclude_skill))
     return 0
 
 

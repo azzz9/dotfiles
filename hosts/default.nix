@@ -7,6 +7,8 @@ in
 {
   imports = [
     ../modules/dotfiles.nix
+    ../modules/skills.nix
+    ../modules/orca.nix
     ../modules/pi.nix
     ../modules/agy.nix
     ../modules/gh.nix
