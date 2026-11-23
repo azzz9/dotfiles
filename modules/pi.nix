@@ -17,6 +17,15 @@ let
   # would be dropped again, because the merge below replaces the `packages`
   # array on every activation.
   #
+  # Blocks destructive shell commands and secret-file access before a tool call
+  # runs. Shared with modules/agy.nix via dotfiles.pi.ccSafetyNetPackage so one
+  # pin in this file moves both harnesses.
+  ccSafetyNetTarball = {
+    name = "cc-safety-net";
+    version = "2.8.2";
+    url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.8.2.tgz";
+    hash = "sha256-YLIYj0uGIzEZHsJcmR8OfOYhS11th8KLwf6iHij8sMk=";
+  };
   # The rows every machine gets. The Linux-only row is appended below.
   baseRows = [
     # The skills and the Pi extension the poteto-mode workflow calls. The
@@ -47,16 +56,9 @@ let
         hash = "sha256-MNPnzf7VasfyxlqV41jl7swmkQ4dKHphz8XOS4PfZpw=";
       };
     }
-    # Blocks destructive shell commands and secret-file access before the bash
-    # tool call runs. The repository builds its extension in a prepare script, so
-    # only the published tarball carries the dist.
-    { tarball = {
-        name = "cc-safety-net";
-        version = "2.8.2";
-        url = "https://registry.npmjs.org/cc-safety-net/-/cc-safety-net-2.8.2.tgz";
-        hash = "sha256-YLIYj0uGIzEZHsJcmR8OfOYhS11th8KLwf6iHij8sMk=";
-      };
-    }
+    # The repository builds its extension in a prepare script, so only the
+    # published tarball carries the dist.
+    { tarball = ccSafetyNetTarball; }
     # Moves the running pi session to another directory or worktree, keeping the
     # conversation, and creates or removes the worktree through herdr.
     { tarball = {
@@ -281,10 +283,19 @@ in
 assert lib.assertMsg (filterProblems == [ ])
   "modules/pi.nix: ${lib.concatStringsSep "; " filterProblems}";
 {
-  options.dotfiles.pi.linuxProviders = lib.mkOption {
-    type = lib.types.bool;
-    default = false;
-    description = "Add the ollama-cloud model link and the OpenAI model visibility extension, which describe the Linux machines' provider set.";
+  options.dotfiles.pi = {
+    linuxProviders = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Add the ollama-cloud model link and the OpenAI model visibility extension, which describe the Linux machines' provider set.";
+    };
+    ccSafetyNetPackage = lib.mkOption {
+      type = lib.types.package;
+      internal = true;
+      readOnly = true;
+      default = unpackTarball ccSafetyNetTarball;
+      description = "The unpacked cc-safety-net tarball pinned in modules/pi.nix, shared with modules/agy.nix.";
+    };
   };
 
   config = {

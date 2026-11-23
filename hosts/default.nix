@@ -8,6 +8,7 @@ in
   imports = [
     ../modules/dotfiles.nix
     ../modules/pi.nix
+    ../modules/agy.nix
     ../modules/gh.nix
     ../modules/git.nix
     ../modules/lazygit.nix

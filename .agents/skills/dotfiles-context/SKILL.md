@@ -27,7 +27,7 @@ nvim is managed by nixvim. Plugins are declared in `modules/nvim.nix` via
 via HM: the kanagawa theme, prefix ctrl+b splits, alt+h/j/k/l pane navigation,
 alt+shift+h/j/k/l tabs and workspaces, and no agent launcher. Completion
 notifications use herdr's system delivery backend with a 15-second delay, and
-`modules/herdr.nix` reinstalls the pi integration on every activation. The
+`modules/herdr.nix` reinstalls the pi and antigravity-cli integrations on every activation. The
 hermes integration is installed the same way by `modules/hermes.nix`, which
 only nix-server imports.
 
@@ -93,6 +93,15 @@ The input tracks main, and `nix flake update pi` moves it.
 Provider extensions are machine-local and
 deliberately not Nix-managed. Install a provider extension under
 `~/.pi/agent/extensions/<name>/`, where pi auto-discovers it.
+
+`modules/agy.nix` installs `antigravity-cli` (`agy`) and links two native
+Antigravity plugins under `~/.gemini/config/plugins/`: `pstack` (directly from
+the `pstack` flake input's `plugins/pstack`) and `dotfiles` (built by
+`modules/agy/build-plugin.py` from `pi-skills/`'s rules and five skills,
+`cc-safety-net hook --agy-cli` sharing the tarball pinned in `modules/pi.nix`,
+and `modules/herdr/agy-prompt-display.py`). `~/.gemini/config/hooks.json`,
+`config.json`, `pstack-models.md`, and `~/.gemini/antigravity-cli/settings.json`
+remain mutable so Orca, Herdr, and local user choices stay intact.
 
 To add a repo-local skill: create `.agents/skills/<name>/SKILL.md`; no Nix
 change is needed.

@@ -31,6 +31,16 @@ let
       }
       require_link .pi/agent/AGENTS.md "${skillsSource}/AGENTS.md"
       require_link .pi/agent/APPEND_SYSTEM.md "${skillsSource}/APPEND_SYSTEM.md"
+      for plugin in pstack dotfiles; do
+        if [ ! -L "$files/.gemini/config/plugins/$plugin" ]; then
+          echo "generated-configs: ${host} .gemini/config/plugins/$plugin is not a symlink" >&2
+          exit 1
+        fi
+      done
+      for f in .gemini/config/plugins/dotfiles/plugin.json .gemini/config/plugins/dotfiles/hooks.json .gemini/config/plugins/pstack/hooks.json; do
+        python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$files/$f"
+      done
+      test -f "$files/.gemini/config/plugins/dotfiles/rules/AGENTS.md"
       # The hermes unit gets a PATH of store paths, so a command the agent
       # shells out to is absent unless modules/hermes.nix lists it. systemd-run
       # scopes each cron worker into its own transient unit, and without it on
@@ -189,4 +199,24 @@ in
     builtins.concatStringsSep "" (map parseGeneratedConfigs (builtins.attrNames platformMachines))
     + "touch $out"
   );
+  # Exercises the built Antigravity (agy) plugins and hooks end-to-end:
+  # adapted rules/skills, cc-safety-net PreToolUse decisions, pstack SessionStart
+  # routing JSON, and the Herdr prompt-display hook.
+  agy-harness =
+    let
+      firstHost = builtins.head (builtins.attrNames platformMachines);
+      activationPackage = self.homeConfigurations.${firstHost}.activationPackage;
+    in
+    pkgs.runCommand "agy-harness"
+      {
+        nativeBuildInputs = [ pkgs.python3 pkgs.git pkgs.bash pkgs.gawk pkgs.gnugrep pkgs.coreutils ];
+      }
+      ''
+        export HOME=$TMPDIR PYTHONDONTWRITEBYTECODE=1
+        export AGY_DOTFILES_PLUGIN="${activationPackage}/home-files/.gemini/config/plugins/dotfiles"
+        export AGY_PSTACK_PLUGIN="${activationPackage}/home-files/.gemini/config/plugins/pstack"
+        export AGY_PROMPT_DISPLAY="${self}/modules/herdr/agy-prompt-display.py"
+        python3 ${self}/checks/test-agy-hooks.py
+        touch $out
+      '';
 }
