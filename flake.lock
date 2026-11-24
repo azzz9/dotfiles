@@ -322,7 +322,8 @@
         "skill-herdr": "skill-herdr",
         "skill-imozuru": "skill-imozuru",
         "skill-retro": "skill-retro",
-        "skill-yomiyasu": "skill-yomiyasu"
+        "skill-yomiyasu": "skill-yomiyasu",
+        "tuios-nvim-navigator": "tuios-nvim-navigator"
       }
     },
     "skill-herdr": {
@@ -403,6 +404,22 @@
         "owner": "nix-systems",
         "ref": "future-26.11",
         "repo": "default",
+        "type": "github"
+      }
+    },
+    "tuios-nvim-navigator": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790873042,
+        "narHash": "sha256-KYPOOhfQgWpmzgE5r7qwM/qDRngl2Qc2Ppt5DmQfiZA=",
+        "owner": "Tim4c",
+        "repo": "tuios-nvim-navigator",
+        "rev": "e52540c34f638f56d0bb31dec0d9556af48250d4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Tim4c",
+        "repo": "tuios-nvim-navigator",
         "type": "github"
       }
     },

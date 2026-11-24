@@ -34,13 +34,16 @@
     # uv2nix venv plus npm frontends resolved against the nixpkgs revision
     # upstream tests against, so following ours would risk that resolution.
     hermes-agent = { url = "github:NousResearch/hermes-agent"; };
+    # Upstream has no release tags, so track main via flake.lock instead of
+    # nix-update in modules/pinned-packages.nix.
+    tuios-nvim-navigator = { url = "github:Tim4c/tuios-nvim-navigator"; flake = false; };
   };
 
   outputs =
     { self, nixpkgs, home-manager, nixvim, pi
     , pstack, pi-web-access, pi-compact-tools
     , skill-herdr, skill-imozuru, skill-retro, skill-yomiyasu
-    , hermes-agent, ...
+    , hermes-agent, tuios-nvim-navigator, ...
     }:
     let
       supportedSystems = [
@@ -103,6 +106,7 @@
         inherit machine machineNames repoDir worktreeRoot piPackagePaths;
         piFlake = pi;
         hermesAgent = hermes-agent;
+        tuiosNvimNavigator = tuios-nvim-navigator;
       };
       mkHomeConfiguration = name: { system, home ? [ ], checkout ? defaultCheckout, ... }:
         home-manager.lib.homeManagerConfiguration {
