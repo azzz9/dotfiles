@@ -9,7 +9,7 @@ let
     in
     ''
       files=${activationPackage}/home-files
-      for f in .config/herdr/config.toml; do
+      for f in .config/herdr/config.toml .config/tuios/config.toml; do
         python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$files/$f"
       done
       ${pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''

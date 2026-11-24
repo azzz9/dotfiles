@@ -17,6 +17,7 @@ in
     ../modules/lazygit.nix
     ../modules/shell.nix
     ../modules/herdr.nix
+    ../modules/tuios.nix
     ../modules/nvim.nix
     ../modules/packages.nix
   ];
