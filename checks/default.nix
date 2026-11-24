@@ -39,6 +39,9 @@ let
       require_link .pi/agent/APPEND_SYSTEM.md "${skillsSource}/APPEND_SYSTEM.md"
       require_link .agents/skills/yomiyasu "${skillsSource}/skills/yomiyasu"
       require_link .gemini/config/skills/yomiyasu "${skillsSource}/skills/yomiyasu"
+      test -f "$files/.agents/skills/tuios/SKILL.md"
+      test -f "$files/.gemini/config/skills/tuios/SKILL.md"
+      grep -q '^name: tuios$' "$files/.agents/skills/tuios/SKILL.md"
       test -f "$files/.pi/agent/extensions/rtk.ts"
       for plugin in pstack dotfiles rtk; do
         if [ ! -L "$files/.gemini/config/plugins/$plugin" ]; then
