@@ -68,9 +68,9 @@ let
     # conversation, and creates or removes the worktree through herdr.
     { tarball = {
         name = "pi-agent-teleport";
-        version = "0.2.12";
-        url = "https://registry.npmjs.org/pi-agent-teleport/-/pi-agent-teleport-0.2.12.tgz";
-        hash = "sha256-K6OquTzx23jttod/eNVhYyFv10dHn3S/ldKfNQQpR0Q=";
+        version = "0.2.13";
+        url = "https://registry.npmjs.org/pi-agent-teleport/-/pi-agent-teleport-0.2.13.tgz";
+        hash = "sha256-Lt8nv0iYAgDXLzK9TNMiFc7OSb4+3ExIFLNtmyqV/2A=";
         postPatch = ''
           patch -p1 < ${./pi/teleport-agent-tab.patch}
         '';
