@@ -10,9 +10,19 @@ in
 {
   # tuios terminal multiplexer, https://github.com/Gaurav-Gosain/tuios
   # Linux and macOS both read ~/.config/tuios/config.toml (XDG).
-  xdg.configFile."tuios/config.toml" = {
-    source = ./tuios/config.toml;
-    force = true;
+  xdg.configFile = {
+    "tuios/config.toml" = {
+      source = ./tuios/config.toml;
+      force = true;
+    };
+    "tuios/harnesses/pi.toml" = {
+      source = ./tuios/harnesses/pi.toml;
+      force = true;
+    };
+    "tuios/harnesses/antigravity.toml" = {
+      source = ./tuios/harnesses/antigravity.toml;
+      force = true;
+    };
   };
 
   # Mirror modules/skills.nix's shared layout so pi, codex, orca, and agy all

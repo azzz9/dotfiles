@@ -9,7 +9,7 @@ let
     in
     ''
       files=${activationPackage}/home-files
-      for f in .config/tuios/config.toml; do
+      for f in .config/tuios/config.toml .config/tuios/harnesses/pi.toml .config/tuios/harnesses/antigravity.toml; do
         python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$files/$f"
       done
       ${pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
