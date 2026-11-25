@@ -7,7 +7,6 @@ type VisibilityRule =
 const visibilityRules: ReadonlyMap<string, VisibilityRule> = new Map([
   ["openai", { mode: "allow", modelIds: new Set<string>() }],
   ["openai-codex", { mode: "allow", modelIds: new Set(["gpt-6.1-sol", "gpt-6-luna"]) }],
-  ["ollama-cloud", { mode: "deny", modelIds: new Set(["kimi-k3"]) }],
 ]);
 
 function filterVisibleModels<T extends { id: string }>(models: T[], rule: VisibilityRule): T[] {
