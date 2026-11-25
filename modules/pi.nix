@@ -56,7 +56,7 @@ let
     # published tarball carries the dist.
     { tarball = ccSafetyNetTarball; }
     # Moves the running pi session to another directory or worktree, keeping the
-    # conversation, and creates or removes the worktree through herdr.
+    # conversation.
     { tarball = {
         name = "pi-agent-teleport";
         version = "0.2.13";

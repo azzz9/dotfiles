@@ -21,7 +21,6 @@
     pstack = { url = "github:michael-denyer/pstack-claude"; flake = false; };
     # The upstreams of the skills pi-skills/ builds with a local patch (see
     # pi-skills/default.nix). A pin bump that breaks a patch fails the checks.
-    skill-herdr = { url = "github:herdrdev/herdr"; flake = false; };
     skill-imozuru = { url = "github:MaryCache/imozuru"; flake = false; };
     skill-retro = { url = "github:mattpocock/skills"; flake = false; };
     skill-yomiyasu = { url = "github:nanaism/yomiyasu"; flake = false; };
@@ -42,7 +41,7 @@
   outputs =
     { self, nixpkgs, home-manager, nixvim, pi
     , pstack, pi-web-access, pi-compact-tools
-    , skill-herdr, skill-imozuru, skill-retro, skill-yomiyasu
+    , skill-imozuru, skill-retro, skill-yomiyasu
     , hermes-agent, tuios-nvim-navigator, ...
     }:
     let
@@ -58,7 +57,6 @@
       mkPiSkills = pkgs: import ./pi-skills {
         inherit pkgs;
         upstreams = {
-          herdr = skill-herdr;
           imozuru = skill-imozuru;
           retro = skill-retro;
           yomiyasu = skill-yomiyasu;
@@ -147,7 +145,6 @@
           "prettier-plugin-solidity" = pinned.prettierPluginSolidity;
           "prettier-plugin-solidity-dist" = pinned.prettierPluginSolidityDist;
           codediff-watcher = pinned.codediffWatcher;
-          herdr-nvim = pinned.herdrNvim;
           # The in-repo pi package, exposed so a check and `nix build
           # .#pi-skills` can read the tree pi loads.
           pi-skills = mkPiSkills pkgs;

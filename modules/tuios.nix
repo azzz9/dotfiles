@@ -23,7 +23,7 @@ in
   };
 
   # Reinstall pi's and agy's integrations on every activation: idempotent,
-  # preserves other hooks (Orca, Herdr), and passes --no-skill because
+  # preserves other hooks (Orca), and passes --no-skill because
   # ~/.agents/skills/tuios is managed declaratively above.
   home.activation.tuiosIntegrations = lib.hm.dag.entryAfter [ "writeBoundary" "installPackages" ] ''
     run mkdir -p "$HOME/.pi/agent/extensions" "$HOME/.gemini/config"

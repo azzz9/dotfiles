@@ -4,5 +4,5 @@ theme = Kanagawa Dragon
 font-thicken = true
 font-thicken-strength = 128
 
-# Treat Option as Alt so herdr's pane navigation works consistently.
+# Treat Option as Alt so tuios's pane navigation works consistently.
 macos-option-as-alt = true

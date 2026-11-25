@@ -9,7 +9,7 @@ let
     in
     ''
       files=${activationPackage}/home-files
-      for f in .config/herdr/config.toml .config/tuios/config.toml; do
+      for f in .config/tuios/config.toml; do
         python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$files/$f"
       done
       ${pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
@@ -217,8 +217,8 @@ in
     + "touch $out"
   );
   # Exercises the built Antigravity (agy) plugins and hooks end-to-end:
-  # adapted rules/skills, cc-safety-net PreToolUse decisions, pstack SessionStart
-  # routing JSON, and the Herdr prompt-display hook.
+  # adapted rules/skills, cc-safety-net PreToolUse decisions, and pstack
+  # SessionStart routing JSON.
   agy-harness =
     let
       firstHost = builtins.head (builtins.attrNames platformMachines);
@@ -238,7 +238,6 @@ in
         export AGY_DOTFILES_PLUGIN="${homeFiles.".gemini/config/plugins/dotfiles".source}"
         export AGY_PSTACK_PLUGIN="${homeFiles.".gemini/config/plugins/pstack".source}"
         export AGY_RTK_PLUGIN="${homeFiles.".gemini/config/plugins/rtk".source}"
-        export AGY_PROMPT_DISPLAY="${self}/modules/herdr/agy-prompt-display.py"
         python3 ${self}/checks/test-agy-hooks.py
         touch $out
       '';

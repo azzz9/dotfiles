@@ -13,10 +13,9 @@ skills and several workflow ideas began as theirs, and plenty of the wording is 
 
 ## Skills
 
-Five skills. One is ours and four follow their upstream projects.
+Four skills. One is ours and three follow their upstream projects.
 
-- `workspace` lives in `skills/workspace/` and owns worktrees and Herdr workspaces.
-- `herdr` from [`herdrdev/herdr`](https://github.com/herdrdev/herdr) (Apache-2.0).
+- `workspace` lives in `skills/workspace/` and owns worktrees and tuios sessions.
 - `imozuru` from [`MaryCache/imozuru`](https://github.com/MaryCache/imozuru) (MIT). Its scripts need
   Python 3.10+ and use only the standard library. Optional `pdftotext`, `yt-dlp`, `tesseract`, and
   `ax` improve PDF, YouTube, OCR, and HTML handling.
@@ -27,9 +26,9 @@ Five skills. One is ours and four follow their upstream projects.
 
 ## Upstream-tracked skills
 
-The four upstream skills are not copied into this tree. For each one:
+The three upstream skills are not copied into this tree. For each one:
 
-1. A `flake = false` input in `flake.nix` (`skill-herdr`, `skill-imozuru`, `skill-retro`,
+1. A `flake = false` input in `flake.nix` (`skill-imozuru`, `skill-retro`,
    `skill-yomiyasu`) fetches the upstream repository. `flake.lock` pins the revision, and
    `nix flake update` (the daily pin bump) moves it.
 2. `default.nix` copies the part of the upstream tree the skill uses into `skills/<name>/`.
@@ -53,9 +52,9 @@ confirm them.
 
 ## Clone a session into a pane
 
-`/clone-pane` copies the current session into an adjacent Herdr pane, so a side question never enters the
+`/clone-pane` copies the current session into an adjacent tuios pane, so a side question never enters the
 main transcript. The clone runs `pi --fork <session file>` in the new pane. Pass `down` for a vertical
-split. It needs `HERDR_ENV=1` and a saved session.
+split. It needs `TUIOS_ENV=1` and a saved session.
 
 ## Know when another session changed the worktree
 

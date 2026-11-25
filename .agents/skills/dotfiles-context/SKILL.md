@@ -1,6 +1,6 @@
 ---
 name: dotfiles-context
-description: "Quick reference for this Nix flake + Home Manager dotfiles repo: entry points, the AI config and herdr integration, the per-platform differences, and how to verify. Use when working in ~/src/github.com/azzz9/dotfiles."
+description: "Quick reference for this Nix flake + Home Manager dotfiles repo: entry points, the AI config and tuios integration, the per-platform differences, and how to verify. Use when working in ~/src/github.com/azzz9/dotfiles."
 ---
 
 # dotfiles-context Skill
@@ -21,23 +21,17 @@ nvim is managed by nixvim. Plugins are declared in `modules/nvim.nix` via
 `ui.lua`, `languages.lua` for per-language LSP, formatter, and linter, then
 `plugins/*.lua` and `plugins/dap/*.lua`).
 
-## herdr config
+## tuios config
 
-`modules/herdr.nix` installs herdr and generates `~/.config/herdr/config.toml`
-via HM: the kanagawa theme, prefix ctrl+b splits, alt+h/j/k/l pane navigation,
-alt+shift+h/j/k/l tabs and workspaces, and no agent launcher. Completion
-notifications use herdr's system delivery backend with a 15-second delay, and
-`modules/herdr.nix` reinstalls the pi and antigravity-cli integrations on every activation. The
-hermes integration is installed the same way by `modules/hermes.nix`, which
-only nix-server imports.
-
-The `herdr.auto-title` plugin stays machine-local, like the pi provider
-extensions. Install it by hand with `herdr plugin install
-kryptamine/herdr-auto-title --yes`, and Herdr updates it. Dotfiles links the
-local `worktree-layout` plugin and reinstalls the pi integration on every
-activation, and it never writes under `~/.config/herdr-auto-title/`. The hermes
-integration, which reports a hermes session to herdr so a pane can be resumed,
-comes from `modules/hermes.nix` and exists on nix-server alone.
+`modules/tuios.nix` installs `~/.config/tuios/config.toml` via HM (daemon mode,
+BSP tiling, kanagawa theme with transparent background, `keep_awake = "agents"`,
+`resume_agents = "auto"`, `ctrl+shift+p` for the command palette, Alt+h/j/k/l
+pane navigation, Alt+Shift+j/k session switching, and Alt+Shift+n/p agent
+switching) and exposes `tuios --skill` at `~/.agents/skills/tuios` and
+`~/.gemini/config/skills/tuios`. `modules/tuios.nix` reinstalls the `pi` and
+`antigravity` integrations (`--no-skill`) on every activation. The hermes
+integration is installed the same way by `modules/hermes.nix`, which only
+nix-server imports.
 
 ## AI config deployment model
 
@@ -53,7 +47,7 @@ The build is the same store path `modules/pi.nix` hands pi as the `skills`
 row, so the rules and the skill files come from one tree. Edit `pi-skills/`
 and run `dotfiles apply`.
 
-Four of its skills (herdr, imozuru, retro, yomiyasu) follow their upstream
+Three of its skills (imozuru, retro, yomiyasu) follow their upstream
 repositories: the `skill-*` flake inputs pin the upstream, and the build
 applies `pi-skills/upstream/<name>/local.patch` to it. `nix flake update`
 moves those pins with the rest; a patch that no longer applies fails the build
@@ -98,10 +92,10 @@ deliberately not Nix-managed. Install a provider extension under
 Antigravity plugins under `~/.gemini/config/plugins/`: `pstack` (directly from
 the `pstack` flake input's `plugins/pstack`) and `dotfiles` (built by
 `modules/agy/build-plugin.py` from `pi-skills/`'s rules and agent-adapted skills,
-`cc-safety-net hook --agy-cli` sharing the tarball pinned in `modules/pi.nix`,
-and `modules/herdr/agy-prompt-display.py`). `~/.gemini/config/hooks.json`,
+and `cc-safety-net hook --agy-cli` sharing the tarball pinned in
+`modules/pi.nix`). `~/.gemini/config/hooks.json`,
 `config.json`, `pstack-models.md`, and `~/.gemini/antigravity-cli/settings.json`
-remain mutable so Orca, Herdr, and local user choices stay intact.
+remain mutable so Orca, tuios, and local user choices stay intact.
 
 `modules/skills.nix` deploys agent-agnostic skills (`dotfiles.skills.shared`,
 defaulting to `yomiyasu`) from `pi-skills/` to `~/.agents/skills/<name>` (read
@@ -131,9 +125,7 @@ change is needed.
 command table. `sync` and `upgrade` refuse any dirty path before they move,
 because activation would otherwise pick up a half-finished edit. `apply` has no
 dirty gate and activates the current tree. `upgrade` runs
-`scripts/bump-pins.sh`, builds, applies, reinstalls the two GitHub Herdr plugins
-(`herdr plugin update` keeps the recorded ref, so it cannot move a tag), and
-reports the audit without failing.
+`scripts/bump-pins.sh`, builds, applies, and reports the audit without failing.
 `apply`, `sync`, `upgrade`, and `rollback` record the applied commit in
 `~/.local/state/dotfiles/applied.log`, and `rollback` applies the most recent
 applied commit that differs from the current one. `status` reads and never fetches: it

@@ -60,22 +60,6 @@ let
     };
   };
 
-  herdrNvim = pkgs.vimUtils.buildVimPlugin rec {
-    pname = "herdr-nvim";
-    version = "1.3.1";
-    src = pkgs.fetchFromGitHub {
-      owner = "ChmaraX";
-      repo = "herdr-nvim";
-      rev = "v${version}";
-      hash = "sha256-/026mNSbhZIAMJeNdSsbi9vhUuQEfdjqI99QzKAHW6w=";
-    };
-    meta = {
-      description = "Neovim annotations for Herdr agents";
-      homepage = "https://github.com/ChmaraX/herdr-nvim";
-      license = pkgs.lib.licenses.mit;
-    };
-  };
-
   debugpyPython = pkgs.python3.withPackages (ps: [ ps.debugpy ]);
 
   # prettier's --plugin loads dist/index.js, and only the npm-published
@@ -137,6 +121,6 @@ let
 
 in
 {
-  inherit debugpyPython nomicfoundationSolidityLanguageServer codediffWatcher herdrNvim;
+  inherit debugpyPython nomicfoundationSolidityLanguageServer codediffWatcher;
   inherit prettierPluginSolidity prettierPluginSolidityDist solhint;
 }

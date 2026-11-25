@@ -45,20 +45,20 @@
     # `environment` and `environmentFiles` stay empty on purpose. Activation
     # rewrites ~/.hermes/.env from the start whenever either is set, and that
     # file is 27 KB of hand-managed secrets. This repo keeps machine-local
-    # secrets out of Nix the same way for pi and herdr.
+    # secrets out of Nix the same way for pi and tuios.
   };
 
-  # Herdr's hermes integration reports an interactive session to herdr, so a pane
-  # can be resumed after a server restart. modules/herdr.nix reinstalls pi's
+  # tuios's hermes integration reports an interactive session to tuios, so a pane
+  # can be resumed after a daemon restart. modules/tuios.nix reinstalls pi's
   # integration the same way; this one lives here because hermes runs on
   # nix-server alone. It runs after hermesAgentSetup, which is what creates
   # $HERMES_HOME/plugins on a machine that has never started hermes. The install
   # also enables the plugin in config.yaml, and this module leaves
   # plugins.enabled undeclared on purpose: a Nix-declared list would win over the
   # file and take away `hermes plugins enable` for every other plugin.
-  home.activation.herdrHermesIntegration =
+  home.activation.tuiosHermesIntegration =
     lib.hm.dag.entryAfter [ "writeBoundary" "installPackages" "hermesAgentSetup" ] ''
-      run ${pkgs.herdr}/bin/herdr integration install hermes >/dev/null
+      run ${pkgs.tuios}/bin/tuios integration install hermes --no-skill >/dev/null
     '';
 
   # Install rtk-rewrite idempotently while leaving plugins.enabled mutable for

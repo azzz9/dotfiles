@@ -319,27 +319,10 @@
         "pi-compact-tools": "pi-compact-tools",
         "pi-web-access": "pi-web-access",
         "pstack": "pstack",
-        "skill-herdr": "skill-herdr",
         "skill-imozuru": "skill-imozuru",
         "skill-retro": "skill-retro",
         "skill-yomiyasu": "skill-yomiyasu",
         "tuios-nvim-navigator": "tuios-nvim-navigator"
-      }
-    },
-    "skill-herdr": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1795126513,
-        "narHash": "sha256-x+DOzoMhorpWTf8yN29g2P6Ha+oSGbaZdV7soxdSmaY=",
-        "owner": "herdrdev",
-        "repo": "herdr",
-        "rev": "e8d7d9705a7a2c89cef4dd42079379f05685af87",
-        "type": "github"
-      },
-      "original": {
-        "owner": "herdrdev",
-        "repo": "herdr",
-        "type": "github"
       }
     },
     "skill-imozuru": {

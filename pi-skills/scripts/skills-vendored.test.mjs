@@ -59,7 +59,7 @@ test("the vendored yomiyasu keeps its license and vendor record", () => {
 });
 
 test("every upstream-tracked skill carries its vendor record", () => {
-	for (const name of ["herdr", "imozuru", "retro", "yomiyasu"]) {
+	for (const name of ["imozuru", "retro", "yomiyasu"]) {
 		for (const file of ["SKILL.md", "LICENSE", "VENDOR.md"]) {
 			assert.ok(existsSync(join(SKILLS, name, file)), `${name}: missing ${file}`);
 		}

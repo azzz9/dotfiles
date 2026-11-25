@@ -72,7 +72,6 @@ let
     "plugins/codediff.lua"
     "plugins/neogit.lua"
     "plugins/atlas.lua"
-    "plugins/herdr.lua"
     "plugins/tuios-nvim-navigator.lua"
     "plugins/mini.lua"
     "plugins/oil.lua"
@@ -211,7 +210,7 @@ assert lib.assertMsg (luaFilesUnlisted == [ ] && luaFilesAbsent == [ ])
         which-key-nvim
         render-markdown-nvim
       ]
-      ++ [ treesitterWithGrammars pinned.herdrNvim tuiosNvimNavigatorPlugin ];
+      ++ [ treesitterWithGrammars tuiosNvimNavigatorPlugin ];
     inherit extraConfigLua;
   };
 }
