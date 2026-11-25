@@ -1,0 +1,11 @@
+{
+  "id": "kanagawa-dark",
+  "display_name": "Kanagawa Dark",
+  "base": "kanagawa",
+  "chrome": {
+    "canvas": "#101010",
+    "panel": "#141417",
+    "surface": "#18181c",
+    "card": "#1f1f25"
+  }
+}

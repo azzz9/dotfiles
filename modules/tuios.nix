@@ -15,6 +15,10 @@ in
       source = ./tuios/config.toml;
       force = true;
     };
+    "tuios/themes/kanagawa-dark.json" = {
+      source = ./tuios/themes/kanagawa-dark.json;
+      force = true;
+    };
     "tuios/harnesses/pi.toml" = {
       source = ./tuios/harnesses/pi.toml;
       force = true;

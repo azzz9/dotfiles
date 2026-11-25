@@ -12,7 +12,7 @@ open_default_window = false
 start_in_terminal_mode = false
 
 [appearance]
-theme = "kanagawa"
+theme = "kanagawa-dark"
 background = "off"
 
 [daemon]

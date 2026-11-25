@@ -49,7 +49,7 @@ let
           exit 1
         fi
       done
-      for f in .gemini/config/plugins/dotfiles/plugin.json .gemini/config/plugins/dotfiles/hooks.json .gemini/config/plugins/pstack/hooks.json .gemini/config/plugins/rtk/plugin.json .gemini/config/plugins/rtk/hooks.json; do
+      for f in .config/tuios/themes/kanagawa-dark.json .gemini/config/plugins/dotfiles/plugin.json .gemini/config/plugins/dotfiles/hooks.json .gemini/config/plugins/pstack/hooks.json .gemini/config/plugins/rtk/plugin.json .gemini/config/plugins/rtk/hooks.json; do
         python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$files/$f"
       done
       test -f "$files/.gemini/config/plugins/dotfiles/rules/AGENTS.md"
