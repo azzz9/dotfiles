@@ -7,13 +7,17 @@
 [startup]
 daemon = true
 tiled = true
-layout = "bsp"
+layout = "scrolling"
 open_default_window = false
 start_in_terminal_mode = false
 
 [appearance]
 theme = "kanagawa-dark"
 background = "off"
+gap = 1
+scroll_column_width = 50
+scroll_column_max = 100
+scroll_column_presets = [33, 50, 67]
 
 [daemon]
 keep_awake = "agents"
@@ -27,6 +31,12 @@ terminal_focus_left = ["alt+h"]
 terminal_focus_down = ["alt+j"]
 terminal_focus_up = ["alt+k"]
 terminal_focus_right = ["alt+l"]
+scroll_move_left = ["ctrl+alt+h"]
+scroll_move_right = ["ctrl+alt+l"]
+scroll_cycle_width = ["alt+r"]
+scroll_maximize = ["alt+f"]
+scroll_consume = ["ctrl+alt+,"]
+scroll_expel = ["ctrl+alt+."]
 
 [keybindings.window_management]
 terminal_focus_left = ["alt+h"]
@@ -41,10 +51,23 @@ prev_agent = ["alt+shift+p"]
 [keybindings.layout]
 focus_down = ["j", "alt+j"]
 focus_up = ["k", "alt+k"]
+scroll_move_left = ["ctrl+alt+h"]
+scroll_move_right = ["ctrl+alt+l"]
+scroll_cycle_width = ["R", "alt+r"]
+scroll_maximize = ["f", "alt+f"]
+scroll_consume = ["[", "ctrl+alt+,"]
+scroll_expel = ["]", "ctrl+alt+."]
 preselect_left = []
 preselect_right = []
 preselect_up = []
 preselect_down = []
+rotate_split = []
+snap_fullscreen = []
+resize_height_shrink_top = []
+resize_height_grow_top = []
+
+[keybindings.layout_prefix]
+cycle_layout = ["c"]
 
 [keybindings.inbox]
 inbox_down = ["j", "down", "ctrl+n"]
