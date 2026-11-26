@@ -23,6 +23,7 @@ scroll_column_presets = [33, 50, 67]
 [appearance.sidebar]
 width = 28
 header_case = "uppercase"
+row_style = "pill"
 header_style = "icon"
 density = "roomy"
 show_counts = false
@@ -35,6 +36,9 @@ enabled = true
 width = 50
 
 [appearance.sidebar.right]
+enabled = false
+
+[spotlight]
 enabled = false
 
 [daemon]
