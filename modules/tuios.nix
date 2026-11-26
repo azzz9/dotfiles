@@ -6,12 +6,19 @@ let
     mkdir -p "$out"
     ${pkgs.tuios}/bin/tuios --skill > "$out/SKILL.md"
   '';
+  localConfigHeader = pkgs.writeText "tuios-local-config.toml" ''
+    # Local tuios overrides saved by the TUI.
+    # Declarative defaults live in ~/.config/tuios/config.d/00-dotfiles.toml.
+  '';
 in
 {
   # tuios terminal multiplexer, https://github.com/Gaurav-Gosain/tuios
   # Linux and macOS both read ~/.config/tuios/config.toml (XDG).
+  # Declarative defaults go in config.d/00-dotfiles.toml so ~/.config/tuios/config.toml
+  # stays a writable regular file for TUI settings persistence (tuios merges
+  # config.d/*.toml before config.toml, and saves changes to config.toml).
   xdg.configFile = {
-    "tuios/config.toml" = {
+    "tuios/config.d/00-dotfiles.toml" = {
       source = ./tuios/config.toml;
       force = true;
     };
@@ -35,6 +42,18 @@ in
     ".agents/skills/tuios".source = tuiosSkill;
     ".gemini/config/skills/tuios".source = tuiosSkill;
   };
+
+  # Ensure ~/.config/tuios/config.toml is a writable regular file rather than a
+  # Nix store symlink, while preserving any existing user edits made in the TUI.
+  home.activation.tuiosLocalConfig = lib.hm.dag.entryAfter [ "writeBoundary" "linkGeneration" ] ''
+    cfg="''${XDG_CONFIG_HOME:-$HOME/.config}/tuios/config.toml"
+    if [ -L "$cfg" ]; then
+      run rm "$cfg"
+    fi
+    if [ ! -e "$cfg" ]; then
+      run ${pkgs.coreutils}/bin/install -D -m 600 ${localConfigHeader} "$cfg"
+    fi
+  '';
 
   # Reinstall pi's and agy's integrations on every activation: idempotent,
   # preserves other hooks (Orca), and passes --no-skill because

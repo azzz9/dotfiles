@@ -1,5 +1,6 @@
-# TUIOS Configuration File
-# Managed by Home Manager (modules/tuios.nix); do not edit directly.
+# TUIOS Base Configuration File
+# Managed by Home Manager (modules/tuios.nix -> ~/.config/tuios/config.d/00-dotfiles.toml); do not edit directly.
+# Local changes made from the TUI are saved to ~/.config/tuios/config.toml.
 # Only non-default settings and [startup] are kept here; for all options run:
 #   tuios list-options
 #   tuios keybinds list

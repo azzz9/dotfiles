@@ -23,15 +23,16 @@ nvim is managed by nixvim. Plugins are declared in `modules/nvim.nix` via
 
 ## tuios config
 
-`modules/tuios.nix` installs `~/.config/tuios/config.toml` via HM (daemon mode,
-BSP tiling, kanagawa theme with transparent background, `keep_awake = "agents"`,
-`resume_agents = "auto"`, `ctrl+shift+p` for the command palette, Alt+h/j/k/l
-pane navigation, Alt+Shift+j/k session switching, and Alt+Shift+n/p agent
-switching) and exposes `tuios --skill` at `~/.agents/skills/tuios` and
-`~/.gemini/config/skills/tuios`. `modules/tuios.nix` reinstalls the `pi` and
-`antigravity` integrations (`--no-skill`) on every activation. The hermes
-integration is installed the same way by `modules/hermes.nix`, which only
-nix-server imports.
+`modules/tuios.nix` installs `~/.config/tuios/config.d/00-dotfiles.toml` via HM
+and initializes `~/.config/tuios/config.toml` as a writable regular file so TUI
+changes persist across activations (daemon mode, BSP tiling, kanagawa theme with
+transparent background, `keep_awake = "agents"`, `resume_agents = "auto"`,
+`ctrl+shift+p` for the command palette, Alt+h/j/k/l pane navigation, Alt+Shift+j/k
+session switching, and Alt+Shift+n/p agent switching) and exposes `tuios --skill`
+at `~/.agents/skills/tuios` and `~/.gemini/config/skills/tuios`. `modules/tuios.nix`
+reinstalls the `pi` and `antigravity` integrations (`--no-skill`) on every
+activation. The hermes integration is installed the same way by
+`modules/hermes.nix`, which only nix-server imports.
 
 ## AI config deployment model
 
