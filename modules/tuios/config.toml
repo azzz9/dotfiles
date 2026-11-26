@@ -20,6 +20,23 @@ scroll_column_width = 50
 scroll_column_max = 100
 scroll_column_presets = [33, 50, 67]
 
+[appearance.sidebar]
+width = 28
+header_case = "uppercase"
+header_style = "icon"
+density = "roomy"
+show_counts = false
+show_numbers = true
+files_style = "tree"
+subagent_rows = "tree"
+
+[appearance.sidebar.left]
+enabled = true
+width = 50
+
+[appearance.sidebar.right]
+enabled = false
+
 [daemon]
 keep_awake = "agents"
 resume_agents = "auto"
