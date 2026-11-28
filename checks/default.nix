@@ -9,7 +9,7 @@ let
     in
     ''
       files=${activationPackage}/home-files
-      for f in .config/herdr/config.toml; do
+      for f in .config/tuios/config.d/00-dotfiles.toml .config/tuios/harnesses/pi.toml .config/tuios/harnesses/antigravity.toml; do
         python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$files/$f"
       done
       ${pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
@@ -39,6 +39,9 @@ let
       require_link .pi/agent/APPEND_SYSTEM.md "${skillsSource}/APPEND_SYSTEM.md"
       require_link .agents/skills/yomiyasu "${skillsSource}/skills/yomiyasu"
       require_link .gemini/config/skills/yomiyasu "${skillsSource}/skills/yomiyasu"
+      test -f "$files/.agents/skills/tuios/SKILL.md"
+      test -f "$files/.gemini/config/skills/tuios/SKILL.md"
+      grep -q '^name: tuios$' "$files/.agents/skills/tuios/SKILL.md"
       test -f "$files/.pi/agent/extensions/rtk.ts"
       for plugin in pstack dotfiles rtk; do
         if [ ! -L "$files/.gemini/config/plugins/$plugin" ]; then
@@ -46,7 +49,7 @@ let
           exit 1
         fi
       done
-      for f in .gemini/config/plugins/dotfiles/plugin.json .gemini/config/plugins/dotfiles/hooks.json .gemini/config/plugins/pstack/hooks.json .gemini/config/plugins/rtk/plugin.json .gemini/config/plugins/rtk/hooks.json; do
+      for f in .config/tuios/themes/kanagawa-dark.json .gemini/config/plugins/dotfiles/plugin.json .gemini/config/plugins/dotfiles/hooks.json .gemini/config/plugins/pstack/hooks.json .gemini/config/plugins/rtk/plugin.json .gemini/config/plugins/rtk/hooks.json; do
         python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$files/$f"
       done
       test -f "$files/.gemini/config/plugins/dotfiles/rules/AGENTS.md"
@@ -214,8 +217,8 @@ in
     + "touch $out"
   );
   # Exercises the built Antigravity (agy) plugins and hooks end-to-end:
-  # adapted rules/skills, cc-safety-net PreToolUse decisions, pstack SessionStart
-  # routing JSON, and the Herdr prompt-display hook.
+  # adapted rules/skills, cc-safety-net PreToolUse decisions, and pstack
+  # SessionStart routing JSON.
   agy-harness =
     let
       firstHost = builtins.head (builtins.attrNames platformMachines);
@@ -235,7 +238,6 @@ in
         export AGY_DOTFILES_PLUGIN="${homeFiles.".gemini/config/plugins/dotfiles".source}"
         export AGY_PSTACK_PLUGIN="${homeFiles.".gemini/config/plugins/pstack".source}"
         export AGY_RTK_PLUGIN="${homeFiles.".gemini/config/plugins/rtk".source}"
-        export AGY_PROMPT_DISPLAY="${self}/modules/herdr/agy-prompt-display.py"
         python3 ${self}/checks/test-agy-hooks.py
         touch $out
       '';

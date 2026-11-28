@@ -119,9 +119,7 @@ current one. Both read the log, so "which commit was working" does not depend on
 memory.
 
 `dotfiles upgrade` moves every pin with `scripts/bump-pins.sh`, builds and
-applies, reinstalls the GitHub Herdr plugins, and reports the audit. `herdr
-plugin update` only refetches the ref recorded at install, so the plugin step
-installs again to take the latest. Review the moved pin files, run
+applies, and reports the audit. Review the moved pin files, run
 `scripts/check.sh` (the pre-push hook runs it too), and commit. To move one flake
 input, run `nix flake update <input>`, commit `flake.lock`, then `dotfiles apply`.
 
@@ -163,7 +161,7 @@ sudo nixos-rebuild switch --flake ~/src/github.com/azzz9/machines#<machine>
 | Shell          | Zsh, the prompt, fzf, and the `dotfiles` completion                           |
 | Editor         | Neovim through nixvim, with the per-language servers, formatters, and linters |
 | Git            | `git`, `gh`, `ghq`, `git-wt`, `delta`, `lazygit`                              |
-| Terminals      | `herdr`, `tuios`                                                               |
+| Terminals      | `tuios`                                                                        |
 | Agents         | `pi` with this repo's `pi-skills/` package and pstack, `agy`, and `rtk` command proxy |
 | Hermes Agent   | The agent service on `nix-server` only, from the `hermes-agent` flake input   |
 | Tools          | The file, JSON, media, and language toolchains the shell assumes              |

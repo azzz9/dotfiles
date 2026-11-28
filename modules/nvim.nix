@@ -1,6 +1,11 @@
-{ lib, pkgs, ... }:
+{ lib, pkgs, tuiosNvimNavigator, ... }:
 let
   pinned = import ./pinned-packages.nix { inherit pkgs; };
+  tuiosNvimNavigatorPlugin = pkgs.vimUtils.buildVimPlugin {
+    pname = "tuios-nvim-navigator";
+    version = "unstable";
+    src = tuiosNvimNavigator;
+  };
   treesitterWithGrammars = pkgs.vimPlugins.nvim-treesitter.withPlugins (p: [
     p.tree-sitter-bash
     p.tree-sitter-c
@@ -67,7 +72,7 @@ let
     "plugins/codediff.lua"
     "plugins/neogit.lua"
     "plugins/atlas.lua"
-    "plugins/herdr.lua"
+    "plugins/tuios-nvim-navigator.lua"
     "plugins/mini.lua"
     "plugins/oil.lua"
     "plugins/nvim-autopairs.lua"
@@ -205,7 +210,7 @@ assert lib.assertMsg (luaFilesUnlisted == [ ] && luaFilesAbsent == [ ])
         which-key-nvim
         render-markdown-nvim
       ]
-      ++ [ treesitterWithGrammars pinned.herdrNvim ];
+      ++ [ treesitterWithGrammars tuiosNvimNavigatorPlugin ];
     inherit extraConfigLua;
   };
 }

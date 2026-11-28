@@ -1,0 +1,97 @@
+# TUIOS Base Configuration File
+# Managed by Home Manager (modules/tuios.nix -> ~/.config/tuios/config.d/00-dotfiles.toml); do not edit directly.
+# Local changes made from the TUI are saved to ~/.config/tuios/config.toml.
+# Only non-default settings and [startup] are kept here; for all options run:
+#   tuios list-options
+#   tuios keybinds list
+
+[startup]
+daemon = true
+tiled = true
+layout = "scrolling"
+open_default_window = false
+start_in_terminal_mode = false
+
+[appearance]
+theme = "kanagawabones"
+background = "off"
+border_unfocused_color = "#383838"
+gap = 1
+scroll_column_width = 50
+scroll_column_max = 100
+scroll_column_presets = [33, 50, 67]
+
+[appearance.sidebar]
+width = 28
+header_case = "uppercase"
+row_style = "pill"
+header_style = "icon"
+density = "roomy"
+show_counts = false
+show_numbers = true
+files_style = "tree"
+subagent_rows = "tree"
+
+[appearance.sidebar.left]
+enabled = true
+width = 50
+
+[appearance.sidebar.right]
+enabled = false
+
+[spotlight]
+enabled = false
+
+[daemon]
+keep_awake = "agents"
+resume_agents = "auto"
+
+[keybindings.global]
+command_palette = ["ctrl+shift+p"]
+
+[keybindings.terminal_mode]
+terminal_focus_left = ["alt+h"]
+terminal_focus_down = ["alt+j"]
+terminal_focus_up = ["alt+k"]
+terminal_focus_right = ["alt+l"]
+scroll_move_left = ["ctrl+alt+h"]
+scroll_move_right = ["ctrl+alt+l"]
+scroll_cycle_width = ["alt+r"]
+scroll_maximize = ["alt+f"]
+scroll_consume = ["ctrl+alt+,"]
+scroll_expel = ["ctrl+alt+."]
+
+[keybindings.window_management]
+terminal_focus_left = ["alt+h"]
+terminal_focus_right = ["alt+l"]
+next_window = ["tab", "alt+n"]
+prev_window = ["shift+tab", "alt+p"]
+next_session = ["alt+shift+j"]
+prev_session = ["alt+shift+k"]
+next_agent = ["alt+shift+n"]
+prev_agent = ["alt+shift+p"]
+
+[keybindings.layout]
+focus_down = ["j", "alt+j"]
+focus_up = ["k", "alt+k"]
+scroll_move_left = ["ctrl+alt+h"]
+scroll_move_right = ["ctrl+alt+l"]
+scroll_cycle_width = ["R", "alt+r"]
+scroll_maximize = ["f", "alt+f"]
+scroll_consume = ["[", "ctrl+alt+,"]
+scroll_expel = ["]", "ctrl+alt+."]
+preselect_left = []
+preselect_right = []
+preselect_up = []
+preselect_down = []
+rotate_split = []
+snap_fullscreen = []
+resize_height_shrink_top = []
+resize_height_grow_top = []
+
+[keybindings.layout_prefix]
+cycle_layout = ["c"]
+
+[keybindings.inbox]
+inbox_down = ["j", "down", "ctrl+n"]
+inbox_up = ["k", "up", "ctrl+p"]

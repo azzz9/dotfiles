@@ -7,11 +7,8 @@ let
     (name: "--exclude-skill ${lib.escapeShellArg name}")
     config.dotfiles.skills.shared;
 
-  promptDisplayCommand =
-    "HERDR_BIN=${pkgs.herdr}/bin/herdr GIT_BIN=${pkgs.git}/bin/git ${pkgs.python3}/bin/python3 ${./herdr/agy-prompt-display.py}";
-
   # Plugin-scoped hooks merge with ~/.gemini/config/hooks.json at runtime, so
-  # Orca's and Herdr's managed entries in ~/.gemini/config/hooks.json stay untouched.
+  # Orca's and tuios's managed entries in ~/.gemini/config/hooks.json stay untouched.
   hooksJson = (pkgs.formats.json { }).generate "agy-dotfiles-hooks.json" {
     "cc-safety-net" = {
       PreToolUse = [
@@ -24,22 +21,6 @@ let
               timeout = 30;
             }
           ];
-        }
-      ];
-    };
-    "herdr-prompt-display" = {
-      SessionStart = [
-        {
-          type = "command";
-          command = promptDisplayCommand;
-          timeout = 5;
-        }
-      ];
-      PreInvocation = [
-        {
-          type = "command";
-          command = promptDisplayCommand;
-          timeout = 5;
         }
       ];
     };
@@ -64,8 +45,8 @@ in
 
   # Native Antigravity plugins under ~/.gemini/config/plugins/:
   # - pstack ships its own .antigravity-plugin/plugin.json, hooks.json, agents, and skills.
-  # - dotfiles ships the adapted global AGENTS.md rules, the five skills from pi-skills/,
-  #   cc-safety-net PreToolUse guard, and the Herdr prompt-display hook.
+  # - dotfiles ships the adapted global AGENTS.md rules, the four skills from pi-skills/,
+  #   and the cc-safety-net PreToolUse guard.
   # pstack-models.md, config.json, hooks.json, and settings.json remain local/mutable.
   home.file = {
     ".gemini/config/plugins/pstack".source = "${pstack}/plugins/pstack";

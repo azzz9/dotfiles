@@ -4,4 +4,3 @@
 solhint
 prettier-plugin-solidity
 prettier-plugin-solidity-dist
-herdr-nvim

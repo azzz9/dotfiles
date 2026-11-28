@@ -2,7 +2,7 @@
 """Builds the Antigravity (agy) dotfiles plugin tree from the pi-skills package.
 
 Reuses pi-skills/AGENTS.md, the Output rules of pi-skills/APPEND_SYSTEM.md, and
-the five built skills (herdr, imozuru, retro, workspace, yomiyasu) so rules and
+the four built skills (imozuru, retro, workspace, yomiyasu) so rules and
 upstream-tracked skills stay in one place. Fails loudly if an expected anchor in
 pi-skills disappears so adaptations never drift silently.
 """
@@ -22,7 +22,7 @@ AGY_GATES_AND_TOOLS = """## Gates
   how you will verify it, and what you will not touch. Then proceed unless the user redirects.
 - Work that edits files starts in a linked worktree, and read-only work stays put. If you are
   already in a linked worktree (for example, an Orca workspace), work there and do not create
-  another. Under Herdr (`HERDR_ENV=1`), use the `workspace` skill to create one, dispatch an
+  another. Inside tuios (`TUIOS_ENV=1`), use the `workspace` skill to create one, dispatch an
   independent task, or close a branch.
 
 ## Tools
@@ -87,23 +87,23 @@ def adapt_skills(pi_skills: Path, out: Path, exclude_skills: set[str]) -> None:
     )
     replace_exact(retro, "for Japanese, use `/skill:yomiyasu`.", "for Japanese, use the `yomiyasu` skill.")
 
-    # workspace: adapt branch prefix, Herdr kind, and existing-worktree rule for Orca/Herdr.
+    # workspace: adapt branch prefix, agent name, and existing-worktree rule for Orca/tuios.
     workspace = skills_dst / "workspace" / "SKILL.md"
     replace_exact(
         workspace,
-        "- Work that edits files starts in a linked worktree. Do not edit in the main repo. Herdr is required. Check `HERDR_ENV=1` and run `herdr worktree create --cwd <repo root> --branch pi/<slug>`. Stop if you are outside Herdr. Read-only work stays put.",
-        "- Work that edits files starts in a linked worktree. Do not edit in the main repo. If you are already in a linked worktree (for example, an Orca workspace), work there and do not create another. Creating or dispatching a new worktree requires Herdr (`HERDR_ENV=1`): run `herdr worktree create --cwd <repo root> --branch agy/<slug>`, or stop if outside Herdr. Read-only work stays put.",
+        "- Work that edits files starts in a linked worktree. Do not edit in the main repo. tuios is required. Check `TUIOS_ENV=1` and run `tuios worktree new pi/<slug> --base <base> --agent pi --detach --prompt \"<brief>\"`. Stop if you are outside tuios. Read-only work stays put.",
+        "- Work that edits files starts in a linked worktree. Do not edit in the main repo. If you are already in a linked worktree (for example, an Orca workspace), work there and do not create another. Creating or dispatching a new worktree requires tuios (`TUIOS_ENV=1`): run `tuios worktree new agy/<slug> --base <base> --agent agy --detach --prompt \"<brief>\"`, or stop if outside tuios. Read-only work stays put.",
     )
     replace_exact(workspace, "separate pi session", "separate agy session")
-    replace_exact(workspace, "(no subagent; Herdr + child pi)", "(no subagent; Herdr + child agy)")
-    replace_exact(workspace, "wt-clean pi/<slug>", "wt-clean agy/<slug>")
+    replace_exact(workspace, "(no subagent; tuios + child pi)", "(no subagent; tuios + child agy)")
+    replace_exact(workspace, "git branch -d pi/<slug>", "git branch -d agy/<slug>")
 
-    herdr_ref = skills_dst / "workspace" / "references" / "herdr-workspace.md"
-    replace_exact(herdr_ref, "pi/<slug>", "agy/<slug>")
-    replace_exact(herdr_ref, "--kind pi", "--kind agy")
-    replace_exact(herdr_ref, "its pi process", "its agy process")
-    replace_exact(herdr_ref, "`pi --continue`", "`agy --continue`")
-    replace_exact(herdr_ref, "a child pi", "a child agy")
+    tuios_ref = skills_dst / "workspace" / "references" / "tuios-workspace.md"
+    replace_exact(tuios_ref, "pi/<slug>", "agy/<slug>")
+    replace_exact(tuios_ref, "--agent pi", "--agent agy")
+    replace_exact(tuios_ref, "its pi process", "its agy process")
+    replace_exact(tuios_ref, "`pi --continue`", "`agy --continue`")
+    replace_exact(tuios_ref, "a child pi", "a child agy")
 
     # worktree-audit.sh: check both agy and pi transcript directories.
     audit_sh = skills_dst / "workspace" / "scripts" / "worktree-audit.sh"

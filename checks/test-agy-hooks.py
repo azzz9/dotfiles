@@ -5,9 +5,7 @@ from __future__ import annotations
 
 import json
 import os
-import stat
 import subprocess
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -16,7 +14,6 @@ HOME_FILES = Path(os.environ["AGY_HOME_FILES"])
 DOTFILES_PLUGIN = Path(os.environ["AGY_DOTFILES_PLUGIN"])
 PSTACK_PLUGIN = Path(os.environ["AGY_PSTACK_PLUGIN"])
 RTK_PLUGIN = Path(os.environ["AGY_RTK_PLUGIN"])
-PROMPT_DISPLAY = Path(os.environ["AGY_PROMPT_DISPLAY"])
 
 
 class AgyPluginStructureTest(unittest.TestCase):
@@ -28,7 +25,7 @@ class AgyPluginStructureTest(unittest.TestCase):
         self.assertNotIn("ffgrep", rules)
         self.assertNotIn("/skill:", rules)
 
-        for name in ("herdr", "imozuru", "retro", "workspace"):
+        for name in ("imozuru", "retro", "workspace"):
             skill_md = DOTFILES_PLUGIN / "skills" / name / "SKILL.md"
             self.assertTrue(skill_md.is_file(), f"missing skill {name}")
             content = skill_md.read_text(encoding="utf-8")
@@ -44,12 +41,12 @@ class AgyPluginStructureTest(unittest.TestCase):
         ):
             self.assertTrue((HOME_FILES / rel).is_file(), f"missing shared skill link {rel}")
 
-        herdr_ref = (
-            DOTFILES_PLUGIN / "skills" / "workspace" / "references" / "herdr-workspace.md"
+        tuios_ref = (
+            DOTFILES_PLUGIN / "skills" / "workspace" / "references" / "tuios-workspace.md"
         ).read_text(encoding="utf-8")
-        self.assertIn("--kind agy", herdr_ref)
-        self.assertIn("agy/<slug>", herdr_ref)
-        self.assertNotIn("--kind pi", herdr_ref)
+        self.assertIn("--agent agy", tuios_ref)
+        self.assertIn("agy/<slug>", tuios_ref)
+        self.assertNotIn("--agent pi", tuios_ref)
 
         audit_sh = DOTFILES_PLUGIN / "skills" / "workspace" / "scripts" / "worktree-audit.sh"
         res = subprocess.run(["bash", "-n", str(audit_sh)], capture_output=True, text=True)
@@ -209,104 +206,6 @@ class PstackSessionStartHookTest(unittest.TestCase):
         data = json.loads(res.stdout)
         msg = data["injectSteps"][0]["systemMessage"]["systemMessage"]
         self.assertIn("poteto-mode", msg)
-
-
-class HerdrPromptDisplayHookTest(unittest.TestCase):
-    def test_noop_outside_herdr(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            marker = Path(tmp) / "called"
-            fake_herdr = Path(tmp) / "herdr"
-            fake_herdr.write_text(f"#!/bin/sh\ntouch {marker}\n", encoding="utf-8")
-            fake_herdr.chmod(fake_herdr.stat().st_mode | stat.S_IXUSR)
-            env = {
-                k: v
-                for k, v in os.environ.items()
-                if k not in ("HERDR_ENV", "HERDR_PANE_ID")
-            }
-            env["HERDR_BIN"] = str(fake_herdr)
-            res = subprocess.run(
-                [sys.executable, str(PROMPT_DISPLAY)],
-                input=json.dumps({"lastUserInput": "hello", "cwd": tmp}),
-                capture_output=True,
-                text=True,
-                env=env,
-                check=False,
-            )
-            self.assertEqual(res.returncode, 0, res.stderr)
-            self.assertEqual(json.loads(res.stdout), {})
-            self.assertFalse(marker.exists())
-
-    def test_reports_normalized_prompt_and_branch_inside_herdr(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp) / "repo"
-            repo.mkdir()
-            subprocess.run(["git", "init", "-b", "feat/agy-test", str(repo)], check=True, capture_output=True)
-
-            log = Path(tmp) / "args.json"
-            fake_herdr = Path(tmp) / "herdr"
-            fake_herdr.write_text(
-                f"#!{sys.executable}\n"
-                "import json, sys\n"
-                f"open({str(log)!r}, 'w').write(json.dumps(sys.argv[1:]))\n",
-                encoding="utf-8",
-            )
-            fake_herdr.chmod(fake_herdr.stat().st_mode | stat.S_IXUSR)
-
-            long_japanese = "あ" * 95
-            env = dict(
-                os.environ,
-                HERDR_ENV="1",
-                HERDR_PANE_ID="pane-42",
-                HERDR_BIN=str(fake_herdr),
-            )
-            res = subprocess.run(
-                [sys.executable, str(PROMPT_DISPLAY)],
-                input=json.dumps({"lastUserInput": f"  {long_japanese}\n\t  ", "cwd": str(repo)}),
-                capture_output=True,
-                text=True,
-                env=env,
-                check=False,
-            )
-            self.assertEqual(res.returncode, 0, res.stderr)
-            self.assertEqual(json.loads(res.stdout), {})
-
-            recorded = json.loads(log.read_text(encoding="utf-8"))
-            self.assertEqual(recorded[:5], ["pane", "report-metadata", "pane-42", "--source", "dotfiles:agy-prompt"])
-            self.assertIn(f"prompt={'あ' * 80}", recorded)
-            self.assertIn("git_branch=feat/agy-test", recorded)
-
-    def test_clears_prompt_on_session_start(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            log = Path(tmp) / "args.json"
-            fake_herdr = Path(tmp) / "herdr"
-            fake_herdr.write_text(
-                f"#!{sys.executable}\n"
-                "import json, sys\n"
-                f"open({str(log)!r}, 'w').write(json.dumps(sys.argv[1:]))\n",
-                encoding="utf-8",
-            )
-            fake_herdr.chmod(fake_herdr.stat().st_mode | stat.S_IXUSR)
-
-            env = dict(
-                os.environ,
-                HERDR_ENV="1",
-                HERDR_PANE_ID="pane-7",
-                HERDR_BIN=str(fake_herdr),
-            )
-            res = subprocess.run(
-                [sys.executable, str(PROMPT_DISPLAY)],
-                input=json.dumps({"cwd": tmp}),
-                capture_output=True,
-                text=True,
-                env=env,
-                check=False,
-            )
-            self.assertEqual(res.returncode, 0, res.stderr)
-            self.assertEqual(json.loads(res.stdout), {})
-            recorded = json.loads(log.read_text(encoding="utf-8"))
-            self.assertIn("--clear-token", recorded)
-            self.assertIn("prompt", recorded)
-            self.assertIn("git_branch", recorded)
 
 
 if __name__ == "__main__":

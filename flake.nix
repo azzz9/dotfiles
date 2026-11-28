@@ -21,7 +21,6 @@
     pstack = { url = "github:michael-denyer/pstack-claude"; flake = false; };
     # The upstreams of the skills pi-skills/ builds with a local patch (see
     # pi-skills/default.nix). A pin bump that breaks a patch fails the checks.
-    skill-herdr = { url = "github:herdrdev/herdr"; flake = false; };
     skill-imozuru = { url = "github:MaryCache/imozuru"; flake = false; };
     skill-retro = { url = "github:mattpocock/skills"; flake = false; };
     skill-yomiyasu = { url = "github:nanaism/yomiyasu"; flake = false; };
@@ -34,13 +33,16 @@
     # uv2nix venv plus npm frontends resolved against the nixpkgs revision
     # upstream tests against, so following ours would risk that resolution.
     hermes-agent = { url = "github:NousResearch/hermes-agent"; };
+    # Upstream has no release tags, so track main via flake.lock instead of
+    # nix-update in modules/pinned-packages.nix.
+    tuios-nvim-navigator = { url = "github:Tim4c/tuios-nvim-navigator"; flake = false; };
   };
 
   outputs =
     { self, nixpkgs, home-manager, nixvim, pi
     , pstack, pi-web-access, pi-compact-tools
-    , skill-herdr, skill-imozuru, skill-retro, skill-yomiyasu
-    , hermes-agent, ...
+    , skill-imozuru, skill-retro, skill-yomiyasu
+    , hermes-agent, tuios-nvim-navigator, ...
     }:
     let
       supportedSystems = [
@@ -55,7 +57,6 @@
       mkPiSkills = pkgs: import ./pi-skills {
         inherit pkgs;
         upstreams = {
-          herdr = skill-herdr;
           imozuru = skill-imozuru;
           retro = skill-retro;
           yomiyasu = skill-yomiyasu;
@@ -103,6 +104,7 @@
         inherit machine machineNames repoDir worktreeRoot piPackagePaths;
         piFlake = pi;
         hermesAgent = hermes-agent;
+        tuiosNvimNavigator = tuios-nvim-navigator;
       };
       mkHomeConfiguration = name: { system, home ? [ ], checkout ? defaultCheckout, ... }:
         home-manager.lib.homeManagerConfiguration {
@@ -143,7 +145,6 @@
           "prettier-plugin-solidity" = pinned.prettierPluginSolidity;
           "prettier-plugin-solidity-dist" = pinned.prettierPluginSolidityDist;
           codediff-watcher = pinned.codediffWatcher;
-          herdr-nvim = pinned.herdrNvim;
           # The in-repo pi package, exposed so a check and `nix build
           # .#pi-skills` can read the tree pi loads.
           pi-skills = mkPiSkills pkgs;

@@ -1,9 +1,9 @@
-# Herdr is opt-in: a shell that already belongs to another agent manager must
-# not auto-start a second one. Set HERDR_AUTO_START=1 to run inside Herdr.
+# tuios is opt-in: a shell that already belongs to a terminal multiplexer must
+# not auto-start a second one. Set TUIOS_AUTO_START=1 to run inside tuios.
 if [[ -o interactive \
-  && -z "${HERDR_ENV:-}" \
+  && -z "${TUIOS_ENV:-}" \
   && -z "${TMUX:-}" \
-  && "${HERDR_AUTO_START:-0}" != 0 \
-  && "${TERM:-}" != dumb ]] && command -v herdr >/dev/null 2>&1; then
-  exec herdr
+  && "${TUIOS_AUTO_START:-0}" != 0 \
+  && "${TERM:-}" != dumb ]] && command -v tuios >/dev/null 2>&1; then
+  exec tuios
 fi

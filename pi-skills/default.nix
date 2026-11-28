@@ -2,7 +2,7 @@
 # (AGENTS.md, APPEND_SYSTEM.md), the skills, and the extensions. pi loads the
 # store path this builds in place.
 #
-# Four skills follow their upstream repositories. Each one's source is a
+# Three skills follow their upstream repositories. Each one's source is a
 # `flake = false` input in flake.nix, so flake.lock pins it and `nix flake
 # update` moves it. The build copies the part of the upstream tree the skill
 # uses into skills/<name>/, applies upstream/<name>/local.patch with
@@ -21,10 +21,6 @@ let
   # default FROM's basename); `drop PATH` removes a copied path the skill does
   # not ship. VENDOR.md says why each part is left out.
   tracked = {
-    herdr = ''
-      take skills/herdr/SKILL.md
-      take LICENSE
-    '';
     imozuru = ''
       take skills/imozuru/SKILL.md
       take skills/imozuru/references

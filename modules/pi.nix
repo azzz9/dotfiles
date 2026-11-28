@@ -33,15 +33,6 @@ let
     # extension adds the agent and question tools Pi does not carry.
     { input = "pstack"; }
     { input = "pstack"; }
-    # Sends Claude Code's identity on Anthropic requests, so the subscription's
-    # quota answers instead of the extra usage that Anthropic bills otherwise.
-    { tarball = {
-        name = "pi-claude-pro";
-        version = "1.4.6";
-        url = "https://registry.npmjs.org/pi-claude-pro/-/pi-claude-pro-1.4.6.tgz";
-        hash = "sha256-tJiZc2xFHGYMo5me63Qi/zZL4pd2CB6gaszQVpL/g0c=";
-      };
-    }
     { input = "pi-web-access"; npmDepsHash = "sha256-kmyoh7lvHssAhSBU2qKqk9ElGgm6Z5BZUtBjy1+hri4="; }
     # This repository's pi-skills/. Shared agent-agnostic skills load via
     # ~/.agents/skills/ (modules/skills.nix), so exclude them here to avoid
@@ -65,7 +56,7 @@ let
     # published tarball carries the dist.
     { tarball = ccSafetyNetTarball; }
     # Moves the running pi session to another directory or worktree, keeping the
-    # conversation, and creates or removes the worktree through herdr.
+    # conversation.
     { tarball = {
         name = "pi-agent-teleport";
         version = "0.2.13";
@@ -127,16 +118,7 @@ let
       ] ++ fffNative.${pkgs.stdenv.hostPlatform.system};
     };
   };
-  rows = baseRows ++ [ fffRow ] ++ lib.optionals config.dotfiles.pi.linuxProviders [
-    # The API key stays machine-local in ~/.pi/agent/ollama_cloud.json.
-    { tarball = {
-        name = "pi-ollama-cloud-link";
-        version = "1.3.1";
-        url = "https://registry.npmjs.org/pi-ollama-cloud-link/-/pi-ollama-cloud-link-1.3.1.tgz";
-        hash = "sha256-a2iOKHdnJ2+xZM4PMDrxnqNSuttZ2ftcJlKiqwqseh4=";
-      };
-    }
-  ];
+  rows = baseRows ++ [ fffRow ];
 
   # A published npm tarball unpacked into the store, ready for pi to load. A
   # runtime dependency is vendored under node_modules, because pi loads a local
@@ -292,7 +274,7 @@ in
     linuxProviders = lib.mkOption {
       type = lib.types.bool;
       default = false;
-      description = "Add the ollama-cloud model link and the OpenAI model visibility extension, which describe the Linux machines' provider set.";
+      description = "Enable the Linux pstack model sheet and the OpenAI model visibility extension.";
     };
     ccSafetyNetPackage = lib.mkOption {
       type = lib.types.package;
