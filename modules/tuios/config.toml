@@ -13,8 +13,9 @@ open_default_window = false
 start_in_terminal_mode = false
 
 [appearance]
-theme = "kanagawa-dark"
+theme = "kanagawabones"
 background = "off"
+border_unfocused_color = "#383838"
 gap = 1
 scroll_column_width = 50
 scroll_column_max = 100
